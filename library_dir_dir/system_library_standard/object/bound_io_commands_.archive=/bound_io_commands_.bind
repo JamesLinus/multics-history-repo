@@ -1,5 +1,7 @@
 /* ***********************************************************
    *                                                         *
+   * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+   *                                                         *
    * Copyright, (C) Honeywell Information Systems Inc., 1982 *
    *                                                         *
    *********************************************************** */
@@ -54,6 +56,9 @@
   3) change(88-08-24,Farley), approve(88-09-12,MCR7911),
      audit(88-09-29,Wallman), install(88-10-28,MR12.2-1199):
      Added eor_cv9_10_, for increasing forms_name variable to char 64.
+  4) change(90-09-10,Itani), approve(90-09-10,MCR8197), audit(90-09-25,Bubric),
+     install(90-10-05,MR12.4-1038):
+     Added the short name dfi to the display_forms_info command.
                                                    END HISTORY COMMENTS */
 
 
@@ -103,7 +108,7 @@ Addname:		close_file, cf,
 		copy_file, cpf,
 		discard_output, dco,
 		display_ttt,
-		display_forms_info,
+		display_forms_info, dfi,
 		dprint, dp, dp1, dp2,
 		dprint_,
 		dpunch, dpn, dpn1, dpn2,
@@ -156,7 +161,8 @@ objectname:	discard_output;
  retain:		discard_output, dco;
 
 objectname:	display_forms_info;
- retain:		display_forms_info;
+ synonym:		dfi;
+ retain:		display_forms_info, dfi;
 
 objectname:	display_ttt;
  synonym:		print_terminal_types, ptt;
@@ -277,3 +283,6 @@ objectname:         write_list_;
                     nnl;
 
 /* End */
+
+
+

@@ -1,8 +1,10 @@
-/****^  ********************************************
-        *                                          *
-        * Copyright, (C) Honeywell Bull Inc., 1988 *
-        *                                          *
-        ******************************************** */
+/****^  *********************************************************
+        *                                                       *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990 *
+        *                                                       *
+        * Copyright, (C) Honeywell Bull Inc., 1988              *
+        *                                                       *
+        ********************************************************* */
 
 
 /****^  HISTORY COMMENTS:
@@ -13,6 +15,9 @@
      audit(88-11-14,Wallman), install(88-11-14,MR12.2-1212):
      Allow -rqt argument; call enter_output_request$request_type to allow user
      defined request type evaluation.
+  3) change(90-09-10,Itani), approve(90-09-10,MCR8197), audit(90-09-25,Bubric),
+     install(90-10-05,MR12.4-1038):
+     Display a usage message if no arguments are entered.
                                                    END HISTORY COMMENTS */
 
 /* format: style4 */
@@ -64,6 +69,11 @@ dcl  (queue_default, queue_max) fixed bin;
 	if error ^= 0 then do;
 	     call com_err_ (error, myname, "Getting arg count");
 	     return;
+	end;
+
+          if argc = 0 then do;
+               call com_err_ (error_table_$noarg, myname, "^/^6xUsage: ^a {-rqt} rqt_name ", myname);
+               return;
 	end;
 
 /* get name of request type to process */
@@ -185,6 +195,3 @@ get_out:	call clean_up;
 %page; %include user_forms_info;
 
      end display_forms_info;
-
-
-
