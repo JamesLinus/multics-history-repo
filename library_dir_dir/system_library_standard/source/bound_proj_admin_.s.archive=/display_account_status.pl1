@@ -15,6 +15,8 @@
      audit(88-08-04,Lippard), install(88-08-29,MR12.2-1093):
      Changed to display <none> when there are no authorized groups in -long
      output. (phx16057)
+  2) change(99-06-23,Haggett):
+     Y2K
                                                    END HISTORY COMMENTS */
 
 
@@ -76,8 +78,8 @@ dcl 1 proj based (projp),
 
 /* DECLARATION OF INTERNAL STATIC */
 
-dcl  NEVER fixed bin (71) int static init		/* This date is 12/31/99 2359. */
-    (1011000110010110011001001110100110111010100100000000b); /* .. if Multics last this long we will have to fix */
+dcl  NEVER fixed bin (71) int static init
+    (4418064000000000) options (constant);
 
 dcl  myname static char (22) init ("display_account_status") options (constant);
 
@@ -299,3 +301,6 @@ dcl  input char (*);
 
 
      end display_account_status;
+
+
+

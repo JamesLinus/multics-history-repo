@@ -39,6 +39,8 @@
   2) change(86-02-26,Gilcrease), approve(86-03-27,MCR7369),
      audit(86-06-20,LJAdams), install(86-06-30,MR12.0-1081):
                Put weekly displays in for SCP 6250.
+  3) change(99-06-23,Haggett):
+     Y2K
                                                    END HISTORY COMMENTS */
 
 
@@ -65,9 +67,9 @@ dcl  max_rs_number fixed bin;
 dcl  temp float bin;
 dcl  an fixed bin;
 dcl  (pdt_dir, pdt_path) char (168) aligned;
-dcl  datestr char (16) aligned;
-dcl  datstng char (24) aligned;
-dcl  datstr char (8) aligned;
+dcl  datestr char (18);
+dcl  datstng char (26);
+dcl  datstr char (10);
 dcl  sel_name char (32) aligned init ("");
 dcl  pdt_name char (32) aligned;
 dcl  (i, ii, iii, slng) fixed bin;
@@ -103,7 +105,7 @@ dcl  system_info_$max_rs_number entry (fixed bin);
 dcl  system_info_$rs_name entry (fixed bin, char (*), fixed bin (35));
 dcl  convert_access_class_$to_string_range_short entry ((2) bit (72) aligned, char (*), fixed bin (35));
 dcl  format_attributes_ entry (ptr, char (*) var);
-dcl  date_time_ entry (fixed bin (71), char (*) aligned);
+dcl  date_time_$format entry (char(*), fixed binary(71), char(*), char(*)) returns(char(250) varying);
 dcl  com_err_ entry options (variable);
 dcl  ioa_ entry options (variable);
 dcl  ioa_$rsnnl entry options (variable);
@@ -173,7 +175,7 @@ dcl  ttt_info_$decode_type entry (fixed bin, char (*), fixed bin (35));
 	end;
 
 	if ^no_header then do;
-	     call date_time_ ((clock ()), datestr);
+	     call DATE_TIME ((clock ()), datestr);
 	     if ^pmf then call ioa_ ("^/^-^-^28a^3x^20a^/", pdt_name, datestr);
 	     call ioa_ ("Projectid:^12x^a;", pdt.project_name);
 	     if ^pmf then call ioa_ ("process_group_id:^5x^a;", pdt.author.proc_group_id);
@@ -287,7 +289,7 @@ dcl  ttt_info_$decode_type entry (fixed bin, char (*), fixed bin (35));
 		     else call ioa_$rsnnl ("cutoff:^14x^.2f,", attr, len, user.absolute_limit);
 		     if user.absolute_cutoff = NEVER then attr = attr || " open,";
 		     else do;
-			call date_time_ (user.absolute_cutoff, datstr);
+			call DATE_TIME (user.absolute_cutoff, datstr);
 			attr = attr || " " || datstr || ",";
 		     end;
 		     if user.absolute_increm = 0 then do;
@@ -322,20 +324,20 @@ dcl  ttt_info_$decode_type entry (fixed bin, char (*), fixed bin (35));
 
 		if ^long then go to SKIP;
 		call ioa_ (" absolute_spent:^6x$^.2f;", user.absolute_spent);
-		call date_time_ (user.daton, datstng);
+		call DATE_TIME (user.daton, datstng);
 		call ioa_ (" date_on:^13x^24a;", datstng);
-		call date_time_ (user.datof, datstng);
+		call DATE_TIME (user.datof, datstng);
 		call ioa_ (" date_off:^12x^24a;", datstng);
-		call date_time_ (user.last_login_time, datstng);
+		call DATE_TIME (user.last_login_time, datstng);
 		call ioa_ (" last_login_time:^5x^24a;", datstng);
 		if user.last_login_time ^= 0 then do;
 		     call ioa_ (" last_login_unit:^5x^a;", user.last_login_unit);
 		     call ttt_info_$decode_type ((user.last_login_type), char32, code);
 		     call ioa_ (" last_login_type:^5x^a;", char32);
 		end;
-		call date_time_ (user.time_last_bump, datstng);
+		call DATE_TIME (user.time_last_bump, datstng);
 		call ioa_ (" time_last_bump:^6x^24a;", datstng);
-		call date_time_ (user.last_update, datstng);
+		call DATE_TIME (user.last_update, datstng);
 		call ioa_ (" last_update:^9x^24a;", datstng);
 		call ioa_ (" logins:^14x^d;", user.logins);
 		call ioa_ (" crashes:^13x^d;", user.crashes);
@@ -455,4 +457,16 @@ dcl  1 time_string aligned,
 	return (string (time_string));
      end;
 
-     end print_pdt;
+%page;
+DATE_TIME:
+	procedure (p_clock, p_dt_str);
+
+dcl p_clock fixed binary (71)  parameter;
+dcl p_dt_str char (*) parameter;
+
+	p_dt_str = date_time_$format ("^9999yc-^my-^dm  ^Hd^99v.9MH ^xxxxza^xxxda.", p_clock, "", "");
+	return;
+
+end DATE_TIME;
+
+end print_pdt;

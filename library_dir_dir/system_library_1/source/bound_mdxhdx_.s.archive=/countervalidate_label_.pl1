@@ -10,6 +10,12 @@
         *********************************************************** */
 
 
+
+/****^  HISTORY COMMENTS:
+  1) change(99-06-23,Haggett):
+     Y2K
+                                                   END HISTORY COMMENTS */
+
 countervalidate_label_: proc (a_labelp, a_valid_reg, a_valid_copy, a_ss_pack);
 
 /* Countervalidator of labels for mdxhdx/rcp
@@ -92,7 +98,7 @@ dcl  initializer_mdc_$countervalidate_label_ entry (ptr, bit (1), bit (1), bit (
 	else if valid_copy then story = "a copy of Multics Storage System Volume";
 	else story = "Multics Storage System Volume";
 	if valid_reg & ^(^valid_copy & ^(pvname = label.pv_name))
-	then chtime = date_time_$format ("date_time", label.time_map_updated, "", "");
+	then chtime = date_time_$format ("^9999yc-^my-^dm_^Hd:^MH", label.time_map_updated, "", "");
 	else chtime = "";
 
 	query_info.version = 2;
@@ -108,6 +114,3 @@ dcl  initializer_mdc_$countervalidate_label_ entry (ptr, bit (1), bit (1), bit (
 	%include fs_vol_label;
 
      end;
-
-
-

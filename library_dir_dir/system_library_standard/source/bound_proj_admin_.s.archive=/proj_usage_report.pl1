@@ -38,14 +38,16 @@ pur:
      audit(86-06-20,LJAdams), install(86-06-30,MR12.0-1081):
         Add weekly to display array. SCP 6250.
   3) change(87-08-10,GDixon), approve(88-08-15,MCR7969),
-     audit(88-08-03,Lippard), install(88-08-29),MR12.2-1093):
+     audit(88-08-03,Lippard), install(88-08-29,MR12.2-1093):
      Correct functioning of -user (phx13898, phx15772, phx17001).
+  4) change(99-06-23,Haggett):
+     Y2K
                                                    END HISTORY COMMENTS */
 
 
 
 dcl  OPEN float bin int static options (constant) init (1e37);
-dcl  NEVER fixed bin (71) int static options (constant) init (3124151940000000);
+dcl  NEVER fixed bin (71) int static options (constant) init (4418064000000000);
 dcl  MILLION fixed bin (35) internal static options (constant) init (1000000);
 dcl  cutinc (0:6) character (8) internal static options (constant)
      init ("", ",daily", ",monthly", ",yearly", ",cyear", ",fyear", ",weekly");
@@ -437,6 +439,3 @@ display_user:
 %include pdt;
 
      end proj_usage_report;
-
-
-

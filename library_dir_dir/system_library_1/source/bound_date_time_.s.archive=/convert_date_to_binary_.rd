@@ -158,6 +158,8 @@ year_	/ <n> <andfraction>		/ Ayear_default					/ main	\
       A) Correct error preventing an absolute day-of-week specification from
          being enforced.  Fix allows "date 6/1/88 thu" to be reported as an
          error, since it is really a Wednesday. (date_time 32)
+  6) change(99-06-23,Haggett):
+     Y2K
                                                    END HISTORY COMMENTS */
 
 
@@ -1409,7 +1411,7 @@ Arequest_id: entry;
 	then goto Emultiple_date_spec;
 	if (atime.Hd ^= need_default)
 	then goto Emultiple_time_spec;
-	atime.yc = fixed (rqid.yc) + 1900;		/* the 1900 is only temporary		*/
+	atime.yc = CONVERT_TO_4_DIGIT_YEAR (fixed (rqid.yc));
 	atime.my = fixed (rqid.my);
 	atime.dm = fixed (rqid.dm);
 	atime.Hd = fixed (rqid.Hd);
@@ -1573,7 +1575,7 @@ Ayear_and_LEX:	entry;
 	   atime.yc = token.Nvalue;
 	   if (length (token_value) < 3)
 	   then do;				/* handle century default */
-	      atime.yc = 1900 + atime.yc;
+	        atime.yc = CONVERT_TO_4_DIGIT_YEAR (atime.yc);
 	   end;
 	end;
 	call LEX (1);
@@ -1785,3 +1787,25 @@ dcl l		fixed bin,	/* length of the new token.	       */
 %include time_defaults_;
 dcl com_err_	entry() options(variable);
 
+%skip;
+/**** Implement the cutoff for 2 digit year strings.
+
+      00..29  =  2000..2029
+      30..99  =  1930..1999
+*/
+CONVERT_TO_4_DIGIT_YEAR:
+	procedure (p_yy)
+	returns (fixed binary);
+
+dcl p_yy  fixed binary parameter;
+
+dcl yyyy  fixed binary;
+
+	if p_yy < 30 then
+	     yyyy = 2000;
+	else yyyy = 1900;
+	yyyy = yyyy + p_yy;
+
+	return (yyyy);
+
+end CONVERT_TO_4_DIGIT_YEAR;

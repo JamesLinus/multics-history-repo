@@ -70,6 +70,8 @@
      audit(88-07-28,Lippard), install(88-08-02,MR12.2-1075):
       A) Correct bug in applying year offset from a leap_day
          (02/29/<leap_year>).  (date_time 31, phx21107)
+  4) change(99-06-23,Haggett):
+     Y2K
                                                    END HISTORY COMMENTS */
 
 %page;
@@ -625,7 +627,8 @@ valid_format_rtn: begin;		/* <<##>> */
       lang_index = 1;
 /**** Use a clock reading which tests all fields for their maximum width.    */
       call Multics_2_vc (
-         3124103399999999,		/* 1999-12-31 23:59:59.999999+0930   */
+/****^   3124103399999999,		/* 1999-12-31 23:59:59.999999+0930   */
+         4503599627370495,		/* 2043-09-17 23:53:47.370495 gmt    */
          "+0930", 0, lang_index, cal_val);
       if (lcode = 0)
       then call do_format;
@@ -3424,3 +3427,6 @@ dcl (addr, addrel, after, before, convert, copy, divide, fixed, hbound, index,
 /* ***********************************+************************************* */
 dcl binary builtin;
    end date_time_;
+
+
+

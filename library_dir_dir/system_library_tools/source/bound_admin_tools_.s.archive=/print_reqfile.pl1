@@ -8,6 +8,13 @@
    *********************************************************** */
 
 
+/****^  HISTORY COMMENTS:
+  1) change(99-06-23,Haggett):
+     Y2K
+                                                   END HISTORY COMMENTS */
+
+/**** Modified Jan 1, 2000 to print cutoff date using 4-digit year. */
+
 print_reqfile: proc;
 
 /* print reqfile */
@@ -22,7 +29,8 @@ dcl  dn char (168) aligned,
      ec fixed bin (35),
      qp ptr,
     (co, dp) char (64) aligned,
-    (dt1, dt2, dt3) char (8) aligned,
+    dt1 char (20),
+    (dt2, dt3) char (8) aligned,
      facev char (15) aligned;
 
 
@@ -30,6 +38,8 @@ dcl  cv_$mwvf ext entry (float bin) returns (char (15)),
      cu_$arg_ptr entry (fixed bin, ptr, fixed bin, fixed bin (35)),
      get_wdir_ entry () returns (char (168)),
      system_info_$titles entry options (variable),
+     date_time_$format entry (char(*), fixed bin(71), char(*),
+                              char(*)) returns (char(250) var),
      date_time_ entry (fixed bin (71), char (*) aligned),
      hcs_$initiate entry (char (*) aligned, char (*) aligned, char (*) aligned,
      fixed bin (1), fixed bin (2), ptr, fixed bin (35)),
@@ -60,9 +70,9 @@ er:	     call com_err_ (ec, "print_reqfile", "");
 	call system_info_$titles (co, dp);
 	call ioa_ ("^|^a^/^/^-^a^/^/Requisition file listing: ^d accounts.^/^/", co, dp, nq);
 
-	call ioa_ ("Acct ID^5xAcct no^6xRequisition^3x  Cutoff^5xReq. Amount^11xSpent^6xThis Month^8xOn^7xOff^/");
+	call ioa_ ("Acct ID^5xAcct no^6xRequisition^5x  Cutoff^3xReq. Amount^11xSpent^6xThis Month^8xOn^7xOff^/");
 	do i = 1 to nq;
-	     call date_time_ (cutoff (i), dt1);
+	     dt1 = date_time_$format ("^9999yc-^my-^dm", cutoff (i), "", "");
 	     call date_time_ (qdn (i), dt2);
 	     if qdf (i) ^= 0 then call date_time_ (qdf (i), dt3);
 	     else dt3 = "";

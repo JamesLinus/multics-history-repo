@@ -21,6 +21,8 @@ adjust_cutoff_:
   2) change(86-03-27,Gilcrease), approve(86-03-27,MCR7369),
      audit(86-06-20,LJAdams), install(86-06-30,MR12.0-1081):
         Add increment of one week for weekly cutoffs SCP 6250.
+  3) change(99-06-23,Haggett):
+     Y2K
                                                    END HISTORY COMMENTS */
 
 
@@ -40,8 +42,7 @@ dcl (pdtep, pdtp) ptr,
 
 /* internal static */
 
-dcl  NEVER fixed bin (71) int static options (constant) init /* This date is 12/31/99 2359. */
-    (1011000110010110011001001110100110111010100100000000b); /* .. if Multics last this long we will have to fix */
+dcl  NEVER fixed bin (71) int static options (constant) init (4418064000000000);
 dcl  bigfloat float bin int static options (constant) init (1e37);
 
 dcl (static_mm, static_dd, static_yy) fixed bin int static,

@@ -27,6 +27,8 @@
   2) change(87-01-08,Fawcett), approve(87-01-08,MCR7600),
      audit(87-01-13,GJohnson), install(87-01-13,MR12.0-1270):
      This closes MECR0006.
+  3) change(99-06-23,Haggett):
+     Y2K
                                                    END HISTORY COMMENTS */
 
 
@@ -67,6 +69,7 @@ init_clocks:
 	declare time_correction	 fixed bin (71);
 	declare time_string		 char (64) var;
 	declare zone		 char (4);
+	declare 1 rpv_label		 aligned like label;
 
 /* External */
 
@@ -93,6 +96,11 @@ init_clocks:
 	bootload_scu = fixed (sys_info$clock_, 3);
 
 	TIME = clock ();
+
+	call read_rpv_label ();
+	time_string = date_time_$format (time_format, label.time_unmounted, zone, "");
+	call ioa_ ("Multics Y2K.  System was last shudown/ESD at:^/^a", time_string);
+
 	call check_time;
 	line = "xxx";
 	do while (^(line = "n" | line = "no"));
@@ -221,7 +229,7 @@ check_time:
 
 	time_string = date_time_$format (time_format, TIME, zone, "");
 	call ioa_ ("Current system time is: ^a.", time_string);
-	if TIME <= sys_info$first_reasonable_time | TIME >= sys_info$last_reasonable_time
+	if TIME <= sys_info$first_reasonable_time | TIME >= sys_info$last_reasonable_time | TIME < label.time_unmounted
 	then do;
 		call ioa_ ("This is clearly incorrect.");
 		go to CHECK_TIME;
@@ -234,16 +242,8 @@ check_rpv:
 
 /* Make sure the time is reasonable relative to the RPV time unmounted. */
 
-	dcl     1 rpv_label		 aligned like label;
 	dcl     yes_no		 bit (1) aligned;
 
-	labelp = addr (rpv_label);
-	call read_disk (pvt$root_pvtx, LABEL_ADDR, labelp, code);
-	if code ^= 0
-	then do;
-		call com_err_ (code, me, "RPV label");
-		go to ABORT;
-	     end;
 	if label.time_unmounted <= sys_info$first_reasonable_time
 	     | label.time_unmounted >= sys_info$last_reasonable_time
 	then return;				/* bogus label times */
@@ -251,8 +251,8 @@ check_rpv:
 	if clock () < label.time_unmounted
 	then do;
 		call bce_query$yes_no (yes_no,
-		     "The current time is before the unmounted time recorded in the RPV label.
-Is this correct? ");
+		     "The current time is *before* the last shutdown time recorded in the RPV.
+Are you sure the time is correct? ");
 		if ^yes_no
 		then go to CHECK_TIME;
 	     end;
@@ -263,9 +263,31 @@ Is this correct? ");
 unmounted time recorded in the RPV label.  Is this correct? ");
 		if ^yes_no
 		then go to CHECK_TIME;
+
+		if (divide (clock () - label.time_unmounted, 3600 * 1000000, 17, 0) > 12) then do;
+		     call bce_query$yes_no (yes_no, "The current time I'm using is more than 12 hours
+after the last shutdown time recorded in the RPV label.
+Are you sure this is correct? ");
+		     if ^yes_no then
+			goto CHECK_TIME;
+		end;
 	     end;
 	return;					/* okay */
      end;
+%skip;
+read_rpv_label:
+     proc;
+
+	labelp = addr (rpv_label);
+	call read_disk (pvt$root_pvtx, LABEL_ADDR, labelp, code);
+	if code ^= 0
+	then do;
+		call com_err_ (code, me, "RPV label");
+		go to ABORT;
+	     end;
+	return;
+
+end read_rpv_label;
 %page;
 %include config_deck;
 %page;
