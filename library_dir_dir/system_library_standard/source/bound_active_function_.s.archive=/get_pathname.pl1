@@ -1,15 +1,26 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   * Copyright (c) 1972 by Massachusetts Institute of        *
-   * Technology and Honeywell Information Systems, Inc.      *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
 
 
 
-	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+	
+
+/****^  HISTORY COMMENTS:
+  1) change(90-01-25,Vu), approve(90-01-25,MCR8153), audit(90-06-21,Huen),
+     install(90-09-04,MR12.4-1032):
+     The active function for get_pathname will now return quoted string.
+                                                   END HISTORY COMMENTS */
+
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
 	/*									*/
 	/* N__a_m_e:  get_pathname, gpn							*/
 	/*									*/
@@ -70,7 +81,7 @@ get_pathname: gpn:	procedure;
 						/* our return argument.			*/
 
      dcl						/* 	builtin functions			*/
-         (baseptr, index, mod, substr)	builtin;
+         (addr, baseptr, index, mod, rtrim, substr)	builtin;
 
 
      dcl  gripe entry variable options(variable);		/* either active_fnc_err_ or com_err_		*/
@@ -84,7 +95,8 @@ get_pathname: gpn:	procedure;
 	cv_oct_check_		entry (char(*), fixed bin(35)) returns (fixed bin(35)),
 	hcs_$fs_get_path_name	entry (ptr, char(*) aligned, fixed bin, char(*) aligned, fixed bin(35)),
 	hcs_$fs_get_seg_ptr		entry (char(*), ptr, fixed bin(35)),
-	ioa_			entry options(variable);
+	ioa_			entry options(variable),
+	requote_string_		entry (char (*)) returns (char (*));
 
      dcl						/*	static variables			*/
          (error_table_$badopt,
@@ -155,7 +167,7 @@ get_path:	call hcs_$fs_get_path_name (Pseg, directory, Ldirectory, entry, code);
 	path = substr(directory,1,Ldirectory) || ">" || substr(entry,1,Lentry);
 
 	if command then call ioa_("^a",path);
-	else ret = substr(path,1,169-verify(reverse(path)," "));
+	else ret = requote_string_ (rtrim (path));
 	return;					/* return the path name as the value of the	*/
 						/* active function.				*/
 
@@ -189,3 +201,6 @@ invalidsegno:
 	return;
 
 	end get_pathname;
+
+
+

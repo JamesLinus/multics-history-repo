@@ -1,11 +1,22 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   * Copyright (c) 1972 by Massachusetts Institute of        *
-   * Technology and Honeywell Information Systems, Inc.      *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(90-01-25,Vu), approve(90-01-25,MCR8153), audit(90-06-21,Huen),
+     install(90-09-04,MR12.4-1032):
+     The active function for equal_name will now return quoted string.
+                                                   END HISTORY COMMENTS */
 
 
 equal_name: enm: proc;
@@ -42,7 +53,7 @@ dcl  equal char (Lequal) based (Pequal),
      source char (Lsource) based (Psource);
 
 
-dcl (reverse, search, substr, verify)
+dcl (length, rtrim, search, substr)
      builtin;
 
 
@@ -56,7 +67,8 @@ dcl (active_fnc_err_, active_fnc_err_$suppress_name,
      expand_pathname_$component entry (char(*), char(*), char(*), char(*), fixed bin(35)),
      pathname_$component_check entry (char(*), char(*), char(*), char(*), fixed bin(35)),
      get_equal_name_$component entry (char(*), char(*), char(*), char(*), char(32), char(32), fixed bin(35)),
-    (ioa_, ioa_$rsnnl) entry options (variable);
+    (ioa_, ioa_$rsnnl) entry options (variable),
+     requote_string_ entry (char (*)) returns (char (*));
 
 /*  */
 
@@ -111,7 +123,7 @@ dcl (active_fnc_err_, active_fnc_err_$suppress_name,
 
 	if Scommand then
 	     call ioa_ ("^a", output_name);
-	else ret = rtrim (output_name);
+	else ret = requote_string_ (rtrim (output_name));
 	return;
 
      end equal_name;
