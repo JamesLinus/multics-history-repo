@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -100,6 +102,9 @@ lar_util_: procedure (a_info_ptr, a_code);
      audit(88-10-25,Wallman), install(88-10-28,MR12.2-1199):
      Updated to use version 5 dprint_msg.  Also added "plotter" as one of the
      valid output_modules.
+ 11) change(90-12-10,Vu), approve(90-12-10,MCR8231), audit(92-09-25,Zimmerman),
+     install(92-10-06,MR12.5-1021):
+     Header for list_absentee_request has garbage total.
                                                    END HISTORY COMMENTS */
 
 /* format: on */
@@ -437,7 +442,8 @@ message_count:
 	no_totals = ""b;				/* assume we can */
 	call message_segment_$get_message_count_index (info.mseg_idx, messcount, code);
 	if code ^= 0
-	then					/* user might have read or own permission, but not status */
+	then do;					/* user might have read or own permission, but not status */
+               messcount = 0;
 	     if code ^= error_table_$moderr
 	     then goto return_code;			/* if that is not the case, give up immediately */
 	     else do;				/* that was the case */
@@ -445,7 +451,7 @@ message_count:
 		no_totals = "1"b;			/* remember not to print the total requests */
 		info.no_total_sw = "1"b;		/* tell caller not to print "No requests in any queue"  */
 	     end;
-
+          end;
 	else if messcount = 0
 	then go to fin;				/* if no requests then we are done */
 
@@ -2072,3 +2078,6 @@ imft_buffer:
 %include user_abs_attributes;
 
      end lar_util_;
+
+
+
