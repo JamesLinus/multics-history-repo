@@ -1,11 +1,27 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   * Copyright (c) 1972 by Massachusetts Institute of        *
-   * Technology and Honeywell Information Systems, Inc.      *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1991   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(91-10-25,Schroth), approve(91-11-28,MECR0015),
+     audit(91-11-25,WAAnderson), install(91-11-28,MR12.5-1001):
+     Correct MR12.4 source code corruption.
+  2) change(92-05-14,Schroth), approve(91-11-25,MCR8251),
+     audit(92-09-22,WAAnderson), install(92-09-24,MR12.5-1016):
+     Replace MECR0015: Correct MR12.4 source code corruption.
+                                                   END HISTORY COMMENTS */
 
 
 
@@ -113,7 +129,4 @@ PUT_CURRENT_VALUES:
 exit:	return;
 
      end;
-
-
-
 

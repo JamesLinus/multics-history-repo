@@ -1,11 +1,13 @@
-/****^  ******************************************************
-        *                                                    *
-        * Copyright, (C) Honeywell Bull Inc., 1988           *
-        *                                                    *
-        * Copyright (c) 1972 by Massachusetts Institute of   *
-        * Technology and Honeywell Information Systems, Inc. *
-        *                                                    *
-        ****************************************************** */
+/****^  *********************************************************
+        *                                                       *
+        * Copyright, (C) BULL HN Information Systems Inc., 1991 *
+        *                                                       *
+        * Copyright, (C) Honeywell Bull Inc., 1988              *
+        *                                                       *
+        * Copyright (c) 1972 by Massachusetts Institute of      *
+        * Technology and Honeywell Information Systems, Inc.    *
+        *                                                       *
+        ********************************************************* */
 
 manage_volume_pool: mvp: mvp_: manage_volume_pool_: proc;
 
@@ -43,6 +45,12 @@ manage_volume_pool: mvp: mvp_: manage_volume_pool_: proc;
      Change the set key to add -state_date, allowing the user to set the
      state_date field to an explicit value.  This can be important to the reuse
      operation.
+  2) change(91-10-25,Schroth), approve(91-11-28,MECR0015),
+     audit(91-11-25,WAAnderson), install(91-11-28,MR12.5-1001):
+     Correct MR12.4 source code corruption.
+  3) change(92-05-14,Schroth), approve(91-11-25,MCR8251),
+     audit(92-09-22,WAAnderson), install(92-09-24,MR12.5-1016):
+     Replace MECR0015: Correct MR12.4 source code corruption.
                                                    END HISTORY COMMENTS */
 
 
@@ -4263,3 +4271,6 @@ end yes_to_query;
 %page;
 %include access_mode_values;
 end manage_volume_pool;
+
+
+

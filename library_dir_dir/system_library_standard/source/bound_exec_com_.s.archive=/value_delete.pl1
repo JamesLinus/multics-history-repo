@@ -1,8 +1,24 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1983 *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1991   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1983 *
+        *                                                         *
+        *********************************************************** */
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(91-10-25,Schroth), approve(91-11-28,MECR0015),
+     audit(91-11-25,WAAnderson), install(91-11-28,MR12.5-1001):
+     Correct MR12.4 source code corruption.
+  2) change(92-05-14,Schroth), approve(91-11-25,MCR8251),
+     audit(92-09-22,WAAnderson), install(92-09-24,MR12.5-1016):
+     Replace MECR0015: Correct MR12.4 source code corruption.
+                                                   END HISTORY COMMENTS */
+
+
+
 value_delete: vdl: proc;
 
 /* Written 11/18/80 by S. Herbst */
@@ -293,6 +309,3 @@ dcl (P_data_sw, P_found_sw) bit (1);
 end delete_one;
 
 end value_delete;
-
-
-

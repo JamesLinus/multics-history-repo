@@ -17,6 +17,12 @@
      phx18036 (Mail 450) - modified the deliver_message/redistribute_message
      entries to set mailing list delivery codes to indicate non-delivery
      rather than successful delivery if the delivery got aborted; reformatting.
+  3) change(91-10-25,Schroth), approve(91-11-28,MECR0015),
+     audit(91-11-25,WAAnderson), install(91-11-28,MR12.5-1001):
+     Correct MR12.4 source code corruption.
+  4) change(92-05-14,Schroth), approve(91-11-25,MCR8251),
+     audit(92-09-22,WAAnderson), install(92-09-24,MR12.5-1016):
+     Replace MECR0015: Correct MR12.4 source code corruption.
                                                    END HISTORY COMMENTS */
 
 
