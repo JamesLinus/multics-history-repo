@@ -1,10 +1,12 @@
-/* **************************************************************
-   *                                                            *
-   * Copyright, (C) Massachusetts Institute of Technology, 1983 *
-   *                                                            *
-   * Copyright, (C) Honeywell Information Systems Inc., 1983    *
-   *                                                            *
-   ************************************************************** */
+/****^  **************************************************************
+        *                                                            *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990      *
+        *                                                            *
+        * Copyright, (C) Honeywell Information Systems Inc., 1983    *
+        *                                                            *
+        * Copyright, (C) Massachusetts Institute of Technology, 1983 *
+        *                                                            *
+        ************************************************************** */
 
 
 
@@ -33,6 +35,13 @@
      audit(89-11-15,LZimmerman), install(89-11-16,MR12.3-1118):
      Repair "change_source_dir" subroutine to verify that the target is a real
      directory (which excludes MSFs).
+  5) change(89-12-14,Flegel), approve(89-12-14,MCR8151),
+     audit(89-12-14,LZimmerman), install(90-04-19,MR12.4-1007):
+     Install MECR0014 through regular installation procedures.
+  6) change(90-09-04,Huen), approve(90-09-04,MCR8195), audit(90-09-26,Vu),
+     install(90-10-14,MR12.4-1039):
+     phx21348 (cmds_837) - Fix the error handling of the copy/move commands by
+     intercepting the "sub_error" condition.
                                                    END HISTORY COMMENTS */
 
 
@@ -79,7 +88,6 @@ copy_:
 				        fixed bin (2);
 	declare old_source_dir	        char (168);
 
-	declare 1 co		        aligned like copy_options;
 	declare 1 bks		        aligned like status_for_backup;
 	declare 1 si		        aligned like suffix_info;
 	declare 1 cei		        aligned like copy_error_info;
@@ -153,6 +161,7 @@ copy_:
 %page; %include sub_error_info;
 %page; %include sub_err_flags;
 %page; %include condition_info_header;
+%page; %include condition_info;
 %page; %include copy_error_info;
 %page; %include file_system_operations;
 /* format: on */
@@ -256,13 +265,39 @@ copy_:
 	if (copy_options.extend & ^si.copy_flags.extend) | (copy_options.update & ^si.copy_flags.update)
 	then call copy_error (error_table_$unsupported_operation, "0"b);
 
+/* phx21348 - use original if no source dir change */
+	if (old_source_dir = "") /* No source_dir change */
+	     then call copy_entry (copy_options_ptr, code);     /* Grab the contents */
+	else begin; /* pass modified copy of struc that contains a valid source_dir */
 /* MF - phx19616 - need to use a local version of copy_options so we don't
    * change the original passed into us when there is a source_dir change */
+	declare 1 co		        aligned like copy_options;
+	declare sub_error_		        condition;
+	     co = copy_options;
+	     co.source_dir = source_dir;     /* source_dir change */
 
-	co = copy_options;
-	if (old_source_dir ^= "")
-	then co.source_dir = source_dir;
-	call copy_entry (addr (co), code);		/* Grab the contents */
+/* phx21348 - If the sub_error_ condition occurs and the error was caused
+ * using the modifed copy of the copy_options struc (co) then we patch
+ * copy_error_info.copy_options_ptr to point back to the original version.
+ * This is necessary because the handler in the 'copy' command uses this
+ * value to determine whether to handle the condition. */
+               on sub_error_  begin;
+		declare 1 ci                          aligned like condition_info;
+		declare continue_to_signal_           entry (fixed bin(35));
+		declare find_condition_info_	        entry (ptr, ptr, fixed bin(35));
+		declare null                          builtin;
+
+		ci.version = condition_info_version_1;
+		call find_condition_info_ (null (), addr (ci), (0));
+		sub_error_info_ptr = ci.info_ptr;
+		if sub_error_info.name = "copy_" &
+		   copy_error_info.copy_options_ptr = addr(co) then
+		     copy_error_info.copy_options_ptr = P_copy_options_ptr;
+	          call continue_to_signal_ ((0));
+	     end;	/* of sub_error_ patch handler */
+
+	     call copy_entry (addr (co), code);	      /* Grab the contents */
+	end;
 	if code ^= 0
 	then call copy_error (code, (copy_options.target_err_switch));
 
