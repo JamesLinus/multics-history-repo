@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1988                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -36,6 +38,10 @@ punch_driver_: proc;
   3) change(88-08-29,Farley), approve(88-08-19,MCR7911),
      audit(88-10-20,Wallman), install(88-10-28,MR12.2-1199):
      Updated for version 5 dprint_msg.
+  4) change(90-08-30,Vu), approve(90-08-30,MCR8196), audit(90-09-12,Zimmerman),
+     install(90-10-01,MR12.4-1034):
+     Correct generation of major_args_ptr when using offset into the I/O daemon
+     tables string area.
                                                    END HISTORY COMMENTS */
 
 
@@ -166,7 +172,7 @@ dcl  arg_p ptr;
 	end;
 
 /* locate the major args for the device in the iod_tables */
-	major_args_ptr = add_char_offset_ (addr (text_strings.chars), (iodd_static.major_args.first_char));
+	major_args_ptr = add_char_offset_ (addr (text_strings.chars), (iodd_static.major_args.first_char - 1));
 	major_args_length = iodd_static.major_args.total_chars;
 
 	iodd_static.device_dim = iodd_parse_$args ("dim=", major_args); /* see if a dim was specified */
