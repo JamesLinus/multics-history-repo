@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1984 *
@@ -12,6 +14,11 @@
   1) change(85-05-31,EJSharpe), approve(86-02-20,MCR7301),
      audit(86-04-07,Swenson), install(86-04-23,MR12.0-1044):
      fix bug where get_link_target would not update dir argument
+  2) change(90-09-28,Schroth), approve(90-09-28,MCR8205),
+     audit(90-10-04,WAAnderson), install(90-10-14,MR12.4-1042):
+     Corrected dir_salvage entry to lock parent of dir to salvage after locking
+     the dir itself.  This is in keeping with the documented protocol and
+     corrects a potential dir locking deadly embrace.
                                                    END HISTORY COMMENTS */
 
 
@@ -513,16 +520,16 @@ it uses a special locking primitive. */
 	call find_dir;
 	if code ^= 0 then go to RETURN;
 
+	dir.modify = "0"b;
+
+	call lock$dir_lock_salvage (dp, dir_uid, code);
+	if code ^= 0 then call fatal_error;
+
 	call sum$getbranch_root_my (dp, READ_LOCK, pep, code); /* needed for auditing */
 	if code = 0 then state.parent_locked = "1"b;
 	else if code = error_table_$root then code = 0;
 	else call fatal_error;
 	pdp = ptr (pep, 0);
-
-	dir.modify = "0"b;
-
-	call lock$dir_lock_salvage (dp, dir_uid, code);
-	if code ^= 0 then call fatal_error;
 
 	call audit_success (pep);
 
