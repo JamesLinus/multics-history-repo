@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -68,6 +70,9 @@
          error table code value. (as 562)
       B) Call condition_interpreter_ to further describe unexpected conditions
          occurring during as initialization. (as 394, phx18406)
+ 12) change(90-10-03,WAAnderson), approve(90-10-03,MCR8213),
+     audit(90-10-10,Vu), install(90-10-14,MR12.4-1040):
+     Removed extraneous '^a:' from log message.
                                                    END HISTORY COMMENTS */
 
 
@@ -364,7 +369,7 @@ initialize:
 	if sat_htp -> htable.id ^= "ht01" & sat_htp -> htable.id ^= "ht02" then go to make_sat_hash; /* reasonable? */
 	call hash_$search (sat_htp, "SysDaemon", (""b), code); /* give it a try */
 	if code ^= 0 then do;
-make_sat_hash: call Log_Error (-1, "^a: rebuilding SAT hash table.");
+make_sat_hash: call Log_Error (-1, "Rebuilding SAT hash table.");
 	     call up_sat_$make_sat_hash (satp, sat.n_projects, sat_htp, answer, code);
 	     if code ^= 0 then
 		call Abort (code, "Cannot create ^a>sat.ht. ^a.",
