@@ -1,8 +1,11 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1991   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        *********************************************************** */
+
 /* format: style4,delnl,insnl,ifthenstmt,indnoniterend */
 dial_out_:
      procedure (Dial_out_info_ptr, Code);
@@ -12,6 +15,18 @@ dial_out_:
 /* Modified for installation, April 1982, by C. Hornig */
 /* Modified January 1983 by C. Hornig to fix many bugs */
 /* Modified March 1983 by K. Loepere to fix more bugs and enhance */
+
+
+/****^  HISTORY COMMENTS:
+  1) change(91-07-15,Oke), approve(91-09-09,MCR8247),
+     audit(92-04-24,WAAnderson), install(92-04-24,MR12.5-1012):
+     Changed to zero doi local do_info structure in initialization.
+  2) change(91-08-19,JRGray), approve(91-09-09,MCR8247),
+     audit(92-04-24,WAAnderson), install(92-04-24,MR12.5-1012):
+     Set profile_ptr to null preventing 'dial_out' from cleaning it up
+     after ssu_ becomes responsible for it. (Communications 457)
+                                                   END HISTORY COMMENTS */
+
 
 dcl  Code fixed bin (35) parameter;
 dcl  Dial_out_info_ptr ptr parameter;
@@ -65,7 +80,7 @@ dcl  str_to_match char (1024);
 
 dcl  (cleanup, quit) condition;
 
-dcl  (addr, length, null, string) builtin;
+dcl  (addr, length, null, string, unspec) builtin;
 %page;
 /* find out initial modes, options, etc. */
 	Code = 0;
@@ -77,6 +92,7 @@ dcl  (addr, length, null, string) builtin;
 	     end;
 
 	dop = addr (doi);
+	unspec (doi) = ""b;
 	doi.ci = Dial_out_info_ptr -> dial_out_info;
 
 	if doi.ci.version = "doinfo_0" then doi.ci.cmd_version = "";
@@ -119,6 +135,7 @@ dcl  (addr, length, null, string) builtin;
 
 	call ssu_$print_blast (doi.sci_ptr, cu_$caller_ptr (), 1, "", code);
 	call ssu_$set_abbrev_info (doi.sci_ptr, doi.ci.profile_ptr, null (), (doi.ci.flags.abbrev_sw));
+	Dial_out_info_ptr -> dial_out_info.profile_ptr = null();	/* COM 457: it's now completely ssu_'s responsibility */
 	call ssu_$set_ec_search_list (doi.sci_ptr, "dial_out");
 	call ssu_$set_ec_suffix (doi.sci_ptr, "dial_out");
 
@@ -136,12 +153,12 @@ dcl  (addr, length, null, string) builtin;
 
 	on quit
 	     begin;
-		if doi.ci.flags.quit_sw then do;
-		     call iox_$control (doi.ci.net_iocb, "interrupt", null (), doi.abort_code);
-		     if doi.abort_code ^= 0 then goto return_to_caller;
-		     end;
-		else call continue_to_signal_ (doi.abort_code);
-	     end;
+	     if doi.ci.flags.quit_sw then do;
+		call iox_$control (doi.ci.net_iocb, "interrupt", null (), doi.abort_code);
+		if doi.abort_code ^= 0 then goto return_to_caller;
+		end;
+	     else call continue_to_signal_ (doi.abort_code);
+	end;
 
 	doi.my_cl_intermediary = do_cl_intermediary;
 	call cu_$set_cl_intermediary (doi.my_cl_intermediary);

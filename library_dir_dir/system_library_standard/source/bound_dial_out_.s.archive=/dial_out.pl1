@@ -1,8 +1,11 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1991   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        *********************************************************** */
+
 /* format: style4,delnl,insnl,ifthenstmt,indnoniterend */
 dial_out:
      procedure options (variable);
@@ -12,6 +15,24 @@ dial_out:
 /* Modified for installation by C. Hornig, April 1982 */
 /* Modified January 1983 by C. Hornig for new features */
 /* Modified April 1983 for connect entrypoint. */
+
+
+/****^  HISTORY COMMENTS:
+  1) change(91-08-16,Schroth), approve(91-09-09,MCR8247),
+     audit(92-04-24,WAAnderson), install(92-04-24,MR12.5-1012):
+     Added 'force' mode to modes string for -8bit connections.
+  2) change(91-08-19,JRGray), approve(91-09-09,MCR8247),
+     audit(92-04-24,WAAnderson), install(92-04-24,MR12.5-1012):
+     Modified to note that 'dial_out_' prevents cleanup of profile_ptr
+     after ssu_ takes responsibility for it. (Communications 457)
+  3) change(91-08-19,JRGray), approve(91-09-09,MCR8247),
+     audit(92-04-24,WAAnderson), install(92-04-24,MR12.5-1012):
+     Modified to add 'force' to the mode string for '-8bit' communication.
+     This allows communication on those connections that don't support
+     'no_outp' mode.
+                                                   END HISTORY COMMENTS */
+
+
 
 dcl  error_table_$bad_arg fixed bin (35) ext static;
 dcl  error_table_$badopt fixed bin (35) ext static;
@@ -283,7 +304,7 @@ dcl  1 stti aligned like set_term_type_info;
 		end;
 
 	     if bit8_sw then do;
-		call iox_$modes (doi.net_iocb, "8bit,no_outp", (""), code);
+		call iox_$modes (doi.net_iocb, "force,8bit,no_outp", (""), code);
 		end;
 	end;
 
@@ -308,6 +329,7 @@ cleaner:
 	     call iox_$destroy_iocb (doi.net_iocb, code);
 	     doi.net_iocb = null ();
 	     end;
+	/* COM 457: Note that dial_out_ sets profile_ptr to null() after ssu_ takes responsibility for it */
 	if doi.profile_ptr ^= null () then do;
 	     call hcs_$terminate_noname (doi.profile_ptr, code);
 	     doi.profile_ptr = null ();
@@ -322,3 +344,6 @@ cleaner:
 %include set_term_type_info;
 
      end dial_out;
+
+
+

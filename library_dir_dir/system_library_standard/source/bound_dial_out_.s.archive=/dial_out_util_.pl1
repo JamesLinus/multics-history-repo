@@ -1,8 +1,11 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1991   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        *********************************************************** */
+
 /* format: style4,delnl,insnl,ifthenstmt,indnoniterend */
 dial_out_util_:
      procedure;
@@ -12,9 +15,24 @@ dial_out_util_:
 /* Modified September 1983 by R.J.C. Kissel to send lines to the remote */
 /*  system wth their terminators in one put_chars call. (Mostly for 6M). */
 /* Modified December 1983 by B. Margolin to change reset_do_modes to just
-    call iox_$modes and iox_$control, rather than calling set_modes (which
-    would set some tty modes improperly for a reset), and remove the minor
-    optimization in set_modes which is no longer valid. */
+   call iox_$modes and iox_$control, rather than calling set_modes (which
+   would set some tty modes improperly for a reset), and remove the minor
+   optimization in set_modes which is no longer valid. */
+
+
+/****^  HISTORY COMMENTS:
+  1) change(91-07-15,Oke), approve(91-09-09,MCR8247),
+     audit(92-04-24,WAAnderson), install(92-04-24,MR12.5-1012):
+     To setup a length for substr's of input_buffer in escape and special
+     character processing.  Previously this did not account for num_chars_read
+     and thus indexed into uninitialized parts of the automatic variable
+     input_buffer, with amusing results.
+  2) change(91-08-15,Schroth), approve(91-09-09,MCR8247),
+     audit(92-04-24,WAAnderson), install(92-04-24,MR12.5-1012):
+     Added cleanup handler to interaction_loop entry to reset the wait alarm
+     timer when unwinding.
+                                                   END HISTORY COMMENTS */
+
 
 dcl  Active_function bit (1) aligned;
 dcl  Arg_list ptr parameter;
@@ -241,13 +259,18 @@ interaction_loop:
 	if ^waiting
 	then on program_interrupt			/* set only for main usage, not wait */
 		begin;
-		     call set_do_modes (dop);		/* just in case */
-		     call cu_$set_cl_intermediary (do_info.my_cl_intermediary);
-		     call ioa_$nnl ("^1aInput:  ", do_info.ci.esc_char);
-		     call terminal_input ("1"b);
-		     waiting = "0"b;
-		     goto reenter_interaction_loop;
-		end;
+		call set_do_modes (dop);		/* just in case */
+		call cu_$set_cl_intermediary (do_info.my_cl_intermediary);
+		call ioa_$nnl ("^1aInput:  ", do_info.ci.esc_char);
+		call terminal_input ("1"b);
+		waiting = "0"b;
+		goto reenter_interaction_loop;
+	     end;
+
+	on cleanup
+	     begin;
+	     if waiting & do_info.time_out > 0 then call timer_manager_$reset_alarm_call (abort_wait);
+	end;
 
 reenter_interaction_loop:
 	if waiting
@@ -491,15 +514,15 @@ dcl  num_bytes_read fixed bin (21);
 
 /* loop, grabbing strings up to break chars (esc, nl, etc) */
 	do while (indx <= num_bytes_read);		/* look for an interesting char (esc, CR,...) */
-	     next_char = index (substr (input_buffer, indx), do_info.ci.esc_char);
+	     next_char = index (substr (input_buffer, indx, num_bytes_read - indx + 1), do_info.ci.esc_char);
 	     if next_char = 0 then next_char = num_bytes_read - indx + 1;
 						/* last char is considered interesting if no esc, nl... */
-	     next_whatever = index (substr (input_buffer, indx), CR);
+	     next_whatever = index (substr (input_buffer, indx, num_bytes_read - indx + 1), CR);
 	     if next_whatever = 0 then next_whatever = num_bytes_read - indx + 1;
 	     next_char = min (next_char, next_whatever);
 	     if in_command | (do_info.lfecho_mode & do_info.echo_mode) then do;
 						/* NL is interesting only in a command or when modes say it is */
-		next_whatever = index (substr (input_buffer, indx), NL);
+		next_whatever = index (substr (input_buffer, indx, num_bytes_read - indx + 1), NL);
 		if next_whatever = 0 then next_whatever = num_bytes_read - indx + 1;
 		next_char = min (next_char, next_whatever);
 		end;
@@ -649,9 +672,9 @@ call_out:
 	dop = Dop;
 	on cleanup
 	     begin;
-		call set_do_modes (dop);
-		call cu_$set_cl_intermediary (do_info.my_cl_intermediary);
-	     end;
+	     call set_do_modes (dop);
+	     call cu_$set_cl_intermediary (do_info.my_cl_intermediary);
+	end;
 	on quit system;
 
 	call reset_do_modes (dop);
@@ -672,3 +695,6 @@ return_to_caller:
 %include iox_dcls;
 
      end dial_out_util_;
+
+
+

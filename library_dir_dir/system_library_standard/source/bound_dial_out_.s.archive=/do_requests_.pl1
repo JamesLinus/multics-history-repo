@@ -1,8 +1,11 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1991   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        *********************************************************** */
+
 /* format: style4,delnl,insnl,ifthenstmt,indnoniterend */
 do_requests_:
      procedure;
@@ -14,6 +17,19 @@ do_requests_:
    input buffer with remote echo and so wait request can wait for a string
    and so wait works in dial_out ecs */
 
+
+
+/****^  HISTORY COMMENTS:
+  1) change(91-08-15,Schroth), approve(91-09-09,MCR8247),
+     audit(92-04-24,WAAnderson), install(92-04-24,MR12.5-1012):
+     Added -inhibit_error/-no_inhibit_error to wait request to inhibit active
+     function failure on timeouts.  If -inhibit_error is used with -timeout,
+     whatever was received prior the the timer runout will be returned as the
+     value of the active request.
+                                                   END HISTORY COMMENTS */
+
+
+
 dcl  (Sci_ptr, Do_ptr) ptr parameter;
 
 dcl  NL char (1) static options (constant) init ("
@@ -23,6 +39,7 @@ dcl  SP char (1) static options (constant) init (" ");
 dcl  error_table_$bad_arg fixed bin (35) ext static;
 dcl  error_table_$bad_conversion fixed bin (35) ext static;
 dcl  error_table_$end_of_info fixed bin (35) ext static;
+dcl  error_table_$inconsistent fixed bin (35) ext static;
 dcl  error_table_$line_status_pending fixed bin (35) ext static;
 dcl  error_table_$long_record fixed bin (35) ext static;
 dcl  error_table_$noarg fixed bin (35) ext static;
@@ -48,6 +65,7 @@ dcl  ssu_$arg_ptr entry (ptr, fixed bin, ptr, fixed bin (21));
 dcl  ssu_$return_arg entry (ptr, fixed bin, bit (1) aligned, ptr, fixed bin (21));
 dcl  unique_chars_ entry (bit (*)) returns (char (15));
 
+dcl  abort_on_timeout bit (1) aligned;			/* timeout causes wait to abort */
 dcl  af_sw bit (1) aligned;				/* request called as active request */
 dcl  arg_num fixed bin;
 dcl  buff char (512);				/* reading from send file */
@@ -210,9 +228,9 @@ send_file_request:
 	iocbp = null ();
 	on cleanup
 	     begin;
-		call reset_do_state;
-		call clean_iocb (iocbp);
-	     end;
+	     call reset_do_state;
+	     call clean_iocb (iocbp);
+	end;
 
 	call iox_$attach_name ("do.send_file." || unique_chars_ (""b), iocbp, "vfile_ " || path,
 	     codeptr (send_file_request), code);
@@ -308,6 +326,7 @@ wait_request:
 	call ssu_$return_arg (Sci_ptr, nargs, af_sw, val_ptr, val_len);
 
 	do_info.time_out = 0;
+	abort_on_timeout = "1"b;
 	new_line = "0"b;
 	do_info.match_length = 0;
 	do arg_num = 1 to nargs;
@@ -326,6 +345,8 @@ wait_request:
 	     else if arg = "-no_timeout" | arg = "-ntm" then do_info.time_out = 0;
 	     else if arg = "-nl" then new_line = "1"b;
 	     else if arg = "-nnl" then new_line = "0"b;
+	     else if arg = "-no_inhibit_error" | arg = "-nihe" then abort_on_timeout = "1"b;
+	     else if arg = "-inhibit_error" | arg = "-ihe" then abort_on_timeout = "0"b;
 	     else if substr (arg, 1, 1) = "-" then call ssu_$abort_line (Sci_ptr, error_table_$bad_arg, "^a", arg);
 	     else do;
 		if length (arg) > do_info.match_max_length - 1
@@ -338,6 +359,9 @@ wait_request:
 		     end;
 		end;
 	end;
+	if ^abort_on_timeout & do_info.time_out = 0
+	then call ssu_$abort_line (Sci_ptr, error_table_$inconsistent,
+		"The use of -inhibit_error requires that -timeout be used as well.");
 	if new_line then do;
 	     do_info.match_length = do_info.match_length + 1;
 	     substr (str_to_match_area, do_info.match_length, 1) = NL;
@@ -355,7 +379,8 @@ wait_request:
 
 	call dial_out_util_$interaction_loop (dop, "1"b, af_sw);
 						/* do normal net stuff 'til condition met */
-	if do_info.abort_code ^= 0 then call ssu_$abort_line (Sci_ptr, do_info.abort_code);
+	if do_info.abort_code ^= 0
+	then if ^af_sw | abort_on_timeout then call ssu_$abort_line (Sci_ptr, do_info.abort_code);
 
 	call reset_do_state;
 	return;
