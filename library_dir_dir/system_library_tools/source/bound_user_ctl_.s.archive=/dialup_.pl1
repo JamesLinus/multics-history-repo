@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -203,6 +205,10 @@ dialup_: proc (msg_ptr);
       B) Avoid referencing through unset utep when dialup_$re_introduce
          detects a channel error and tries to unlock the anstbl.
          (phx19383, Answering_Service 490)
+ 17) change(90-09-25,Schroth), approve(90-09-25,MCR8206), audit(90-10-05,Vu),
+     install(90-10-14,MR12.4-1040):
+     Honour the trusted_path_login flag if a user process does not signal
+     the AS before calling hcs_$stop_process.
                                                    END HISTORY COMMENTS */
 
 /* PARAMETERS */
@@ -252,7 +258,7 @@ dcl  asu_$send_term_signal entry (ptr, fixed bin) returns (bit (1) aligned);
 dcl  asu_$start_process entry (ptr);			/* used to start a process running */
 dcl  asu_$suspend_process entry (ptr);
 dcl  asu_$write_chn_message entry (ptr, fixed bin (35), char (8) aligned, fixed bin (35));
-dcl  asu_$write_message entry (ptr, fixed bin(35), char(8) aligned, fixed bin(35));
+dcl  asu_$write_message entry (ptr, fixed bin (35), char (8) aligned, fixed bin (35));
 dcl  check_password_ entry (char (*), char (*), fixed bin (35));
 dcl  condition_ entry (char (*), entry);
 dcl  connect_immediate bit (1) aligned init (""b);
@@ -2161,7 +2167,7 @@ create_another_new_proc:
 	end;
 
 kill_audit:
-          call as_access_audit_$process (utep, AS_AUDIT_PROCESS_TERMINATE,
+	call as_access_audit_$process (utep, AS_AUDIT_PROCESS_TERMINATE,
 	     (signal_type1));
 	go to kill;
 
@@ -2318,7 +2324,7 @@ logout_handler (20):				/* hangup */
 						/* that's not already being destroyed */
 		if ute.save_if_disconnected | (signal_type = "disconn" & ute.at.disconnect_ok) then do;
 						/* that the user wants saved across hangups */
-	     
+
 		     call asu_$suspend_process (utep);	/* try to save it */
 		     ute.disconnected = "1"b;		/* remember that it's disconnected */
 		     ute.disconnection_rel_minutes =
@@ -2356,7 +2362,7 @@ logout_handler (20):				/* hangup */
 			call initialize_current_access_class;
 			call set_tabs_and_modes (code);
 			call ioa_$rs (convert_message (as_error_table_$disc_hd_msg), buff, i);
-			call astty_$tty_force (cdtep, addr(buff), i, ignore_code);
+			call astty_$tty_force (cdtep, addr (buff), i, ignore_code);
 			go to login;
 		     end;
 
@@ -2470,7 +2476,9 @@ logout_handler (26):				/* "stopstop"  Check for out-of-sequence signals. */
 
 logout_handler (28):				/* "termstop" */
 	tcode = as_error_table_$no_signal;		/* Process terminated without signalling answering service. */
-	ute.destroy_flag = WAIT_LOGOUT_HOLD;
+	if installation_parms.trusted_path_login then
+	     ute.destroy_flag = WAIT_LOGOUT;		/* hangup channel */
+	else ute.destroy_flag = WAIT_LOGOUT_HOLD;	/* hangup not needed */
 	goto kill;
 
 logout_handler (29):				/* cpulimit: Process used too much cpu time after sus_ or trm_ */
@@ -2693,7 +2701,7 @@ timeout (15):
 	     call turn_printer_on (ignore_code);
 	     if tcode = as_error_table_$no_disc_hd then do;
 		call ioa_$rs (convert_message (as_error_table_$no_disc_hd), buff, i);
-		call astty_$tty_force (cdtep, addr(buff), i, ignore_code);
+		call astty_$tty_force (cdtep, addr (buff), i, ignore_code);
 	     end;
 	     else call astty_$tty_force (cdtep, addr (hangup_msg), hangup_msg_lth, ignore_code);
 
