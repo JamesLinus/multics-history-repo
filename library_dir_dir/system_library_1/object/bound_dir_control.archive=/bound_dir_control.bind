@@ -1,3 +1,12 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(90-08-02,WAAnderson), approve(90-08-02,MCR8182),
+     audit(90-08-10,Schroth), install(90-08-21,MR12.4-1030):
+     Replaced ref_name_$get_refnames with ref_name_$get_refname.
+                                                   END HISTORY COMMENTS */
+
+
 /* Bindfile for bound_dir_control.  Those modules associated with the
 maintenance of the contents of directories.  Also included herein are the
 modules that encompass address and name space management.  Directory control
@@ -88,7 +97,7 @@ objectname:	pathname_am;
 		pathname_am, set;
 
 objectname:	ref_name_;
- retain:		delete, delete_segno, get_count, get_refnames, get_segno, 
+ retain:		delete, delete_segno, get_count, get_refname, get_segno, 
 		insert;
 
 objectname:	segno_usage;

@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1984 *
@@ -19,6 +21,11 @@
      audit(86-10-15,Farley), install(86-10-20,MR12.0-1189):
      Modified by Jim Lippard to fix ref names allocation bug, fix supplied
      by Steve Harris (UNCA).
+  3) change(90-07-26,WAAnderson), approve(90-07-26,MCR8182),
+     audit(90-08-10,Schroth), install(90-08-21,MR12.4-1030):
+     Replaced call to ref_name_$get_refnames with call to
+     ref_name_$get_refname.  This change reduces stack space requirements
+     and corrects the list_ref_names infinite loop bug.
                                                    END HISTORY COMMENTS */
 
 
@@ -182,6 +189,7 @@ dcl  pathname			char (201) varying;
 dcl  rb				(3) fixed bin (3);
 dcl  return_ename			bit (1) aligned;
 dcl  ring				fixed bin;
+dcl  rname			char (32) varying;
 dcl  segnum			fixed bin (17);
 dcl  segptr			ptr;
 dcl  srpp				ptr;
@@ -201,7 +209,6 @@ dcl  1 sr				(22) based aligned,
 
 dcl  error_table_$dirseg		fixed bin (35) external;
 dcl  error_table_$noentry		fixed bin (35) external;
-dcl  error_table_$refname_count_too_big fixed bin (35) external;
 dcl  error_table_$root		fixed bin (35) external;
 dcl  pds$stacks			(0:7) ptr external;
 dcl  pds$transparent		bit (2) external aligned;
@@ -210,12 +217,12 @@ dcl  pds$transparent		bit (2) external aligned;
 
 dcl  get_pathname_			entry (fixed bin (17), char (*) varying, fixed bin (35));
 dcl  level$get			entry returns (fixed bin);
-dcl  ref_name_$get_refnames		entry (fixed bin (17), ptr, fixed bin (35));
+dcl  ref_name_$get_refname		entry (fixed bin (17), fixed bin (17), char (*) varying, fixed bin (35));
 dcl  ref_name_$get_segno		entry (char (32) varying, fixed bin (17), fixed bin (35));
 
 /* Misc */
 
-dcl  (addr, baseno, baseptr, binary, fixed, hbound, index, lbound, length, max, min, null, reverse, segno, substr) builtin;
+dcl  (baseno, baseptr, binary, fixed, hbound, index, lbound, length, max, null, reverse, segno, substr) builtin;
 %page;
 mode: entry (a_segptr, a_mode, a_code);
 
@@ -368,27 +375,16 @@ name_return:
 
 ref_name: entry (a_segptr, a_namecnt, a_refname, a_code);
 
-	namecnt = min (max (a_namecnt, 1), 500);
+          namecnt = max(a_namecnt, 1);
 
-	begin;
-
-dcl  1 reference_names		aligned,
-       2 names_allocated		fixed bin (17) init (namecnt),
-       2 names_returned		fixed bin (17),
-       2 name			(namecnt) char (32) varying;
-
-	     segnum = fixed (baseno (a_segptr), 17);
-	     call ref_name_$get_refnames (segnum, addr (reference_names), code);
-	     if namecnt <= reference_names.names_returned then do;
-		a_refname = reference_names.name (namecnt);
-		a_code = 0;
-	     end;
-	     else do;
-		a_refname = reference_names.name (reference_names.names_returned);
-		if code ^= 0 then a_code = code;
-		else a_code = error_table_$refname_count_too_big;
-	     end;
+          segnum = fixed (baseno (a_segptr), 17);
+          call ref_name_$get_refname (segnum, namecnt, rname, code);
+	if code = 0 then do;
+	   a_refname = rname;
+	   a_code = 0;
 	end;
+	else a_code = code;
+
 	return;
 
 /* * * * * * * * * * * * * * * * * * */

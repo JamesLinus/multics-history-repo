@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -8,6 +10,16 @@
         * Technology and Honeywell Information Systems, Inc.      *
         *                                                         *
         *********************************************************** */
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(90-07-26,WAAnderson), approve(90-07-26,MCR8182),
+     audit(90-08-10,Schroth), install(90-08-21,MR12.4-1030):
+     Replaced the get_refnames entry with get_refname entry. The new entry
+     returns only the name specified by the supplied namecnt argument.
+                                                   END HISTORY COMMENTS */
 
 
 ref_name_: proc ();
@@ -29,12 +41,12 @@ ref_name_: proc ();
    ---> ref_name_$get_segno maps a reference name into a segment number
    USAGE: call ref_name_$get_segno (rname, segno, code);
 
-   ---> ref_name_$get_refnames maps a segment number into a name
-   USAGE: call ref_name_$get_refnames (segno, strp, code);
+   ---> ref_name_$get_refname maps a segment number into a name
+   USAGE: call ref_name_$get_refname (segno, namecnt, rname, code);
 
    rname char(32) varying --- reference name
    segno fixed bin(17) --- segment number
-   strp ptr --- pointer to structure for returning reference names
+   namecnt --- the entry number in the list of reference names
    code fixed bin(35) --- error code
 
     --> ref_name_$get_count (segno, n_names)
@@ -50,8 +62,8 @@ ref_name_: proc ();
 */
 
 dcl  a_rname char (32) varying,
+     a_namecnt fixed bin,
     (a_segno, segno, cnt) fixed bin (17),
-    (a_strp, strp) ptr,
      rname char (32) varying,
     (savep, save_rntep, last_np, last_sp) ptr,
      a_code fixed bin (35),
@@ -62,24 +74,16 @@ dcl  a_rname char (32) varying,
      hash_offset offset (rnt.areap -> based_rnt_area) based,
      steps fixed bin (17),
      max_steps fixed bin (17) static init (1000) options (constant),
-    (null, substr, length, ptr, rtrim, addrel, bit, fixed, addr, rel, bin) builtin;
+    (null, substr, length, rtrim, addrel, addr, rel, bin, empty, string) builtin;
 
 dcl a_count fixed bin;
 
-dcl 1 reference_names aligned based (strp),
-    2 names_allocated fixed bin (17),
-    2 names_returned fixed bin (17),
-    2 name (1 refer (names_allocated)) char (32) varying;
-
-
-dcl (dimension, max, min, mod, reverse, verify) builtin;
-
-dcl (error_table_$segknown, error_table_$namedup, error_table_$argerr) ext fixed bin (35);
-dcl (error_table_$name_not_found, error_table_$area_too_small, error_table_$inconsistent_rnt) ext fixed bin (35);
+dcl (dimension, max, min, mod) builtin;
+dcl (error_table_$refname_count_too_big, error_table_$segknown, error_table_$namedup, error_table_$argerr) ext fixed bin (35);
+dcl (error_table_$name_not_found, error_table_$inconsistent_rnt) ext fixed bin (35);
 dcl  error_table_$r0_refname ext fixed bin (35);
 dcl  pds$stacks (0:7) ptr ext;
 dcl  level$get ext entry () returns (fixed bin (3));
-
 
 insert:
 	entry (a_rname, a_segno, a_code);
@@ -176,26 +180,22 @@ get_segno:
 	return;
 
 
-get_refnames:
-	entry (a_segno, a_strp, a_code);
+get_refname:
+	entry (a_segno, a_namecnt, a_rname, a_code);
 	call setup ("01"b);
 	rnt.get_refnames.trys = rnt.get_refnames.trys + 1;
-	strp = a_strp;
-	names_returned = 0;
-	cnt = 0;
 	call search_segno ();
-	do while (rntep ^= null ());
-	     if cnt = names_allocated
+	do cnt = 1 by 1 while (rntep ^= null ());
+	     if cnt = a_namecnt
 	     then do;
-		names_returned = cnt;
-		call abort (error_table_$area_too_small);
+                    a_rname = rnte.name;
+                    a_code = 0;
+                    rnt.get_refnames.wins = rnt.get_refnames.wins + 1;
+                    return;
 	     end;
-	     cnt = cnt + 1;
-	     reference_names.name (cnt) = rnte.name;
 	     call quick_next ();
 	end;
-	names_returned = cnt;
-	if cnt > 0 then rnt.get_refnames.wins = rnt.get_refnames.wins + 1;
+	a_code = error_table_$refname_count_too_big;
 	return;
 
 
@@ -304,6 +304,3 @@ non_local_return:
 %include stack_header;
 
      end ref_name_;
-
-
-
