@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -157,6 +159,11 @@ admin_: procedure ();
      Divide installation_parms.warning_time by 60 seconds to produce the
      correct number of minutes a process has left before shutdown which is
      reported by the stop command.
+ 10) change(90-09-20,Vu), approve(90-09-20,MCR8201), audit(90-09-24,Schroth),
+     install(90-10-04,MR12.4-1037):
+     Correct the oprerator command "abs stop q fg" which cause queue 1 to stop.
+     Absentees are bumped at random time for a scheduled shutdown due to an
+     uninitialized value.
                                                    END HISTORY COMMENTS */
 
 /* Entries */
@@ -1022,7 +1029,7 @@ abs_action (3):					/* ABS STOP */
 		if arg = "all" then
 		     autbl.queue_dropped (*) = "1"b;
 		else if arg = "fg" | arg = "foreground" then
-		     autbl.queue_dropped (SL_LOG) = "1"b;
+		     autbl.queue_dropped (-1) = "1"b;
 		else
 		     do;
 		     i = cv_dec_check_ (arg, code);
@@ -1112,6 +1119,7 @@ absentee_down:
 	     call absentee_user_manager_$update_whotab_abs_control ();
 	else
 	     do;
+               n_called = 0;
 	     call sys_log (SL_LOG, "^a: stop: auto abs stop", ME);
 	     call START_ABSENTEE_SHUTDOWN ();
 	end;
