@@ -21,6 +21,11 @@
 "     Change by M Mabey (installed by Ginter) - Conversions from fixed bin
 "     numbers with negative scale factors to float decimal, character, and
 "     bits would fail.
+"  4) change(90-08-27,Blackmore), approve(90-08-27,MCR8194),
+"     audit(90-09-14,Oke), install(90-10-01,MR12.4-1035):
+"     Fix entry 40 in the arrays 'stype' and 'ttype' to fix treatment of fixed
+"     decimal unsigned 4-bit values (Multics type 40).  Also fix treatment of
+"     exponent to floating decimal values during conversion into a bitstring.
 "                                                      END HISTORY COMMENTS
 
 
@@ -650,10 +655,10 @@ source_type_map:
 "(34);	stype fix_bin_2uns,FIXED_BIN_UNS,fix	" fixed binary unsigned long
 "(35);	stype fix_dec_9uns,FLOAT_DEC,fix	" fixed decimal unsigned 9-bit
 "(36);	stype fix_dec_9ts,FLOAT_DEC,fix	" fixed decimal trailing sign 9-bit
-"(37);	stype fix_dec_9ts,FLOAT_DEC,(complex+fix) " complex fixed decimal trailing sign
+"(37);	stype fix_dec_9ts,FLOAT_DEC,(complex+fix) " complex fixed decimal trailing sign (future??)
 "(38);	stype fix_dec_4uns,FLOAT_DEC,fix	" fixed decimal unsigned 4-bit
 "(39);	stype fix_dec_4ts,FLOAT_DEC,fix	" fixed decimal trailing sign 4-bit
-"(40);	stype fix_dec_4ts,FLOAT_DEC,(complex+fix) " complex fixed decimal trailing sign 4-bit
+"(40);	stype fix_dec_4uns,FLOAT_DEC,fix        " fixed decimal unsigned 4-bit byte-aligned
 "(41);	stype fix_dec_4ls,FLOAT_DEC,fix	" fixed decimal leading sign 4-bit
 "(42);	stype flt_dec_4,FLOAT_DEC,round	" float decimal 4-bit
 "(43);	stype fix_dec_4ls,FLOAT_DEC,fix	" decimal leading sign 4-bit byte-aligned
@@ -742,10 +747,10 @@ target_type_map:
 "(34);	ttype fix_bin_2uns,FIXED_BIN_UNS	" fixed binary unsigned long
 "(35);	ttype fix_dec_9uns,FLOAT_DEC		" fixed decimal unsigned 9-bit
 "(36);	ttype fix_dec_9ts,FLOAT_DEC		" fixed decimal trailing sign 9-bit
-"(37);	ttype fix_dec_9ts,FLOAT_DEC,complex	" complex fixed decimal trailing sign
+"(37);	ttype fix_dec_9ts,FLOAT_DEC,complex	" complex fixed decimal trailing sign (future??)
 "(38);	ttype fix_dec_4uns,FLOAT_DEC		" fixed decimal unsigned 4-bit
 "(39);	ttype fix_dec_4ts,FLOAT_DEC		" fixed decimal trailing sign 4-bit
-"(40);	ttype fix_dec_4ts,FLOAT_DEC,complex	" complex fixed decimal trailing sign 4-bit
+"(40);	ttype fix_dec_4uns,FLOAT_DEC		" fixed decimal unsigned 4-bit byte-aligned
 "(41);	ttype fix_dec_4ls,FLOAT_DEC		" fixed decimal leading sign 4-bit
 "(42);	ttype flt_dec_4,FLOAT_DEC,round	" float decimal 4-bit
 "(43);	ttype fix_dec_4ls,FLOAT_DEC		" decimal leading sign 4-bit byte-aligned
@@ -2322,7 +2327,7 @@ flt_dec_to_bit:
 	lda	work|flt_dec_generic_exp	" incorporate exponent
 	als	36-8
 	trc	decimal_range_error		" range outside of flt dec
-	mlr	(pr),(pr,x3,rl)		" install hardware exp
+	mlr	(pr),(pr,x3)       		" install hardware exp
 	desc9a	work|flt_dec_generic_exp(3),1
 	desc9a	work|flt_dec_generic-1(3),1
 
@@ -5834,6 +5839,3 @@ digit_to_prec:
 	zero	5,0		" digit 8.0-8.99...
 	zero	5,0		" digit 9.0-9.99...
 	end
-
-
-
