@@ -1,11 +1,23 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   * Copyright (c) 1972 by Massachusetts Institute of        *
-   * Technology and Honeywell Information Systems, Inc.      *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(90-11-05,Vu), approve(90-11-05,MCR8226), audit(92-09-24,Zimmerman),
+     install(92-09-25,MR12.5-1019):
+     list_extra_personids aborts when it is run more than once within the same
+     process.
+                                                   END HISTORY COMMENTS */
 
 
 /* format: style4 */
@@ -37,6 +49,7 @@ dcl  error_table_$bad_index fixed bin (35) external static;
 dcl  error_table_$checksum_failure fixed bin (35) external static;
 dcl  error_table_$no_record fixed bin (35) external static;
 dcl  iox_$error_output ptr external static;
+dcl  sys_info$max_seg_size fixed bin (19) external static;
 
 /* External Entries */
 
@@ -62,7 +75,13 @@ dcl  (satp, pdtp, pdtep, satep, refp) pointer;
 dcl  (i, j) fixed bin;
 dcl  1 ai aligned like area_info;
 
-dcl  (endfile, key) condition;
+/* Builtins */
+
+dcl  (addr, index, null, rtrim, string, substr) builtin;
+
+/* Conditions */
+
+dcl  (cleanup, endfile, key) condition;
 
 /* * * * * * * * * * * * * * * * * * * */
 
@@ -73,8 +92,10 @@ dcl  (endfile, key) condition;
 	ai.control.extend = "1"b;
 	ai.control.no_freeing = "1"b;
 	ai.owner = ME;
-	ai.size = 65536;
+          ai.size = sys_info$max_seg_size;
 	ai.areap = null ();
+
+          on cleanup call clean_up ();
 	call define_area_ (addr (ai), code);
 	if code ^= 0 then do;
 	     call com_err_ (code, ME, "Defining temporary area.");
@@ -87,7 +108,7 @@ dcl  (endfile, key) condition;
 	call hcs_$initiate (sysdir, "sat", "", 0, 0, satp, code);
 	if satp = null () then do;
 	     call com_err_ (code, ME, "Initiating SAT.");
-	     goto done;
+               call clean_up ();
 	end;
 
 	do j = 1 to 2;
@@ -126,7 +147,7 @@ dcl  (endfile, key) condition;
 		call ioa_$ioa_switch (iox_$error_output, "^a: Checksum error reading PNT entry ^d.", ME, rec);
 	     else if code ^= 0 then do;
 		call com_err_ (code, ME, "Reading PNT entry ^d.", rec);
-		goto done;
+                    call clean_up ();
 	     end;
 	     else do;
 		uid = pnte.user_id;
@@ -139,7 +160,11 @@ dcl  (endfile, key) condition;
 done_pnt: revert key (temp_file);
 	close file (temp_file);
 	open file (temp_file) title (atd) sequential input;
-	on endfile (temp_file) goto done;
+          on endfile (temp_file) begin;
+             call clean_up ();
+             goto exit;
+          end;
+
 	do while ("1"b);
 	     read file (temp_file) into (vrec);
 	     if vrec.in_pnt & vrec.chain = null ()
@@ -156,8 +181,13 @@ done_pnt: revert key (temp_file);
 	     end;
 	end;
 
-done:	call release_area_ (ai.areap);
+exit:     return;
+
+clean_up: procedure ();
+          close file (temp_file);
+          call release_area_ (ai.areap);
 	return;
+end;
 
 /* * * * * * * * * * REF * * * * * * * * * */
 
@@ -203,3 +233,6 @@ dcl  Dirname char (*) parameter;
 %include user_attributes;
 
      end;						/* list_extra_personids */
+
+
+
