@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1992   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -19,6 +21,11 @@
      install(88-10-17,MR12.2-1173):
      Changed to turn the inconsistent dumper bit map on in the disk label after
      a sucessful reload.
+  3) change(92-08-24,Schroth), approve(92-10-15,MCR8265),
+     audit(92-10-15,Zimmerman), install(92-10-21,MR12.5-1039):
+     To correct the online PVID reported when a PVID mismatch occurs when
+     reloading multiple volumes.  Add message documentation for PVID mismatch
+     message.  phx21270
                                                    END HISTORY COMMENTS */
 
 
@@ -31,7 +38,7 @@ rldr_label_: proc;
 /* Modified: 03/83 by GA Texada for multiple physical volume reloading.		        */
 
 dcl code		     fixed bin (35);
-dcl (pvindex, n_read)    fixed bin;
+dcl pvindex	     fixed bin;
 dcl myname	     char (32) static init ("rldr_label_") options (constant);
 
 dcl error_table_$bad_volid ext fixed bin (35);
@@ -60,7 +67,7 @@ open: entry (rldr_datap, pvindex, code);
         return;
       end;
 						/* read label into temp seg */
-    call iox_$get_chars (rldr_data_.outputvol_iocbp (pvindex), rldr_data_.labelp (pvindex), size (label) * 4, n_read, code);
+    call iox_$get_chars (rldr_data_.outputvol_iocbp (pvindex), rldr_data_.labelp (pvindex), size (label) * 4, (0), code);
     if code ^= 0 then do;
         call rldr_report_$error_output (rldr_datap, code, myname, "Label read failed for pv ^a",
 	   rldr_data_.pvname (pvindex));
@@ -73,7 +80,7 @@ open: entry (rldr_datap, pvindex, code);
 	code = error_table_$bad_volid;
 	call rldr_report_$error_output (rldr_datap, code, myname,
 	     "Output volume pvid ^o not equal to online pvid ^o for pv ^a",
-	     label.pvid, rldr_data_.pvid, rldr_data_.pvname (pvindex));
+	     label.pvid, rldr_data_.pvid (pvindex), rldr_data_.pvname (pvindex));
         end;
     return;
 
@@ -184,15 +191,24 @@ dcl (dev_idx, sector)    fixed bin;
 
 
    Message:
-   rldr_label_: Label position failed: ERROR_MESS
+   rldr_label_: Output volume pvid MMMMMMMMMMMM not equal to online 
+	      pvid NNNNNNNNNNNN for pv PPPPPPPP. Invalid volume identifier.
 
    S:	$rld_out
 
    T:	$reload
 
-   M:	Someting is wrong with a reloader output volume.
+   M:	The PVID on the output disk volume does not match the PVID as
+          recorded in the pvolog for the disk volume.  This indicates that
+	either the label on the PV is incorrect or the pvolog segment
+	is corrupted.
 
-   A:	Mount a correct volume and try again.
+   A:	Verify the PVID using output from the display_disk_label command.
+	If the PVID from ddl output is differnet from that reported for the
+	output volume, use change_volume_registration and init_vol to
+	correct the disk label.  If the online PVID does not match, use the
+	recover_volume_log command to retrieve a correct pvolog segment.
+	Retry the reload.
 
 
    Message:
