@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -17,6 +19,10 @@
      Rewrote the paged read mechanism to read an entire object from a dump
      tape, then write it a page at a time.  When a short segment is read from
      tape, the routine will now deposit any unused pages.
+  2) change(90-10-04,WAAnderson), approve(90-10-04,MCR8207),
+     audit(90-10-10,Schroth), install(90-10-14,MR12.4-1042):
+     Fix duplicate record bug. The vtoce buffer was not being updated after the
+     local copy of the vtoce was modified.
                                                    END HISTORY COMMENTS */
 
 
@@ -145,6 +151,11 @@ restart: call rldr_input_$get_object (rldr_datap, skip_next_header_check, new_vt
 			 "Unable to withdraw for bad page on pv ^a", rldr_data_.pvname (pvindex));
 		      goto skip_this_pv;
 		    end;
+                      call rldr_vtoc_buffer_$put (rldr_datap, pvindex, new_vtocep, vtocx, code);
+                      if code ^= 0 then do;
+                          call rldr_report_$error_output (rldr_datap, code, myname, "Error writing new vtoce ^o for pv ^a", vtocx,  rldr_data_.pvname (pvindex));
+        	                goto skip_this_pv;
+                        end;
 		end;
 	        else do;
 		  Swritten = "1"b;
@@ -163,6 +174,14 @@ restart: call rldr_input_$get_object (rldr_datap, skip_next_header_check, new_vt
 	         pgx, vtocx, rldr_data_.pvname (pvindex));
 	  bad_pages = bad_pages + 1;
 	end;
+
+	if bad_pages > 0 then do;
+            call rldr_vtoc_buffer_$put (rldr_datap, pvindex, new_vtocep, vtocx, code);
+            if code ^= 0 then do;
+                call rldr_report_$error_output (rldr_datap, code, myname, "Error writing new vtoce ^o for pv ^a", vtocx,  rldr_data_.pvname (pvindex));
+	      goto skip_this_pv;
+	    end;
+            end;
 
 	if new_vtocep -> vtoce.damaged then do;
 	    new_vtocep -> vtoce.csl = bit (fixed (csl - bad_pages, 9), 9);
@@ -365,6 +384,3 @@ dcl add		     bit (18);
    END MESSAGE DOCUMENTATION */
 
   end reload_volume_;
-
-
-
