@@ -1,15 +1,27 @@
-/* ******************************************************
-   *                                                    *
-   *                                                    *
-   * Copyright (c) 1972 by Massachusetts Institute of   *
-   * Technology and Honeywell Information Systems, Inc. *
-   *                                                    *
-   *                                                    *
-   ****************************************************** */
+/****^  *********************************************************
+        *                                                       *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990 *
+        *                                                       *
+        * Copyright (c) 1972 by Massachusetts Institute of      *
+        * Technology and Honeywell Information Systems, Inc.    *
+        *                                                       *
+        ********************************************************* */
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(90-05-28,Blackmore), approve(90-03-10,MCR8163), audit(90-06-04,Vu),
+     install(90-06-19,MR12.4-1015):
+     Fix a problem in ask_ that causes bad interactions with exec_com.
+                                                   END HISTORY COMMENTS */
+
 
 ask_: proc (prompt, ans);
 
 /* Terminal input processor, with goodies.
+
+ THE PROMPTING ENTRIES:  prompt for more input if they don't get whats wanted.
+
    .	call ask_ (ctl_string, answer, ioa_args ... )
    will get a word from user_input. If the current line is empty,
    the program will format a prompting message, using the first arg as a control string
@@ -28,6 +40,9 @@ ask_: proc (prompt, ans);
    .      call ask_$ask_nf (ctl_string, ans, ioa_args ... )
    will return either the character string "on" or "off"
 
+
+THE CHECKING ENTRIES:  return 'flag' to indicate success or failure.
+
    .	call ask_$ask_c (ans, flag)
    will set flag nonzero and return into ans if anything is there
    similarly,
@@ -37,9 +52,8 @@ ask_: proc (prompt, ans);
    .	call ask_$ask_cyn (ans, flag)
    .      call ask_$ask_cnf (ans, flag)
 
-   .	call ask_$ask_clr
-   to reset the line buffer to empty, on the first call or in case of error.
-   (note that you don't want to pass int static between progs)
+
+THE PEEKING ENTRIES:  don't change current position in input line.
 
    .	call ask_$ask_n (ans, flag)
    .	call ask_$ask_nline (line, flag)
@@ -52,11 +66,23 @@ ask_: proc (prompt, ans);
    are also peek entries, but will return flag as -1 if there
    is something on the line but it's not a number (or yes or no, or on or off).
 
+
+OTHER ENTRIES:
+
+   .	call ask_$ask_clr
+   to reset the line buffer to empty, on the first call or in case of error.
+   (note that you don't want to pass int static between progs)
+
    .	call ask_$ask_prompt (ctl_string, ioa_args ... )
    causes a new inputline to be prompted for & read in
 
    .	call ask_$ask_setline (input)
    sets the input line. It can have a newline character or not.
+
+
+ NOTE: the line buffer, its length and current index, are among the things kept
+   in internal static storage by this subroutine.
+
 
    Initial coding 12/69, THVV
    Modified 7/70 to call formline_, THVV
@@ -92,7 +118,7 @@ dcl (start, j, tdg) fixed bin,			/* Temps. */
     (flosw, intsw, linesw, csw, nsw, ynsw, nfsw, prmsw) bit (1) aligned init ("0"b);
 
 dcl 1 ll aligned based (addr (line)),			/* Overlay structure for line. */
-    2 ch (0: 128) char (1) unaligned;			/* ... as character array. */
+    2 ch (0: 127) char (1) unaligned;			/* ... as character array. */
 
 dcl  ioa_$nnl entry options (variable),
      cu_$arg_list_ptr entry (ptr),
@@ -103,8 +129,8 @@ dcl  ioa_$nnl entry options (variable),
      ioa_$general_rs entry (ptr, fixed bin, fixed bin, char (*) aligned, fixed bin,
      bit (1) aligned, bit (1) aligned);
 
-dcl  HT_SP_NL char (3) internal static options (constant) init (" 
-");
+dcl  NL_HT_SP char (3) internal static options (constant) init ("
+	 ");
 
 dcl  code fixed bin (35);
 
@@ -220,7 +246,7 @@ reread:
 	     line = "";
 	     nchr = 0;
 	     call iox_$get_line (iox_$user_input, addr (line), 128, nchr, code); /* Get new line into buffer. */
-	     nchr = length (rtrim (line, HT_SP_NL));
+	     nchr = length (rtrim (substr (line, 1, nchr), NL_HT_SP));
 	     if nchr = 0 then go to read;		/* If line is empty, get another */
 	     empty = "0"b;				/* Mark that we have it. */
 	     i = 0;				/* Start with char. 1. */
