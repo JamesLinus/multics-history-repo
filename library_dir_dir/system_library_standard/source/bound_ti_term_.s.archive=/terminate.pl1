@@ -1,11 +1,22 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   * Copyright (c) 1972 by Massachusetts Institute of        *
-   * Technology and Honeywell Information Systems, Inc.      *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(90-03-21,Vu), approve(90-03-21,MCR8165), audit(90-03-29,Zimmerman),
+     install(90-04-19,MR12.4-1006):
+     Fix -bf argument for terminate_refname.
+                                                   END HISTORY COMMENTS */
 
 
 terminate: tm: proc;
@@ -38,6 +49,7 @@ dcl code fixed bin (35);
 
 dcl error_table_$badopt fixed bin (35) ext;
 dcl error_table_$invalidsegno fixed bin (35) ext;
+dcl error_table_$name_not_found fixed bin (35) ext;
 dcl error_table_$seg_unknown fixed bin (35) ext;
 
 dcl active_fnc_err_ entry options (variable);
@@ -138,7 +150,7 @@ TERM_PATH:	     call term_ (dn, en, code);
 		     seg_ptr = baseptr (segno);
 		     call term_$seg_ptr (seg_ptr, code);
 		     if code ^= 0 then do;
-TERM_ERROR:		if ^brief_sw | (code ^= error_table_$seg_unknown & code ^= error_table_$invalidsegno) then
+             		if ^brief_sw | (code ^= error_table_$seg_unknown & code ^= error_table_$invalidsegno) then
 			     call com_err_ (code, myname, "^a", arg);
 			if code ^= error_table_$seg_unknown then return;
 		     end;
@@ -146,7 +158,11 @@ TERM_ERROR:		if ^brief_sw | (code ^= error_table_$seg_unknown & code ^= error_ta
 		else if myname = "terminate_refname" then do;
 		     refname = arg;
 		     call term_$refname (refname, code);
-		     if code ^= 0 then go to TERM_ERROR;
+		     if code ^= 0 then do;
+TERM_ERROR:		if ^brief_sw | (code ^= error_table_$seg_unknown & code ^= error_table_$name_not_found) then
+			     call com_err_ (code, myname, "^a", arg);
+			if code ^= error_table_$seg_unknown then return;
+		     end;
 		end;
 		else do;				/* terminate_single_refname */
 		     refname = arg;
@@ -167,3 +183,6 @@ TERM_ERROR:		if ^brief_sw | (code ^= error_table_$seg_unknown & code ^= error_ta
 	end;
 
 end terminate;
+
+
+
