@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
         *                                                         *
         *********************************************************** */
@@ -11,6 +13,13 @@
   1) change(86-10-20,TLNguyen), approve(86-10-20,MCR7558),
      audit(86-10-22,Gilcrease), install(86-10-22,MR12.0-1197):
      Correct a declaration of an entry name as 32 characters size
+  2) change(90-09-27,Itani), approve(90-10-01,MCR8208), audit(90-10-10,Bubric),
+     install(90-10-14,MR12.4-1040):
+     Change "calendar" to use the "Pope Gregory XIII" method for calculating
+     dates. Also make some headers in calendar more descriptive.
+  3) change(90-10-18,Itani), approve(90-10-18,PBF8208), audit(90-10-18,Bubric),
+     install(90-10-19,MR12.4-1048):
+     Changed [(yy/100)*100] To: [divide(yy,100,17,0)*100].
                                                    END HISTORY COMMENTS */
 
 
@@ -172,6 +181,7 @@ al		fixed bin,		/* Length of argument. */
 al2		fixed bin,		/* Length of argument. */
 an		fixed bin,		/* Argument number. */
 box_height	fixed bin init(7),		/* Number of lines in a calendar box. */
+century             fixed bin,                    /* Calendar century. */
 day_chain_roots(31)	fixed bin init ((31)0),	/* Indices of first cells of lists in storage, one per day. */
 days_mo		fixed bin,		/* # days in this month. */
 days_mop		fixed bin,		/* # days in previous month. */
@@ -462,17 +472,18 @@ arg_value_error:	     call com_err_(ec,"calendar","Argument ^d: ^a.",an, bchr);
 	call datebin_ (fb71, absda, mm, dd, yy, hh, minute, ss, wkd, shf);
 	call datebin_$revert (1, 1, yy, 0, 0, 0, boy);	/* Get beginning of year. */
 	call datebin_ (boy, yr_absda, i, i, i, i, i, i, wkd, i);
+          century =  divide (yy, 100, 17, 0) * 100;         /* Find current century. */
 	if wkd >= 6 then wkd = wkd - 7;
 	fwbase = yr_absda + 1 - wkd;			/* Locate a "virtual monday" preceding the first */
 	call datebin_$revert (mm, 1, yy, 0, 0, 0, bom);	/* Locate beginning of month. */
 	call datebin_ (bom, mo_absda, mm, dd, yy, hh, minute, ss, wkd, shf);
 	days_mo = ndays (mm);			/* Get # of days in this month. */
-	if mod (yy, 4) = 0 then		/* Leap year. */
+	days_yr = 365;
+	if (mm = 2) then if (leap_year(yy)) then
 	     do;
-	     if mm = 2 then days_mo = days_mo + 1;
-	     days_yr = 366;
-	     end;
-	else days_yr = 365;
+		days_mo = days_mo + 1;
+		days_yr = days_yr + 1;
+ 	     end;
 	fwno = 1 + divide ((mo_absda+mod (8-wkd, 7)) - fwbase, 7, 17, 0); /* Calculate first fiscal week no. for Monday */
 
 /* Calculate beginning of month for previous and following months. */
@@ -482,8 +493,8 @@ arg_value_error:	     call com_err_(ec,"calendar","Argument ^d: ^a.",an, bchr);
 	else do; mmf = mm + 1; yyf = yy; end;
 	days_mop	= ndays(mmp);
 	days_mof	= ndays(mmf);
-	if mmp = 2 then if mod(yyp,4)=0 then days_mop = days_mop + 1;
-	if mmf = 2 then if mod(yyf,4)=0 then days_mof = days_mof + 1;
+	if mmp = 2 then if leap_year(yyp) then days_mop = days_mop + 1;
+	if mmf = 2 then if leap_year(yyf) then days_mof = days_mof + 1;
 	call datebin_$revert (mmp, 1, yyp, 0, 0, 0, bomp);
 	call datebin_$revert (mmf, 1, yyf, 0, 0, 0, bomf);
 	call datebin_ (bomp, i        , i, i, i, i, i, i, wkdp, i);
@@ -649,7 +660,7 @@ skip:		k = k+lchrnl;			/* Move to start of next line. */
 
 /* Put out the calendar. */
 
-	call ioa_$rsnnl ("^a ^d", titlestr, i, moname (mm), yy-1900);
+	call ioa_$rsnnl ("^a ^d", titlestr, i, moname (mm), yy - century);
 	call bigletter_ (titlestr, writer);		/* Write fancy heading. */
 	head = NL;
 	cursor = 2;
@@ -710,6 +721,7 @@ skip:		k = k+lchrnl;			/* Move to start of next line. */
 	     end;
 	     day_of_week = day_of_week + 1;
 	     day_of_month = day_of_month + 1;
+               day_of_month =  check_start_Gregory(yy, mm, day_of_month);
 	     if day_of_month > days_mo then go to out;	/* Done with the month? */
 	     if day_of_week > 7 then do;		/* Done with the week? */
 		call putweek;			/* Yes. Write one week. */
@@ -760,6 +772,7 @@ out:	if wkd < 3 & box_height > 6 then do;		/* Insert previous and following mont
 	     call com_err_(0,"calendar","WARNING: You are using an obsolete syntax.^/New syntax is: calendar {paths} {-ctlargs}^/Type ""help calendar"" for details.");
 
 	do day_of_month = 1 to days_mo;
+               day_of_month =  check_start_Gregory(yy, mm, day_of_month);
 	     do jj = 1 to 100 while (day_chain_roots (day_of_month) ^= 0);
 		call com_err_ (0, "calendar", "Item cannot fit in ^a ^d: ^a",
 		     moname (mm), day_of_month, storage.text (day_chain_roots (day_of_month)));
@@ -880,13 +893,14 @@ dcl  i fixed bin (21);
 
 previous_month: proc;
 
-	     call ioa_$rsnnl (" ^9a^9x^2d", prevfoll.headerp, n, moname (mmp), yyp-1900);
+	     call ioa_$rsnnl (" ^9a^7x^4d", prevfoll.headerp, n, moname (mmp), yyp);
 	     i = 1;
 	     if wkdp = 7 then wkdp = 0;
 	     do kpf = 1 to wkdp;
 		prevfoll.week (1).dayp (kpf) = " ";
 	     end;
 	     do jpf = 1 to days_mop;
+                    jpf =  check_start_Gregory(yyp, mmp, jpf);
 		call ioa_$rsnnl ("^2d ", prevfoll.week (i).dayp (kpf), n, jpf);
 		kpf = kpf + 1;
 		if kpf > 7 then do;
@@ -908,13 +922,14 @@ previous_month: proc;
 
 follow_month: proc;
 
-	     call ioa_$rsnnl ("^9a^9x^2d ", prevfoll.headerf, n, moname (mmf), yyf-1900);
+	     call ioa_$rsnnl ("^9a^7x^4d ", prevfoll.headerf, n, moname (mmf), yyf);
 	     i = 1;
 	     if wkdf = 7 then wkdf = 0;
 	     do kpf = 1 to wkdf;
 		prevfoll.week (1).dayf (kpf) = " ";
 	     end;
 	     do jpf = 1 to days_mof;
+                    jpf =  check_start_Gregory(yyf, mmf, jpf);
 		call ioa_$rsnnl ("^2d ", prevfoll.week (i).dayf (kpf), n, jpf);
 		kpf = kpf + 1;
 		if kpf > 7 then do;
@@ -1070,7 +1085,37 @@ cleanup_proc:	proc;
 	return;
 
 end cleanup_proc;
-
 /* -------------------------------------------------------- */
 
+leap_year:  proc (year) returns(bit(1));
+	  dcl year fixed bin;
+      
+            if mod (year, 4) = 0 then
+/* Centesimal years are common years unless divisible by 400.  */
+/* This was done to correct the error in the Julian calendar.  */
+               if mod(year, 100)=0 & mod(year, 400)^=0 & year>1582 then
+                      return("0"b);
+	     else   return("1"b);
+	  else return("0"b);
+
+       end leap_year;
+/* -------------------------------------------------------- */
+
+check_start_Gregory:
+	  proc (year, month, day_of_month) returns (fixed bin);
+	  dcl (year, month, day_of_month) fixed bin;
+
+/* In the Gregorian calendar, October 5 through the 14 are removed. */
+
+	  if year = 1582 & month = 10 & day_of_month = 5 then
+	         return(15);
+	  else   return(day_of_month);
+	  	  
+       end check_start_Gregory;
+       
+
+/* -------------------------------------------------------- */
      end calendar;
+
+
+
