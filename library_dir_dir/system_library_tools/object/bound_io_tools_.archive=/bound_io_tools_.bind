@@ -1,11 +1,21 @@
-/* ******************************************************
-   *                                                    *
-   *                                                    *
-   * Copyright (c) 1972 by Massachusetts Institute of   *
-   * Technology and Honeywell Information Systems, Inc. *
-   *                                                    *
-   *                                                    *
-   ****************************************************** */
+/* *********************************************************
+   *                                                       *
+   * Copyright, (C) BULL HN Information Systems Inc., 1992 *
+   *                                                       *
+   * Copyright (c) 1972 by Massachusetts Institute of      *
+   * Technology and Honeywell Information Systems, Inc.    *
+   *                                                       *
+   ********************************************************* */
+
+
+
+/* HISTORY COMMENTS:
+  1) change(92-10-02,WAAnderson), approve(92-10-02,MCR8276),
+     audit(92-10-14,Vu), install(92-10-21,MR12.5-1037):
+     Added fdisk_status_table_ to convert FIPS disk device statuses to the
+     correct message.
+                                                   END HISTORY COMMENTS */
+
 
 /* Bind file for bound_io_tools_ */
 
@@ -25,6 +35,7 @@ Order:		test_dcw,
 		exercise_disk,
 		analyze_detail_stat_,
 		disk_status_table_,
+		fdisk_status_table_,
 		opc_status_table_,
 		tape_status_table_,
 		io_error_summary;
@@ -39,6 +50,7 @@ Addname:		test_dcw,
 		exercise_disk,
 		analyze_detail_stat_,
 		disk_status_table_,
+		fdisk_status_table_,
 		opc_status_table_,
 		tape_status_table_,
 		io_error_summary;
@@ -73,6 +85,9 @@ objectname:	analyze_detail_stat_;
 
 objectname:	disk_status_table_;
  retain:		disk_status_table_;
+
+objectname:	fdisk_status_table_;
+ retain:		fdisk_status_table_;
 
 objectname:	opc_status_table_;
  retain:		opc_status_table_;

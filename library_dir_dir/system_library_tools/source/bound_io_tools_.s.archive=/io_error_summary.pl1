@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1992   *
+        *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
         *                                                         *
         * Copyright (c) 1972 by Massachusetts Institute of        *
@@ -10,11 +12,16 @@
 
 /****^  HISTORY COMMENTS:
   1) change(85-09-11,Farley), approve(85-09-11,MCR6979),
-     audit(86-02-18,Coppola):
+     audit(86-02-18,Coppola), install(92-10-21,MR12.5-1037):
      Add support for FIPS disk and tape.
   2) change(85-12-18,Farley), approve(85-12-18,MCR7318),
-     audit(86-02-18,Coppola):
+     audit(86-02-18,Coppola), install(92-10-21,MR12.5-1037):
      bug fixes, plus one new arg.
+  3) change(92-10-02,WAAnderson), approve(92-10-02,MCR8276),
+     audit(92-10-14,Vu), install(92-10-21,MR12.5-1037):
+     1) Added support for fdisk_status_table_.alm 2) Added support for device
+     channels. (ie -channel control arg & new column) 3) Added sector number
+     for -cylinder argument. 4) Corrected problem with data bit error counts.
                                                    END HISTORY COMMENTS */
 /* IO_ERROR_SUMMARY: Command to summarize I/O errors from the syserr log */
 
@@ -50,7 +57,8 @@ io_error_summary:
 dcl  code fixed bin (35);				/* Standard system status code */
 dcl  open_status bit (36) aligned;			/* Code from syserr_log_util_$open */
 dcl  tab_cnt fixed bin init (0);			/* Number of seperate status found */
-dcl  (i, j, lmarg) fixed bin;
+dcl  indent fixed bin;				/* The number of spaces to indent */
+dcl  (i, j) fixed bin;
 dcl  mode fixed bin (5);
 dcl  stat_tablep ptr internal static;			/* Pointer to device status table */
 dcl  my_tape_analp ptr;				/* Pointer to tape detail status analysis */
@@ -70,6 +78,7 @@ dcl  to_sw bit (1) init ("0"b);			/* Set if -to used */
 dcl  for_sw bit (1) init ("0"b);			/* Set if -for used */
 dcl  detailed_status_sw bit (1) init ("0"b);		/* Set if -dtstat specified */
 dcl  hex_detailed_status_sw bit (1) init ("0"b);		/* Set if user want to see hex detail status */
+dcl  chn_sw bit (1) init ("0"b);			/* Set if user wants to see channel */
 dcl  cyl_sw bit (1) init ("0"b);			/* Set if user wants to see disk addresses */
 dcl  tdbie_sw bit (1) init ("0"b);			/* Set if user wants to see tape data bits in error */
 dcl  io_cmd_sw bit (1) init ("0"b);			/* Set if user wants to see the I/O commands */
@@ -163,6 +172,9 @@ dcl  db_trk_str9 char (58) int static options (constant)
 
 dcl  db_trk_str7 char (49) int static options (constant) init ("Data Bit/Track  2/6  3/5  4/4  5/3  6/2  7/1  P/7");
 
+dcl  DEV_LEN fixed bin int static options (constant) init (9);
+dcl  CHN_LEN fixed bin int static options (constant) init (4);
+dcl  IOC_LEN fixed bin int static options (constant) init (5);
 
 /* Based */
 
@@ -179,6 +191,7 @@ dcl  1 stat aligned based (statentp),			/* Entry for each different status found
 
 dcl  1 stat_sort_info aligned based,
        2 devname char (8),				/* Name of device */
+       2 chnname char (8),
        2 time_out_sort char (1) unal,			/* Make time outs sort before rest */
        2 sysfault_sort char (1) unal,			/* Make system faults sort before rest */
        2 pad char (2) unal,
@@ -218,7 +231,6 @@ dcl  convert_date_to_binary_$relative entry (char (*), fixed bin (71), fixed bin
 dcl  config_$find entry (char (4) aligned, ptr);
 dcl  config_$find_periph entry (char (4) aligned, ptr);
 dcl  config_$find_peripheral entry (char (4) aligned, fixed bin (3), fixed bin (8), bit (36) aligned, fixed bin (35));
-dcl  cv_hex_ entry (char (*)) returns (fixed bin (35));
 dcl  cv_dec_check_ entry (char (*), fixed bin (35)) returns (fixed bin (35));
 dcl  cv_oct_check_ entry (char (*), fixed bin (35)) returns (fixed bin (35));
 dcl  define_area_ entry (ptr, fixed bin (35));
@@ -226,12 +238,14 @@ dcl  release_area_ entry (ptr);
 dcl  sort_items_$bit entry (ptr, fixed bin (24));
 dcl  hash_index_ entry (ptr, fixed bin, fixed bin, fixed bin) returns (fixed bin);
 dcl  hcs_$fs_get_mode entry (ptr, fixed bin (5), fixed bin (35));
+dcl  parse_io_channel_name_ entry (char (*), fixed bin (3), fixed bin (6), fixed bin (35));
 
 dcl  error_table_$no_r_permission fixed bin (35) ext static;
 dcl  error_table_$end_of_info ext fixed bin (35);
 dcl  error_table_$badopt ext fixed bin (35);
 dcl  sys_info$max_seg_size fixed bin (35) ext static;
 dcl  disk_status_table_$disk_status_table_ ext;
+dcl  fdisk_status_table_$fdisk_status_table_ ext;
 dcl  opc_status_table_$opc_status_table_ ext;
 dcl  tape_status_table_$tape_status_table_ ext;
 dcl  prt_status_table_$prt_status_table_ ext;
@@ -321,9 +335,13 @@ dcl  (addr, bin, divide, fixed, float, hbound, index, lbound, length, ltrim, max
 	     end;
 	if ^to_sw then to_time = from_time;		/* Initialize last message time */
 
-	if io_cmd_sw
-	then lmarg = 27;
-	else lmarg = 22;
+	indent = 0;
+
+	if chn_sw
+	then indent = DEV_LEN + CHN_LEN;
+	else indent = DEV_LEN;
+
+	if io_cmd_sw then indent = indent + IOC_LEN;
 
 	syserr_msgp = addr (buffer);			/* Read here */
 	mask = "0"b;
@@ -522,6 +540,7 @@ new_stat:
 	     else if arg = "-tape_data_bit_in_error" | arg = "-tdbie" then tdbie_sw = "1"b;
 
 	     else if arg = "-io_command" | arg = "-ioc" then io_cmd_sw = "1"b;
+	     else if arg = "-channel" | arg = "-chn" then chn_sw = "1"b;
 
 	     else do;				/* Bad arg */
 		call com_err_ (error_table_$badopt, name, "^a", arg);
@@ -601,8 +620,6 @@ dcl  ntimes fixed bin;				/* Number of times status occured */
 dcl  dev_edit picture "99";
 dcl  dev_name char (3);
 dcl  detail_temp char (71);				/* 24 bytes */
-dcl  detail_temp_1 char (48);				/* 24 (packed) bytes */
-dcl  (detail_temp_2, detail_temp_3, detail_temp_4, detail_temp_5) fixed bin (35);
 dcl  (start_char, start_pos) fixed bin;
 dcl  1 temp_stat like stat aligned automatic;
 dcl  bucket_no fixed bin;
@@ -622,9 +639,14 @@ dcl  temp_char char (8);
 	stat.next = null ();
 
 	io_msgp = addr (syserr_msg.data);		/* Point at data portion */
+
 	ntimes = bin (io_msg.count) + 1;
 	n_statuses = n_statuses + ntimes;
 	stat.devname = io_msg.devname;		/* Pick up name of device */
+	if chn_sw
+	then stat.chnname = io_msg.channel;		/* Pick up name of channel */
+	else stat.chnname = "";
+
 	if substr (stat.devname, 1, 3) = "dsk" | substr (stat.devname, 1, 3) = "tap" then do;
 	     substr (stat.devname, 5, 1) = "_";
 	     dev_edit = bin (io_msg.device);
@@ -864,13 +886,14 @@ dcl  total_status fixed bin;
 dcl  ndtstats fixed bin;
 dcl  dtstat (1:27) bit (8) unal based (addr (stat.detailed_status));
 dcl  temp_detailed_status bit (208) unal based (addr (stat.detailed_status));
-dcl  (cyl, head) fixed bin (24);
+dcl  (cyl, head, isect) fixed bin (24);
 
 
 	call date_time_ (from_time, tm1);		/* Edit start */
 	call date_time_ (to_time, tm2);
-	call ioa_ ("^/Summary from ^a to ^a^/^/DEVICE^-  COUNT^-^[CMD^2x^;^]IOM STATUS^[/DETAILED STATUS^]", tm1, tm2,
-	     io_cmd_sw, (detailed_status_sw | hex_detailed_status_sw));
+	call ioa_ ("^/Summary from ^a to ^a^/^/", tm1, tm2);
+	call ioa_ ("DEVICE^3x^[CHN^x^;^]^[CMD^2x^;^]COUNT^xIOM STATUS^[/DETAILED STATUS^]", chn_sw, io_cmd_sw,
+	     (detailed_status_sw | hex_detailed_status_sw));
 
 	stat_tablep = null ();
 	do i = 1 to sort_list.count;
@@ -882,9 +905,9 @@ dcl  (cyl, head) fixed bin (24);
 	     ndtstats = 0;
 	     display_detail_count = 0;
 	     analysis_string = "";
+	     dbie_counts (*) = 0;
 
 	     if (detailed_status_sw | hex_detailed_status_sw) then do;
-		ndtstats = 1;
 		do j = i + 1 to sort_list.count;
 		     p = sort_list.entryp (j);
 		     if p -> stat.devname ^= stat.devname then go to end_dup_scan;
@@ -903,17 +926,17 @@ end_dup_scan:
 	     if stat.time_out_sort = "0" then msg = "Channel timed out.";
 	     else if stat.sysfault_sort = "0" then call ioa_$rsnpnnl ("System fault: ^w", msg, (0), stat.status);
 	     else call analyze_device_stat_$rsnnl (msg, stat_tablep, (stat.status), ("0"b));
-	     call ioa_ ("^[^/^a^;^s^]^-^5d^-^[(^2a)^x^;^s^]^a", break, stat.devname, total_status, io_cmd_sw,
-		stat.command, msg);
+	     call ioa_ ("^[^/^8a^x^;^9x^s^]^[^3a^x^;^s^]^[(^2a)^x^;^s^]^5d^x^a", break, stat.devname, chn_sw,
+		stat.chnname, io_cmd_sw, stat.command, total_status, msg);
 
 	     if stat.dsk_mult_rec ^= "" then do;
-		call convert_seek_addr (stat.dsk_sect, stat.devname, cyl, head);
-		call ioa_ ("^[^25t^;^20t^] Cylinder ^[???^s^;^3d^] Head ^[??^s^;^2d^] Record ^a", io_cmd_sw,
-		     (cyl = -1), cyl, (head = -1), head, stat.dsk_mult_rec);
+		call convert_seek_addr (stat.dsk_sect, stat.devname, stat.chnname, cyl, head, isect);
+		call ioa_ ("^vx^6xCylinder ^[???^s^;^3d^] Head ^[??^s^;^2d^] Sector ^[???^s^;^3d^] Record ^a", indent,
+		     (cyl = -1), cyl, (head = -1), head, (isect = -1), isect, stat.dsk_mult_rec);
 		end;
 
 	     if hex_detailed_status_sw then do;
-		do j = i to i + ndtstats - 1;
+		do j = i to i + ndtstats;
 		     statentp = sort_list.entryp (j);
 		     if stat.detailed_status ^= "0"b then do;
 			name_ck = substr (stat.devname, 1, 3);
@@ -930,14 +953,14 @@ end_dup_scan:
 						/* print 9 bytes */
 			else do k = hbound (dtstat, 1) to lbound (dtstat, 1) + 1 by -1 while (dtstat (k) = "0"b);
 			end;
-			call ioa_ ("^-^7d^-^[^5x^;^]^v( ^.4b^)", stat.count, io_cmd_sw, k, dtstat);
+			call ioa_ ("^vx^5d^3x^v( ^.4b^)", indent, stat.count, k, dtstat);
 			end;
 		end;
-		i = i + ndtstats - 1;
+		i = i + ndtstats;
 		end;
 
 	     else if detailed_status_sw then do;
-		do j = i to i + ndtstats - 1;
+		do j = i to i + ndtstats;
 		     statentp = sort_list.entryp (j);
 		     if stat.detailed_status ^= "0"b then do;
 			if substr (stat.devname, 1, 3) = "tap" then do;
@@ -955,9 +978,9 @@ end_dup_scan:
 				then go to end_anal_display;
 
 			     call tally_details_tape_;
-			     if j = i + ndtstats - 1 then do;
-				call ioa_ ("^-^7d^vt^a", display_detail_count, lmarg, analysis_string);
-				if tdbie_sw = "1"b then call ioa_ ("^a", rtrim (track_analysis));
+			     if j = i + ndtstats then do;
+				call ioa_ ("^vx^5d^3x^a", indent, display_detail_count, analysis_string);
+				if tdbie_sw = "1"b then call ioa_ ("^vx^6x^a", indent, rtrim (track_analysis));
 				end;
 			     go to end_anal_display;
 			     end;			/* end tape display */
@@ -971,8 +994,8 @@ end_dup_scan:
 			     disk_analp = my_disk_analp;
 
 			     call tally_details_disk_;
-			     if j = i + ndtstats - 1
-			     then call ioa_ ("^-^7d^vt^a", display_detail_count, lmarg, ltrim (analysis_string));
+			     if j = i + ndtstats
+			     then call ioa_ ("^vx^5d^3x^a", indent, display_detail_count, ltrim (analysis_string));
 			     go to end_anal_display;
 			     end;			/* end disk display */
 
@@ -988,15 +1011,15 @@ end_dup_scan:
 
 			     call tally_details_prt_;
 
-			     if j = i + ndtstats - 1
-			     then call ioa_ ("^-^7d^vt^a", display_detail_count, lmarg, ltrim (analysis_string));
+			     if j = i + ndtstats
+			     then call ioa_ ("^vx^5d^3x^a", indent, display_detail_count, ltrim (analysis_string));
 			     go to end_anal_display;
 			     end;			/* end prt display */
 
 			else if substr (stat.devname, 1, 3) = "rdr" | substr (stat.devname, 1, 3) = "pun" then do;
 			     call analyze_detail_stat_$rsnnl ((stat.devname), stat.status, (stat.detailed_status),
 				msg, is_interesting, code);
-			     if is_interesting then call ioa_ ("^-^7d^vt^a", stat.count, lmarg, msg);
+			     if is_interesting then call ioa_ ("^vx^5d^3x^a", indent, stat.count, msg);
 
 			     go to end_anal_display;
 			     end;			/* end rdr_pun display */
@@ -1004,7 +1027,7 @@ end_dup_scan:
 end_anal_display:
 			end;
 		end;
-		i = i + ndtstats - 1;
+		i = i + ndtstats;
 		end;
 	end;
 	call ioa_ ("");
@@ -1015,7 +1038,7 @@ end_anal_display:
 
 %page;
 convert_seek_addr:
-     proc (sector, disk_name, cyl_, hd_);
+     proc (sector, disk_name, chn_name, cyl_, hd_, sec_);
 
 /* **********************************************************************
    *   given a seek address, this routine returns the sector, head and   *
@@ -1023,11 +1046,17 @@ convert_seek_addr:
    *   is assumed.                      			   *
    ********************************************************************** */
 
-dcl  (sector, se_no, sa, cyl_, hd_) fixed bin (24);
+dcl  (sector, sec_, sa, cyl_, hd_) fixed bin (24);
 dcl  disk_name char (8) aligned;
+dcl  chn_name char (8) aligned;
 dcl  (dev_idx, i, j) fixed bin;
 dcl  (dev_model, dev_no_index, dev_no) fixed bin;
+dcl  iom_number fixed bin (3);
+dcl  chn_number fixed bin (6);
 
+	cyl_ = -1;
+	hd_ = -1;
+	sec_ = -1;
 
 	do i = 1 to hbound (dev_idx_list, 1) while (dev_idx_list (i).valid);
 	     if dev_idx_list (i).device_name = disk_name then goto calc;
@@ -1045,15 +1074,16 @@ dcl  (dev_model, dev_no_index, dev_no) fixed bin;
 
 	call config_$find_periph (substr (disk_name, 1, 4), prph_dsk_cardp);
 						/* will need drive no. later */
-	if prph_dsk_cardp = null () then do;
-	     cyl_, hd_ = -1;
-	     return;
+	if prph_dsk_cardp = null () then return;
+
+	if chn_sw then do;
+	     call parse_io_channel_name_ ((chn_name), iom_number, chn_number, code);
+	     call find_controller (iom_number, (chn_number));
 	     end;
-	call find_controller (prph_dsk_card.iom, prph_dsk_card.chan);
-	if mpc_cardp = null () & ^fips_controller then do;
-	     cyl_, hd_ = -1;
-	     return;
-	     end;
+	else call find_controller (prph_dsk_card.iom, prph_dsk_card.chan);
+
+	if mpc_cardp = null () & ^fips_controller then return;
+
 	do j = 1 to 5 while (dev_model = 0);
 	     dev_no_index = dev_no_index + prph_dsk_card.ndrives (j);
 	     if dev_no < dev_no_index | (^fips_controller & dev_no = dev_no_index)
@@ -1067,12 +1097,10 @@ dcl  (dev_model, dev_no_index, dev_no) fixed bin;
 
 calc:
 	dev_idx = dev_idx_list (i).device_idx;
-	if dev_idx < 2 then do;
-	     cyl_, hd_ = -1;
-	     return;
-	     end;
+	if dev_idx < 2 then return;
+
 	sa = divide (sector, sect_per_track (dev_idx), 24, 0);
-	se_no = mod (sector, sect_per_track (dev_idx));
+	sec_ = mod (sector, sect_per_track (dev_idx));
 	cyl_ = divide (sa, tracks_per_cyl (dev_idx), 24, 0);
 	hd_ = mod (sa, tracks_per_cyl (dev_idx));
 
@@ -1100,7 +1128,11 @@ pick_status_table:
 	else if substr (stat.devname, 1, 3) = "prt" then stat_tablep = addr (prt_status_table_$prt_status_table_);
 	else if substr (stat.devname, 1, 3) = "rdr" then stat_tablep = addr (crz_status_table_$crz_status_table_);
 	else if substr (stat.devname, 1, 3) = "pun" then stat_tablep = addr (cpz_status_table_$cpz_status_table_);
-	else if substr (stat.devname, 1, 3) = "dsk" then stat_tablep = addr (disk_status_table_$disk_status_table_);
+	else if substr (stat.devname, 1, 3) = "dsk" then do;
+	     if fips_disk (stat.devname)
+	     then stat_tablep = addr (fdisk_status_table_$fdisk_status_table_);
+	     else stat_tablep = addr (disk_status_table_$disk_status_table_);
+	     end;
 	else if substr (stat.devname, 1, 3) = "opc" then stat_tablep = addr (opc_status_table_$opc_status_table_);
 	else stat_tablep = null;
 
@@ -1118,10 +1150,17 @@ process_tape_status:
      proc;
 
 dcl  mth_type fixed bin;
+dcl  iom_number fixed bin (3);
+dcl  chn_number fixed bin (6);
 
 	call config_$find_periph (substr (stat.devname, 1, 4), prph_tap_cardp);
 	if prph_tap_cardp = null () then return;
-	call find_controller (prph_tap_card.iom, (prph_tap_card.chan));
+
+	if chn_sw then do;
+	     call parse_io_channel_name_ ((stat.chnname), iom_number, chn_number, code);
+	     call find_controller (iom_number, (chn_number));
+	     end;
+	else call find_controller (prph_tap_card.iom, (prph_tap_card.chan));
 
 	if fips_controller then do;
 	     stat.detailed_status = stat.detailed_status & fips_tape_mask;
@@ -1254,20 +1293,13 @@ dcl  cur_analysis char (256) var;
 dcl  ca_port_str char (50) var init ("");
 dcl  ret_str_len fixed bin;
 
-
-	if mod (disk_analysis.num_analyzed, 2) > 0 then do;
-	     disk_analysis.num_analyzed = disk_analysis.num_analyzed + 1;
-	     disk_analysis.analyses (disk_analysis.num_analyzed) = "";
-	     end;
-
-
-	call ioa_$rsnnl ("^[^3s^;^vtCA ^1o, Port ^2d^/^]", ca_port_str, ret_str_len, disk_analysis.fips_controller,
-	     lmarg, disk_analysis.CA, disk_analysis.PORT);
+	call ioa_$rsnnl ("^[^2s^;CA ^1o, Port ^2d^/^]", ca_port_str, ret_str_len, disk_analysis.fips_controller,
+	     disk_analysis.CA, disk_analysis.PORT);
 
 	if analysis_string = "" then do;		/* first time here for this status */
 	     display_detail_count = display_detail_count + stat.count;
 	     if disk_analysis.is_interesting_disk
-	     then call ioa_$rs ("^vt^v(^a ^a ^)", temp1, analysis_char_count, lmarg, disk_analysis.num_analyzed,
+	     then call ioa_$rs ("^vx^8x^v(^a ^)", temp1, analysis_char_count, indent, disk_analysis.num_analyzed,
 		     disk_analysis.analyses);
 	     analysis_string = ca_port_str || rtrim (temp1);
 
@@ -1275,13 +1307,13 @@ dcl  ret_str_len fixed bin;
 	     end;
 
 	if disk_analysis.is_interesting_disk
-	then call ioa_$rs ("^vt^v(^a ^a ^)", temp1, analysis_char_count, lmarg, disk_analysis.num_analyzed,
+	then call ioa_$rs ("^vx^8x^v(^a ^)", temp1, analysis_char_count, indent, disk_analysis.num_analyzed,
 		disk_analysis.analyses);
 
 	cur_analysis = ca_port_str || rtrim (temp1);
 
 	if unspec (analysis_string) ^= unspec (cur_analysis) then do;
-	     call ioa_ ("^-^7d^vt^a", display_detail_count, lmarg, ltrim (analysis_string));
+	     call ioa_ ("^vx^5d^3x^a", indent, display_detail_count, ltrim (analysis_string));
 	     analysis_string = cur_analysis;
 	     display_detail_count = stat.count;
 	     unspec (cur_analysis) = "0"b;
@@ -1300,18 +1332,12 @@ dcl  temp2 char (256) var init ("");
 dcl  cur_analysis char (256) var;
 
 
-	if mod (prt_analysis.num_analyzed, 2) > 0 then do;
-	     prt_analysis.num_analyzed = prt_analysis.num_analyzed + 1;
-	     prt_analysis.analyses (prt_analysis.num_analyzed) = "";
-	     end;
-
-
 	if analysis_string = "" then do;		/* first time here for this status */
 	     display_detail_count = display_detail_count + stat.count;
 
 	     if prt_analysis.density ^= ""
-	     then call ioa_$rs ("^vt^a", temp1, analysis_char_count, lmarg, prt_analysis.density);
-	     call ioa_$rs ("^vt^v(^a ^a ^)", temp2, analysis_char_count, lmarg, prt_analysis.num_analyzed,
+	     then call ioa_$rs ("^vx^8x^a", temp1, analysis_char_count, indent, prt_analysis.density);
+	     call ioa_$rs ("^vx^8x^v(^a ^)", temp2, analysis_char_count, indent, prt_analysis.num_analyzed,
 		prt_analysis.analyses);
 
 	     analysis_string = rtrim (temp1) || rtrim (temp2);
@@ -1320,14 +1346,14 @@ dcl  cur_analysis char (256) var;
 	     end;
 
 	if prt_analysis.density ^= ""
-	then call ioa_$rs ("^vt^a", temp1, analysis_char_count, lmarg, prt_analysis.density);
-	call ioa_$rs ("^vt^v(^a ^a ^)", temp2, analysis_char_count, lmarg, prt_analysis.num_analyzed,
+	then call ioa_$rs ("^vx^8x^a", temp1, analysis_char_count, indent, prt_analysis.density);
+	call ioa_$rs ("^vx^8x^v(^a ^)", temp2, analysis_char_count, indent, prt_analysis.num_analyzed,
 	     prt_analysis.analyses);
 
 	cur_analysis = rtrim (temp1) || rtrim (temp2);
 
 	if unspec (analysis_string) ^= unspec (cur_analysis) then do;
-	     call ioa_ ("^-^7d^vt^a", display_detail_count, lmarg, ltrim (analysis_string));
+	     call ioa_ ("^vx^5d^3x^a", indent, display_detail_count, ltrim (analysis_string));
 	     analysis_string = cur_analysis;
 	     display_detail_count = stat.count;
 	     unspec (cur_analysis) = "0"b;
@@ -1347,38 +1373,28 @@ dcl  cur_analysis char (256) var;
 dcl  (i, tracks) fixed bin;
 dcl  dbie_7track (7) fixed bin;
 
-
-	if mod (tape_analysis.num_analyzed, 2) > 0 then do;
-	     tape_analysis.num_analyzed = tape_analysis.num_analyzed + 1;
-	     tape_analysis.analyses (tape_analysis.num_analyzed) = "";
-	     end;
-
-
 	if analysis_string = "" then do;		/* first time here for this status */
-	     display_detail_count = display_detail_count + stat.count;
-
 	     call ioa_$rs ("Operation: ^a, Density: ^d Tracks: ^d", temp1, analysis_char_count, tape_analysis.operation,
 		tape_analysis.density, tape_analysis.num_tracks);
 
 	     if tdbie_sw then do;
 		if null_tape_tracks ^= tape_analysis.tracks_in_error then do;
-		     dbie_counts (*) = 0;		/* init the array */
 		     tracks = tape_analysis.num_tracks;
-		     call ioa_$rs ("^vt^[^a^;^s^]^[^a^;^s^]", tracks_hdr, analysis_char_count, lmarg, (tracks = 9),
-			db_trk_str9, (tracks = 7), db_trk_str7);
+		     call ioa_$rs ("^[^a^;^s^]^[^a^;^s^]", tracks_hdr, analysis_char_count, (tracks = 9), db_trk_str9,
+			(tracks = 7), db_trk_str7);
 		     do i = 1 to 9;
 			if tape_analysis.dbie_array (i) ^= 0
-			then dbie_counts (i) = dbie_counts (i) + (tape_analysis.dbie_array (i) * stat.count);
+			then dbie_counts (i) = tape_analysis.dbie_array (i) * stat.count;
 		     end;
 		     if tracks = 9
-		     then call ioa_$rs ("^vtError Count:  ^v(^4d ^)", tracks_str, analysis_char_count, lmarg, 9,
+		     then call ioa_$rs ("^vx^6xError Count:  ^v(^4d ^)", tracks_str, analysis_char_count, indent, 9,
 			     dbie_counts);
 
 		     else do;			/* convert array */
 			do i = 3 to 9;
 			     dbie_7track (i - 3) = dbie_counts (i);
 			end;
-			call ioa_$rs ("^vtError Count:  ^v(^4d ^)", tracks_str, analysis_char_count, lmarg, 7,
+			call ioa_$rs ("^vx^6xError Count:  ^v(^4d ^)", tracks_str, analysis_char_count, indent, 7,
 			     dbie_7track);
 			end;
 
@@ -1386,11 +1402,12 @@ dcl  dbie_7track (7) fixed bin;
 		end;
 
 	     if tape_analysis.num_analyzed > 0
-	     then call ioa_$rsnnl ("^vt^v(^a ^a ^)", temp2, analysis_char_count, lmarg, tape_analysis.num_analyzed,
+	     then call ioa_$rsnnl ("^vx^8x^v(^a ^)", temp2, analysis_char_count, indent, tape_analysis.num_analyzed,
 		     tape_analysis.analyses);
 
 	     analysis_string = rtrim (temp1) || rtrim (temp2);
 	     track_analysis = rtrim (tracks_hdr) || rtrim (tracks_str);
+	     display_detail_count = stat.count;
 	     return;
 	     end;
 
@@ -1399,22 +1416,23 @@ dcl  dbie_7track (7) fixed bin;
 
 	if tdbie_sw then do;
 	     if null_tape_tracks ^= tape_analysis.tracks_in_error then do;
+
 		tracks = tape_analysis.num_tracks;
-		call ioa_$rs ("^vt^[^a^;^s^]^[^a^;^s^]", tracks_hdr, analysis_char_count, lmarg, (tracks = 9),
-		     db_trk_str9, (tracks = 7), db_trk_str7);
+		call ioa_$rs ("^[^a^;^s^]^[^a^;^s^]", tracks_hdr, analysis_char_count, (tracks = 9), db_trk_str9,
+		     (tracks = 7), db_trk_str7);
 		do i = 1 to 9;
 		     if tape_analysis.dbie_array (i) ^= 0
 		     then dbie_counts (i) = dbie_counts (i) + (tape_analysis.dbie_array (i) * stat.count);
 		end;
 		if tracks = 9
-		then call ioa_$rs ("^vtError Count:  ^v(^4d ^)", tracks_str, analysis_char_count, lmarg, 9,
+		then call ioa_$rs ("^vx^6xError Count:  ^v(^4d ^)", tracks_str, analysis_char_count, indent, 9,
 			dbie_counts);
 
 		else do;				/* convert array */
 		     do i = 3 to 9;
 			dbie_7track (i - 3) = dbie_counts (i);
 		     end;
-		     call ioa_$rs ("^vtError Count:  ^v(^4d ^)", tracks_str, analysis_char_count, lmarg, 7,
+		     call ioa_$rs ("^vx^6xError Count:  ^v(^4d ^)", tracks_str, analysis_char_count, indent, 7,
 			dbie_7track);
 		     end;
 
@@ -1422,16 +1440,15 @@ dcl  dbie_7track (7) fixed bin;
 	     end;
 
 	if tape_analysis.num_analyzed > 0
-	then call ioa_$rsnnl ("^vt^v(^a ^a ^)", temp2, analysis_char_count, lmarg, tape_analysis.num_analyzed,
+	then call ioa_$rsnnl ("^vx^8x^v(^a ^)", temp2, analysis_char_count, indent, tape_analysis.num_analyzed,
 		tape_analysis.analyses);
 
 	cur_analysis = rtrim (temp1) || rtrim (temp2);
 	track_analysis = rtrim (tracks_hdr) || rtrim (tracks_str);
 	if unspec (analysis_string) ^= unspec (cur_analysis) then do;
-	     call ioa_ ("^-^7d^vt^a", display_detail_count, lmarg, analysis_string);
+	     call ioa_ ("^vx^5d^3x^a", indent, display_detail_count, analysis_string);
 	     analysis_string = cur_analysis;
 	     display_detail_count = stat.count;
-	     unspec (cur_analysis) = "0"b;
 	     return;
 	     end;
 	else display_detail_count = display_detail_count + stat.count;
@@ -1521,6 +1538,3 @@ dcl  i fixed bin;
 
 
      end io_error_summary;
-
-
-
