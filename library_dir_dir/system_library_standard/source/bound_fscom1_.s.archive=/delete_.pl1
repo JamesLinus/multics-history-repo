@@ -1,8 +1,21 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1983 *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1983 *
+        *                                                         *
+        *********************************************************** */
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(90-07-30,Bubric), approve(90-07-30,MCR8185), audit(90-09-12,Vu),
+     install(90-09-20,MR12.4-1026):
+     Fix delete_$path to handle extended objects which are directories.
+     [Reconstructed by ATS 2017 - I suspect this is wrong since it just removes
+     a blank line; need to check the binary from MR12.3 vs. MR12.4.]
+                                                   END HISTORY COMMENTS */
+
 
 /* format: style2,idind30,indcomtxt */
 
@@ -306,7 +319,6 @@ protected_by_switch:				/* come here to avoid terminating before asking question
 delete_msf:
 delete_directory:
 	call hcs_$delentry_file (dname, ename, code);	/* try to delete it first */
-
 	if code = error_table_$fulldir
 	then do;					/* have to delete its contents */
 delete_contents:
