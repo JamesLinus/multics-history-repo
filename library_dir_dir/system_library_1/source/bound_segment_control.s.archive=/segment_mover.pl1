@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1992   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -19,6 +21,9 @@
      processes from allocating the potential target pv during VTOCE move) when
      that target pv is found to be full, thus making it unusable for the VTOCE
      move. (phx20920).
+  2) change(92-09-11,Zimmerman), approve(92-09-11,MCR8259), audit(92-09-22,Vu),
+     install(92-10-23,MR12.5-1040):
+     Change to include names of sub_volumes in error messages.
                                                    END HISTORY COMMENTS */
 
 
@@ -187,8 +192,8 @@ segment_mover:
 				 fixed bin (35) external;
 						/* Sent if illegal seg for move */
 
-	dcl     (addr, baseptr, divide, fixed, null, setwordno, unspec,
-                   wordno) builtin;
+	dcl     (addr, baseptr, divide, fixed, null, setwordno, unspec, wordno)
+				 builtin;
 
 %page;
 
@@ -482,9 +487,9 @@ MOVE_THE_SEGMENT:
 		call lock$unlock_ast;
 		if code = error_table_$log_vol_full	/* try another pv */
 		then do;
-		     call release_pvtxs;		/* free ptvx/pvid binding */
-		     go to next_pv;
-		end;
+			call release_pvtxs;		/* free ptvx/pvid binding */
+			go to next_pv;
+		     end;
 		else go to move_fails;		/* fatal error */
 	     end;
 
@@ -534,13 +539,15 @@ cleanup_dseg_and_meter:
 
 
 diskname:
-     proc (pvtx1) returns (char (7));
+     proc (pvtx1) returns (char (9));
 	dcl     pic99		 pic "99";
 	dcl     pvtx1		 fixed bin;
 
 	pvtep = addr (pvt_array (pvtx1));
 	pic99 = pvte.logical_area_number;
-	return (pvte.devname || "_" || pic99);
+	if ^pvte.is_sv
+	then return (pvte.devname || "_" || pic99);
+	else return (pvte.devname || "_" || pic99 || pvte.sv_name);
 
      end diskname;
 
@@ -763,6 +770,3 @@ truncator:
 
 
      end segment_mover;
-
-
-
