@@ -52,6 +52,10 @@
  12) change(90-08-24,Huen), approve(90-08-24,MCR8187),
      audit(90-10-03,Zimmerman), install(90-10-17,MR12.4-1046):
      Updated version to 33b for pl1 padded reference bug (phx13134, pl1_2224)
+ 13) change(90-08-30,Huen), approve(90-08-30,MCR8160),
+     audit(90-10-03,Zimmerman), install(90-10-17,MR12.4-1046):
+     version (33b) is also for fixing PL1 to not complain about constant
+     symbols that are actually legal.
                                                    END HISTORY COMMENTS */
 
 

@@ -20,6 +20,13 @@
   2) change(89-02-28,RWaters), approve(89-02-28,MCR8068), audit(89-09-07,Vu),
      install(89-09-19,MR12.3-1068):
      Fix bugs 1737 & 1873
+  3) change(90-08-30,Huen), approve(90-08-30,MCR8160),
+     audit(90-09-07,Zimmerman), install(90-10-17,MR12.4-1046):
+     pl1_2221: Fix the PL1 compiler to not complain about constant symbols that
+     are actually legal.
+  4) change(90-10-17,Gray), approve(90-10-17,MCR8160), audit(90-10-19,Schroth),
+     install(90-10-25,MR12.4-1049):
+     Modified to only validate constants for symbols declared by dcl statement.
                                                    END HISTORY COMMENTS */
 
 /* format: style3,^indattr,ifthendo,ifthen,^indnoniterdo,indproc,^elsestmt,dclind9,idind23 */
@@ -184,7 +191,7 @@ dcl      (binary, hbound, index, lbound, length, null, string, substr, unspec) b
  * diagnose this: dcl x fixed bin constant
  */
 
-	if adam -> symbol.constant & ^(s -> symbol.file | s -> symbol.entry) then do;
+	if adam -> symbol.constant & adam -> symbol.dcl_type = by_declare & ^(s -> symbol.file | s -> symbol.entry) then do;
 	     call print (200);
 	     s -> symbol.constant = "0"b;		/* lets do it all again to get the defaults right this time. */
 	     call validate (s);
@@ -671,3 +678,6 @@ system:
 %include pl1_attribute_table;
 %include declare_type;
      end;
+
+
+
