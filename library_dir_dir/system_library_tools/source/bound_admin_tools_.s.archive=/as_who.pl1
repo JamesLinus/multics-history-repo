@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1991   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -111,6 +113,13 @@
  22) change(87-08-11,Hartogs), approve(87-08-11,MCR7714),
      audit(87-08-11,Lippard), install(87-08-13,MR12.1-1085):
      Fixed to work correctly on successive invocation with -idle and -cpu.
+ 23) change(91-03-21,Vu), approve(91-03-21,MCR8244), audit(91-12-05,Zimmerman),
+     install(91-12-06,MR12.5-1002):
+     as_who incorrectly interprets preemption.
+ 24) change(92-10-02,Zimmerman), approve(92-10-02,MCR8269),
+     audit(92-10-05,WAAnderson), install(92-10-16,MR12.5-1026):
+     Lack of access to copy info from tc_data is now reported on each
+     invocation, rather than once per process.
                                                    END HISTORY COMMENTS */
 
 %page;
@@ -374,7 +383,11 @@ go:	if static_autp = null then do;		/* is this the first call? */
 	     call ring0_get_$segptr ("", "tc_data", tcmp0, code);
 	     if code ^= 0 then call ssu_$abort_line (sci_ptr, code, "tc_data");
 	     call ring_zero_peek_$get_max_length_ptr (tcmp0, tcml, code);
-	     if code ^= 0 then call ssu_$abort_line (sci_ptr, code, "tc_data");
+	     if code ^= 0 then do;
+		tcmp0 = null;
+		call ssu_$abort_line (sci_ptr, code, "tc_data");
+	     end;
+	     
           end;
 
 	ansp = static_ansp;
@@ -562,7 +575,7 @@ print:	     did = did + 1;				/* remember we did one */
 	     if ute.preempted ^= 0 then prim = "X";
 	     else if ute.at.nobump then prim = "+";	/* Can be bumped by operator? */
 	     else if ute.standby_line = 1 then prim = "S";/* Secondary? */
-	     else if ute.cant_bump_until > clock_time then prim = ">";
+	     else if ute.cant_bump_until < clock_time then prim = ">";
 	     else prim = " ";
 	     if pdvsw then call get_lvnm ((ute.pdir_lvix)); /* sets lvnm */
 	     call get_usage (ute.proc_id, ute.cpu_usage);
@@ -890,6 +903,3 @@ found:	proc_usage = date_time_$format ("^ZZHd:^ZZMH:^99.(6)9UM", apte.virtual_cp
 %page; %include whotab;
 
      end as_who;
-
-
-
