@@ -1,5 +1,9 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1989   *
+        *                                                         *
+        * Copyright, (C) Honeywell Bull Inc., 1989                *
+        *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1986 *
         *                                                         *
         *********************************************************** */
@@ -13,6 +17,17 @@
   2) change(87-01-13,Fakoury), approve(87-01-13,MCR7515),
      audit(87-01-14,Martinson), install(87-01-14,MR12.0-1278):
      PBF to correct -deckfile short name to -df from -dkf.
+  3) change(89-02-06,Fakoury), approve(90-10-03,MCR8147),
+     audit(90-10-03,Parisek), install(90-10-25,MR12.4-1049):
+     to to allow tape copy without using a deck file or list seg.
+  4) change(89-06-01,Fakoury), approve(90-10-03,MCR8147),
+     audit(90-10-03,Parisek), install(90-10-25,MR12.4-1049):
+     to to insert a space in the copy tape attach description for TR21325
+     to increase the size of att_desc from 64 to 181 for TR21336.
+  5) change(90-10-30,Fakoury), approve(90-11-28,MCR8219),
+     audit(90-11-28,Schroth), install(90-11-28,MR12.4-1051):
+     PBF correct to previous installation: changed to call dfm_util_$make_key
+     after call to get_cata for catalog record.
                                                    END HISTORY COMMENTS */
 
 /* format: style4,ifthenstmt,ifthen,ind3,ll125,lineconind1 */
@@ -30,7 +45,7 @@ dcl  al fixed bin (21);
 dcl  all_diskettes bit (1);
 dcl  alp ptr;
 dcl  ap ptr;
-dcl  c_att_desc char (64);
+dcl  c_att_desc char (181);
 dcl  code fixed bin (35);
 dcl  decks_tb_deleted (10) char (24) varying;
 dcl  deck_tb_patched char (24) varying;
@@ -160,7 +175,7 @@ dcl  dfm_util_$mca_attach entry (ptr, char (4));
 dcl  dfm_util_$mca_detach entry (ptr);
 dcl  dfm_util_$merge_files entry (ptr, ptr, ptr);
 dcl  dfm_util_$mount_diskette entry (ptr, char (8) var, ptr) returns (bit (1));
-dcl  dfm_util_$open_file entry (ptr, char (64), char (64), fixed bin (17), ptr);
+dcl  dfm_util_$open_file entry (ptr, char (64), char (181), fixed bin (17), ptr);
 dcl  dfm_util_$print_list entry (ptr, ptr, char (24) varying);
 dcl  dfm_util_$read_deck entry (ptr, bit (1), bit (1));
 dcl  dfm_util_$read_diskette entry (ptr, char (*), ptr, fixed bin (21), bit (72), fixed bin (35));
@@ -323,6 +338,8 @@ delete_deck: entry (P_sci_ptr, P_dfm_infop);
          call ssu_$get_temp_segment (sci_ptr, "catalog list", dfm_data.lcatp); /* get temp seg for list catalog */
          dfm_data.liocb_ptr = iox_$user_output;
          dfm_data.terminal_out = true;
+         dfm_data.deckfile_sw = true;			/* deckfile is required */
+
          call get_files;
          do i = 1 to ndecks_tb_deleted;
 	  call dfm_util_$find_key (dfm_datap, dfm_data.fiocb_ptr,
@@ -430,6 +447,7 @@ list: entry (P_sci_ptr, P_dfm_infop);
          dfm_data.page_no = 0;
       end;
 
+      dfm_data.deckfile_sw = true;			/* deckfile is required */
 
       call get_files;
       call ssu_$get_temp_segment (sci_ptr, "catalog keys", dfm_data.lcatp); /* get temp seg for catalog keys */
@@ -611,7 +629,7 @@ load_from_diskette: entry (P_sci_ptr, P_dfm_infop);
 
 /* attach and open needed files */
 
-
+      dfm_data.deckfile_sw = true;			/* deckfile is required */
       call get_files;
       call dfm_util_$mca_attach (dfm_datap, mca_id);
 
@@ -783,6 +801,10 @@ load_from_tape: entry (P_sci_ptr, P_dfm_infop);
          call ssu_$arg_ptr (sci_ptr, j, ap, al);
          if index (arg, "-") ^= 1 then do;		/* must be tape name */
 	  dfm_data.t_att_desc = "tape_nstd_ " || arg;	/* start attach description */
+
+	  if tdec = 6250 | tdec = 1600 | tdec = 800 | tdec = 556 | tdec = 200 then
+	     dfm_data.t_att_desc = rtrim (dfm_data.t_att_desc) || " -density " || ltrim (char (tdec));
+
 	  tape_name = before (arg, ",");		/* If comma, use stuff before */
 	  dfm_data.l_att_desc = "vfile_ " || tape_name;	/* start listing attach description */
          end;
@@ -800,6 +822,9 @@ load_from_tape: entry (P_sci_ptr, P_dfm_infop);
 	     call complain (dfm_datap, wrapup, code,
 	      "obtaining ""-copy"" tape reel specification.", "");
 	  c_att_desc = "tape_nstd_ " || arg;		/* generate initial copy attach description */
+
+	  if tdec = 6250 | tdec = 1600 | tdec = 800 | tdec = 556 | tdec = 200 then
+	     c_att_desc = rtrim (c_att_desc) || " -density " || ltrim (char (tdec));
 	  dfm_data.attach_copy = true;		/* set flag */
 	  dfm_data.firmware_sw = false;
          end;
@@ -811,6 +836,7 @@ load_from_tape: entry (P_sci_ptr, P_dfm_infop);
 	     call complain (dfm_datap, wrapup, error_table_$bad_arg,
 	      "obtaining ""-deckfile"" specification.", "");
 	  else deckfile_path = arg;
+	  dfm_data.deckfile_sw = true;
          end;
 
          else if arg = "-density" | arg = "-den" then do;	/* next arg must be density value */
@@ -823,10 +849,11 @@ load_from_tape: entry (P_sci_ptr, P_dfm_infop);
 	  if code ^= 0 then go to bad_arg;
 	  if tdec = 6250 | tdec = 1600 | tdec = 800 | tdec = 556 | tdec = 200 then do;
 	     if dfm_data.attach_copy then do;		/* if setting density on copy tape */
-	        c_att_desc = rtrim (c_att_desc) || " -density " || arg;
+	        c_att_desc = rtrim (c_att_desc) || " -density " || ltrim (char (tdec));
 	        cd_sw = true;			/* set indicator */
 	     end;
-	     else dfm_data.t_att_desc = rtrim (dfm_data.t_att_desc) || " -density " || arg;
+	     if dfm_data.tape_name ^= "" then
+	        dfm_data.t_att_desc = rtrim (dfm_data.t_att_desc) || " -density " || ltrim (char (tdec));
 	  end;
 	  else go to bad_arg;			/* make him get it right */
          end;
@@ -852,6 +879,14 @@ load_from_tape: entry (P_sci_ptr, P_dfm_infop);
 bad_arg:	  call complain (dfm_datap, wrapup, error_table_$bad_arg, "^a", arg);
          end;
       end;
+
+      if ^dfm_data.attach_copy			/* if ^copy */
+       & ^dfm_data.deckfile_sw			/* & ^deckfile */
+       & ^dfm_data.firmware_sw			/* & ^firmware only */
+       then dfm_data.deckfile_sw = true;		/* default is to use the deckfile */
+
+      if ^dfm_data.firmware_sw & dfm_data.deckfile_sw	/* if ^firmware & deckfile */
+       then dfm_data.firmware_sw = true;		/* default is to create firmware segs */
 
       if dfm_data.tape_name = "" then do;
          call complain (dfm_datap, print, error_table_$noarg,
@@ -914,6 +949,7 @@ bad_arg:	  call complain (dfm_datap, wrapup, error_table_$bad_arg, "^a", arg);
 	        else do;				/* no errors form catalog name */
 		 do i = cata.n_entries to 1 by -1 while (index (cata.key (i), ".") > 4);
 		 end;				/* find first firmware deck */
+		 cata.n_entries = cata.n_entries + 1;
 		 dfm_data.cat_key = rtrim (dfm_data.cat_key)
 		  || substr (cata.key (i + 1), 8, 6) || "." || substr (cata.key (i + 1), 20, 2);
 	        end;
@@ -932,7 +968,7 @@ bad_arg:	  call complain (dfm_datap, wrapup, error_table_$bad_arg, "^a", arg);
 
 	  else if dfm_data.fnp_tape			/* no applicability check for fnp decks */
 	   | (dfm_util_$ck_applic (dfm_datap)		/* check for Multics applicibilty */
-	   & ^dfm_data.firmware_sw) then
+	   & dfm_data.deckfile_sw) then
 	     call file_deck (dfm_data.bptr, dfm_data.dlen * 4); /* just loading firmware, don't insert deck into deckfile */
 
          end;
@@ -1113,6 +1149,8 @@ patch_deck: entry (P_sci_ptr, P_dfm_infop);
       df_keys.n_entries = 0;				/* initialy set to 0 entries */
       lcata.n_entries = 0;
 
+      dfm_data.deckfile_sw = true;			/* deckfile is required */
+
       call get_files;
 
       call dfm_util_$get_cata (dfm_datap, dfm_data.fiocb_ptr, "ls.cata.ifad.list", dfm_data.lcatp, dfm_data.lksp, code);
@@ -1285,23 +1323,25 @@ add_name: proc (aname);
 dcl  aname char (*);
 
 
-      call hcs_$chname_file (dkf_dir (1), dkf_entry (1), "", rtrim (aname) || ".deckfile", code);
-      if code ^= 0 & code ^= error_table_$segnamedup then
-         call complain (dfm_datap, wrapup, code, "adding name ^a^/^-to ^a>^a",
-	rtrim (aname) || ".deckfile", dfm_data.dir, dfm_data.entry);
+      if dfm_data.deckfile_sw then do;
+         call hcs_$chname_file (dkf_dir (1), dkf_entry (1), "", rtrim (aname) || ".deckfile", code);
+         if code ^= 0 & code ^= error_table_$segnamedup then
+	  call complain (dfm_datap, wrapup, code, "adding name ^a^/^-to ^a>^a",
+	   rtrim (aname) || ".deckfile", dfm_data.dir, dfm_data.entry);
 
-      if ^dfm_data.bf_sw & code = 0 then
-         call complain (dfm_datap, print, 0, "added name ^a^/^-to ^a>^a",
-	rtrim (aname) || ".deckfile", dfm_data.dir, dfm_data.entry);
+         if ^dfm_data.bf_sw & code = 0 then
+	  call complain (dfm_datap, print, 0, "added name ^a^/^-to ^a>^a",
+	   rtrim (aname) || ".deckfile", dfm_data.dir, dfm_data.entry);
 
-      call hcs_$chname_file (lsf_dir, lsf_entry, "", rtrim (aname) || ".list", code);
-      if code ^= 0 & code ^= error_table_$segnamedup then
-         call complain (dfm_datap, wrapup, code, "adding name ^a^/^-to ^a>^a",
-	rtrim (aname) || ".list", lsf_dir, lsf_entry);
+         call hcs_$chname_file (lsf_dir, lsf_entry, "", rtrim (aname) || ".list", code);
+         if code ^= 0 & code ^= error_table_$segnamedup then
+	  call complain (dfm_datap, wrapup, code, "adding name ^a^/^-to ^a>^a",
+	   rtrim (aname) || ".list", lsf_dir, lsf_entry);
 
-      if ^dfm_data.bf_sw & code = 0 then
-         call complain (dfm_datap, print, 0, "added name ^a^/^-to ^a>^a",
-	rtrim (aname) || ".list", lsf_dir, lsf_entry);
+         if ^dfm_data.bf_sw & code = 0 then
+	  call complain (dfm_datap, print, 0, "added name ^a^/^-to ^a>^a",
+	   rtrim (aname) || ".list", lsf_dir, lsf_entry);
+      end;
    end add_name;
 
 %page;
@@ -1313,17 +1353,19 @@ file_deck: proc (fptr, dlen);
 dcl  dlen fixed bin (21);
 dcl  fptr ptr;
 
-      if dfm_data.lft then
-         if cata.n_entries = 0 then do;
-	  call dfm_util_$get_cata (dfm_datap, dfm_data.fiocb_ptr, "cata." || rtrim (dfm_data.cat_key),
-	   dfm_data.catp, dfm_data.cksp, code);
-	  if code ^= 0 then call complain (dfm_datap, wrapup, code,
-	      "Attempting to do a get catalog for cata.^a", rtrim (dfm_data.cat_key));
-         end;
+      if dfm_data.lft
+       & cata.n_entries = 0 then do;
+         call dfm_util_$get_cata (dfm_datap, dfm_data.fiocb_ptr, "cata." || rtrim (dfm_data.cat_key),
+	dfm_data.catp, dfm_data.cksp, code);
+         if code ^= 0 then call complain (dfm_datap, wrapup, code,
+	   "Attempting to do a get catalog for cata.^a", rtrim (dfm_data.cat_key));
+      end;
 
       call dfm_util_$make_key (dfm_datap);		/* produce insertion key */
+
       call dfm_util_$insert_deck (dfm_datap, dfm_data.fiocb_ptr,
        fptr, dlen, dfm_data.current_key);		/* copy current deck into deckfile */
+
       call dfm_util_$update_list (dfm_datap, data_list_type); /* add current deck entry to listing file */
 
    end file_deck;
@@ -1338,7 +1380,7 @@ get_files: proc ();
 
 /* attach and open tandd_deck_file */
 
-      if ^dfm_data.mdf then do;
+      if dfm_data.deckfile_sw then do;
          if deckfile_path ^= "" then do;
 	  if deckfile_path = "-working_dir"
 	   | deckfile_path = "-wd" then
@@ -1377,7 +1419,7 @@ get_files: proc ();
 
 /* attach and open tandd_deck_files for merging */
 
-      else do;
+      else if dfm_data.mdf then do;
          do i = lbound (dkf_path, 1) to hbound (dkf_path, 1) while (dkf_path (i) ^= "");
 	  call expand_pathname_ ((dkf_path (i)), dkf_dir (i), dkf_entry (i), code);
 	  if code ^= 0 then call complain (dfm_datap, wrapup, code,
@@ -1422,14 +1464,15 @@ get_files: proc ();
 
       if dfm_data.attach_copy then do;			/* only attach copy if indicated */
          call dfm_util_$open_file (dfm_datap, "copy_sw",
-	rtrim (c_att_desc) || "-write", Sequential_output, dfm_data.ciocb_ptr);
+	rtrim (c_att_desc) || " -write", Sequential_output, dfm_data.ciocb_ptr);
       end;
 
 
 /* attach and open listing file */
 
 
-      if ^dfm_data.firmware_sw & ^dfm_data.terminal_out then do;
+      if (dfm_data.deckfile_sw | dfm_data.mdf)
+       & ^dfm_data.terminal_out then do;
 
          if of_dir ^= "" then lsf_dir = of_dir;
          else if dkf_dir (1) ^= "" then lsf_dir = dkf_dir (1);

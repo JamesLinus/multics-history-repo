@@ -1,9 +1,12 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1989   *
+        *                                                         *
+        * Copyright, (C) Honeywell Bull Inc., 1989                *
+        *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1986 *
         *                                                         *
         *********************************************************** */
-
 
 /****^  HISTORY COMMENTS:
   1) change(86-08-21,Fakoury), approve(86-08-21,MCR7515),
@@ -15,6 +18,20 @@
   3) change(87-01-22,Fakoury), approve(87-01-22,MCR7515),
      audit(87-01-22,Martinson), install(87-01-23,MR12.0-1291):
      Fixed a problem encountered merging a deckfile that contained a patch.
+  4) change(88-05-30,Fakoury), approve(90-10-03,MCR8147),
+     audit(90-10-03,Parisek), install(90-10-25,MR12.4-1049):
+     to Fixed a bug in the merging of a deleted file.
+  5) change(89-02-06,Fakoury), approve(90-10-03,MCR8147),
+     audit(90-10-03,Parisek), install(90-10-25,MR12.4-1049):
+     to to increase block count size and to allow a tape copy to be run
+     without using a deck_file or list segment.
+  6) change(89-06-01,Fakoury), approve(90-10-03,MCR8147),
+     audit(90-10-03,Parisek), install(90-10-25,MR12.4-1049):
+     to to increase the size of att_desc from 64 to 181 for TR21336.
+  7) change(90-10-30,Fakoury), approve(90-11-28,MCR8219),
+     audit(90-11-28,Schroth), install(90-11-28,MR12.4-1051):
+     PBF correction to previous installation: correct and cleanup logic in
+     ck_applic internal proc.
                                                    END HISTORY COMMENTS */
 
 /* format: style4,ifthenstmt,ifthen,ind3,ll125,lineconind1 */
@@ -26,9 +43,9 @@ dfm_util_: proc ();
 /* AUTOMATIC */
 
 dcl  at_bot bit (1);
-dcl  att_desc char (64);
+dcl  att_desc char (181);
 dcl  bcard bit (540);				/* binary card */
-dcl  bcnt fixed bin;				/* block count */
+dcl  bcnt fixed bin (18);				/* block count */
 dcl  bcwp ptr;					/* block cont word p */
 dcl  bit_count fixed bin (24);
 dcl  c_rtrycnt fixed bin;				/* copy retry count */
@@ -100,6 +117,8 @@ dcl  yes_sw bit (1);
 
 dcl  addr builtin;
 dcl  addrel builtin;
+dcl  after builtin;
+dcl  before builtin;
 dcl  bin builtin;
 dcl  char builtin;
 dcl  convert builtin;
@@ -326,15 +345,15 @@ ck_applic: entry (P_dfm_datap) returns (bit (1));
       else do;					/* Multics applicable */
          if o_card.library = "hmpcj1" then do;		/* if itr, mdr or firmware deck */
 	  if id_blk.type = "mdr" then			/* if current deck an mdr */
-	     if dfm_data.firmware_sw then do;
+	     if dfm_data.firmware_sw & ^dfm_data.deckfile_sw then do;
 	        dfm_data.eot = true;			/* and we are only loading firmware, thats it */
 	        return (false);
 	     end;
 	     else ;
-	  else if id_blk.type ^= "itr" then		/* else if firmware deck */
-	     if ^dfm_data.deckfile_sw then		/* and not just loading deckfile */
-	        call ld_fw_deck (dfm_data.bptr);	/* go load core image for BOS */
-	  if ^dfm_data.first_deck & ^dfm_data.firmware_sw then do; /* if first deck of current file */
+	  else if id_blk.type ^= "itr"		/* else if firmware deck */
+	   & dfm_data.firmware_sw then		/* and not just loading deckfile */
+	     call ld_fw_deck (dfm_data.bptr);		/* go load core image for BOS */
+	  if ^dfm_data.first_deck then do;		/* if first deck of current file */
 	     dfm_data.cat_build, dfm_data.first_deck = true; /* set flag so we don't come back */
 	     cata.n_entries = 0;			/* reset number of catalog entries */
 	     dfm_data.cat_key = id_blk.type || ".";	/* form suffix part of catalog key */
@@ -602,7 +621,8 @@ find_dkend: entry (P_dfm_datap, work_key, pptr, npatches, rcode);
 		  substr (lbuff, 1, index (lbuff, rtrim (work_key)) + length (rtrim (work_key))),
 		  addr (rsi.descriptor) -> rs_desc.comp_num, fixed (rel (rsi.record_ptr), 18),
 		  rsi.record_length, (p_blk.p_cnt > 0), substr (dfm_data.time_string, 1, 20));
-		 call insert_deck (dfm_datap, dfm_data.fiocb_ptr, dfm_data.lbuff_p, lbuff_len, (dfm_data.list_key));
+		 call insert_deck (dfm_datap, dfm_data.fiocb_ptr, dfm_data.lbuff_p,
+		  lbuff_len, (dfm_data.list_key));
 		 free dfm_data.lbuff_p -> lbuff in (free_area);
 		 dfm_data.lbuff_p = null;
 		 if p_blk.p_cnt > 0 then
@@ -857,6 +877,8 @@ dcl  buf_len fixed bin (21);
 
       dfm_datap = P_dfm_datap;
 
+      if ^dfm_data.deckfile_sw & ^dfm_data.mdf then return; /* not using a deckfile - return */
+
       call iox_$seek_key (iocbp, work_key, rec_length, code); /* set key for insertion */
       if code ^= error_table_$no_record then do;		/* if record already exists */
          if code = 0 then do;				/* check for common itr */
@@ -1002,10 +1024,19 @@ merge_files: entry (P_dfm_datap, old_iocbp, new_iocbp);
 	  if code ^= 0 then
 	     call dfm_$complain (dfm_datap, wrapup, code, "attempting to find catalog for ^a", dfm_data.list_key);
 	  do j = 1 to lcata.n_entries;
-	     merge_key = substr (lcata.key (j), verify (lcata.key (j), "ls."));
+	     call iox_$seek_key (old_iocbp,		/* get the ls. key entry */
+	      rtrim (lcata.key (j)), rec_len, code);
+	     if code ^= 0 then
+	        call dfm_$complain (dfm_datap, wrapup, code, "attempting to seek key ^a ", lcata.key (j));
+	     call iox_$read_record (old_iocbp, dfm_data.lbuff_p, rec_len, lbuff_len, code);
+	     if code ^= 0 then
+	        call dfm_$complain (dfm_datap, wrapup, code, "attempting to read a keyed record ^a", lcata.key (j));
 
-	     if index (merge_key, ".hdr") = 0		/* if not hdr */
-	      & index (merge_key, ".P.") = 0 then do;	/* or patch headr move data */
+	     if index (lbuff, "DELETED") = 0
+	      & index (lcata.key (j), ".hdr") = 0	/* if not hdr */
+	      & index (lcata.key (j), ".P.") = 0 then do; /* or patch headr move data */
+	        merge_key = substr (lcata.key (j), verify (lcata.key (j), "ls."));
+
 	        call iox_$seek_key (old_iocbp, merge_key, rec_length, code);
 	        if code ^= 0 then
 		 call dfm_$complain (dfm_datap, wrapup, code, "attempting to seek key ^a ", merge_key);
@@ -1014,21 +1045,10 @@ merge_files: entry (P_dfm_datap, old_iocbp, new_iocbp);
 		 call dfm_$complain (dfm_datap, wrapup, code, "attempting to read a keyed record ^a", merge_key);
 	        call insert_deck (dfm_datap, new_iocbp, dfm_data.bptr, rec_len, merge_key);
 	        call iox_$control (new_iocbp, "record_status", addr (rsi), code); /* get record position */
-	     end;
-
-	     call iox_$seek_key (old_iocbp,		/* move the ls. key entry */
-	      rtrim (lcata.key (j)), rec_len, code);
-	     if code ^= 0 then
-	        call dfm_$complain (dfm_datap, wrapup, code, "attempting to seek key ^a ", lcata.key (j));
-	     call iox_$read_record (old_iocbp, dfm_data.lbuff_p, rec_len, lbuff_len, code);
-	     if code ^= 0 then
-	        call dfm_$complain (dfm_datap, wrapup, code, "attempting to read a keyed record ^a", lcata.key (j));
-
-	     if index (lcata.key (j), ".hdr") = 0	/* not header */
-	      & index (lcata.key (j), ".P.") = 0 then	/* and not patch - update list info */
 	        call ioa_$rs ("^a^86t^2d^5x^6o^4x^8d^/", lbuff, lbuff_len,
 	         substr (lbuff, 1, index (lbuff, rtrim (merge_key)) + length (rtrim (merge_key))),
 	         addr (rsi.descriptor) -> rs_desc.comp_num, fixed (rel (rsi.record_ptr), 18), rsi.record_length);
+	     end;
 	     else do;				/* update time & pathname */
 	        if after (lcata.key (j), ".hdr") = "1" then /* time */
 		 call ioa_$rs ("^a^61tTime - ^a", lbuff, lbuff_len,
@@ -1038,7 +1058,8 @@ merge_files: entry (P_dfm_datap, old_iocbp, new_iocbp);
 		  before (lbuff, "Stored"), dfm_data.dir, dfm_data.entry);
 	     end;
 
-	     call insert_deck (dfm_datap, new_iocbp, dfm_data.lbuff_p, lbuff_len, (lcata.key (j)));
+	     call insert_deck (dfm_datap, new_iocbp,	/* write the ls entry */
+	      dfm_data.lbuff_p, lbuff_len, (lcata.key (j)));
 	  end;
 	  call insert_deck (dfm_datap, new_iocbp, dfm_data.lcatp, length (unspec (lcata)), dfm_data.list_key);
          end;
@@ -1129,6 +1150,8 @@ print_list: entry (P_dfm_datap, iocbp, work_key);
 
 
       dfm_datap = P_dfm_datap;
+
+      if ^dfm_data.deckfile_sw & ^dfm_data.mdf then return;
 
       call iox_$position (iocbp, bof, 0, code);		/* position to beginning of file */
       if index (work_key, ".list") = 0 then
@@ -1661,7 +1684,7 @@ load_ident: proc;
 
 put_hdr: proc ();
 
-      if lcata.n_entries = 0 then do;
+      if lcata.n_entries = 0 & (dfm_data.deckfile_sw | dfm_data.mdf) then do;
          call get_cata (dfm_datap, dfm_data.fiocb_ptr,
 	"ls.cata." || dfm_data.ls_type || ".list", dfm_data.lcatp, dfm_data.lksp, code);
          if code ^= 0 then
@@ -1703,7 +1726,7 @@ put_hdr: proc ();
 	dfm_data.lib, hdrb1, hdrb2, dfm_data.list, ^dfm_data.fnp_tape, hdrb4, hdrb3);
       end;
 
-      do i = lbound (hbuff, 1) to hbound (hbuff, 1);
+      if dfm_data.deckfile_sw | dfm_data.mdf then do i = lbound (hbuff, 1) to hbound (hbuff, 1);
          header_key = "ls." || rtrim (dfm_data.lib_type) || "." || rtrim (dfm_data.dtype) || ".hdr" || ltrim (char (i));
          call insert_deck (dfm_datap, dfm_data.fiocb_ptr, addr (hbuff (i)),
 	length (rtrim (hbuff (i))), header_key);

@@ -5,6 +5,12 @@
   1) change(86-08-21,Fakoury), approve(86-08-21,MCR7515),
      audit(87-01-07,Farley), install(87-01-08,MR12.0-1263):
      Originally coded 0782 dfm_data.by Rick Fakoury for MR12.
+  2) change(88-06-10,Fakoury), approve(90-10-03,MCR8147),
+     audit(90-10-03,Parisek), install(90-10-25,MR12.4-1049):
+     Modified to add new diskettes to valid diskettes.
+  3) change(89-02-06,Fakoury), approve(90-10-03,MCR8147),
+     audit(90-10-03,Parisek), install(90-10-25,MR12.4-1049):
+     to to increase the size of att_desc from 64 to 181 for TR21336.
                                                    END HISTORY COMMENTS */
 
 
@@ -61,7 +67,7 @@ dcl  1 dfm_data based (dfm_datap),
        2 hpatches (10) like h_patch aligned,		/* hex patches */
        2 id_buf char (18) aligned,			/* buffer to hold current ident block image */
        2 infop ptr,					/* backward ptr to dfm_info structure */
-       2 l_att_desc char (64),			/* listing file attach description */
+       2 l_att_desc char (181),			/* listing file attach description */
        2 lbuff_p ptr,				/* ptr to a line buffer */
        2 lcatp ptr,					/* listing catalog ptr */
        2 lksp ptr,					/* listing key string pointer */
@@ -90,7 +96,7 @@ dcl  1 dfm_data based (dfm_datap),
        2 sstype char (5),				/* subsytem type */
        2 statp ptr,					/* status ptr */
        2 sub_ptr ptr,				/* substatus ptr */
-       2 t_att_desc char (64),			/* tape attach description */
+       2 t_att_desc char (181),			/* tape attach description */
        2 tape_name char (16),
        2 terminal_out bit (1),			/* output listing on terminal */
        2 tiocb_ptr ptr,				/* tape iocb ptr */
@@ -114,9 +120,9 @@ dcl  max_words_to_rd fixed bin (21) int static options (constant) init (16 * 102
 dcl  uc char (26) int static options (constant) init
       ("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
 
-dcl  valid_diskettes (12) char (5) static options (constant) init
-      ("con..", "fip..", "hsh..", "imu..", "ndi..", "psa..", "psi..", "pt1..",
-      "pt2..", "sel..", "urd..", "urp..");
+dcl  valid_diskettes (14) char (5) static options (constant) init
+      ("con..", "fip..", "hsh..", "idpm.", "imu..", "mhlp.", "ndi..",
+           "psa..", "psi..", "pt1..", "pt2..", "sel..", "urd..", "urp..");
 
 
 /* STRUCTURES and BASED VARIABLES */
