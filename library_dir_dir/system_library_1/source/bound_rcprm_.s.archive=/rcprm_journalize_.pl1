@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1992   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -16,6 +18,10 @@
   1) change(86-05-13,GJohnson), approve(86-05-13,MCR7387),
      audit(86-05-13,Martinson), install(86-05-14,MR12.0-1056):
      Correct error message documentation.
+  2) change(92-09-23,Zimmerman), approve(92-09-23,MCR8267),
+     audit(92-10-26,Schroth), install(92-10-27,MR12.5-1041):
+     Fix journal list traversal problems encountered when date deleting
+     journals. (phx18654)
                                                    END HISTORY COMMENTS */
 
 
@@ -226,7 +232,7 @@ dcl	code		   fixed bin (35) parameter;
 
 dcl	from_journal_name	   char (32);
 dcl	to_journal_name	   char (32);
-dcl	repl_name		   char (32);
+
 
 dcl	1 cbi		   like create_branch_info aligned automatic;
 
@@ -363,6 +369,7 @@ dcl	code		   fixed bin (35) parameter;
 /* automatic */
 
 dcl	action		   fixed bin;
+dcl       done                   bit (1) aligned;
 dcl	from_time		   fixed bin (71);
 dcl	eoj		   bit (1) aligned;
 dcl	(i, j, k)		   fixed bin;
@@ -373,6 +380,7 @@ dcl	rcp_priv_was_on	   fixed bin (35);
 dcl	reclen		   fixed bin (21);
 dcl	switch_ptr	   pointer;
 dcl	syserr_called	   bit (1) aligned;
+dcl       tjournalp              pointer;
 dcl	tsw_attach_ptr	   pointer;
 dcl	who_am_i		   char (64);
 
@@ -436,17 +444,36 @@ dcl	1 registry_data	   (n_resources) aligned,	/* automatic adjustable */
 
 /* Find the journal and scoot back to the proper time. */
 
-	     call find_journal (""b, code);
+	     call find_journal (""b, code);		/* find the current journal */
 	     if code ^= 0 then
 		call audit ("");
 
-	     do while (journal.previous_journal_name ^= "");
-						/* find the first journal */
+	     done = "0"b;
+	     tjournalp = null ();
+
+	     do while (^done);			/* find older journals */
+		tjournalp = journalp;		/* keep track of the journal we've currently got
+						   so we don't loose it when we go looking for
+						   the next one */
 		call find_previous_journal (code);
-		call terminate_file_ (journalp, (0), TERM_FILE_TERM, code);
+		if code = 0 then do;
+		     call terminate_file_ (tjournalp, (0), TERM_FILE_TERM, code);
 						/* no longer interested in the last one. */
-		if code ^= 0 then
-		     call audit ("");
+		     if code ^= 0 then
+			call audit ("");
+		     if journal.previous_journal_name = "" then
+			done = "1"b;  /* end of the list */
+		end;
+		else do; 
+		     /*** The list was improperly terminated, either by
+			some form of crash damage or by someone deleting
+			the journals by hand.  If the former, it will be
+			caught and handled in the next code block.  If the
+			latter, everything should still work o.k....   */
+		     journalp = tjournalp;		/* journalp now points at something useful, the oldest */
+		     done = "1"b;
+		end;
+		
 	     end;
 
 /* We must make ABSOLUTELY SURE that no operations had been performed on any
@@ -665,8 +692,8 @@ dcl	new_name		   char (32);
 	     eoj = "1"b;
 	     return;
 	end;
-
-	call initiate_file_ (system_dir, new_name, RW_ACCESS, journalp, (0), code);
+	journal_dir = pathname_ (system_dir, "journals");
+	call initiate_file_ (journal_dir, new_name, RW_ACCESS, journalp, (0), code);
 	if code ^= 0 then do;
 	     call admin_gate_$syserr_error_code (BEEP, code, "RCP: Cannot initiate journal ^a.",
 		pathname_ (system_dir, new_name));
@@ -853,6 +880,3 @@ dcl	a_registry_name	   char (*);
    END MESSAGE DOCUMENTATION */
 
      end rcprm_journalize_;
-
-
-
