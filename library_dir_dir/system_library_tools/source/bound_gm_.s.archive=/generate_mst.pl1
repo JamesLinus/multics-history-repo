@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1992   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -31,6 +33,10 @@
      audit(88-05-31,Fawcett), install(88-07-05,MR12.2-1053):
      Corrected default_rpv_data code to not require a symbol name
      as part of the statement, as the documentation states.
+  6) change(92-09-21,Schroth), approve(92-10-15,MCR8275),
+     audit(92-10-15,WAAnderson), install(92-10-21,MR12.5-1033):
+     Corrected uninitialized variable error that was causing tapes to be left
+     mounted.  phx21281.
                                                    END HISTORY COMMENTS */
 
 
@@ -315,7 +321,7 @@ dcl  cleanup condition;
 
 /* preliminary work */
 
-	sysid_hit, versid_hit, db_hit, dr_hit, do_hit = "0"b;
+	sysid_hit, versid_hit, db_hit, dr_hit, do_hit, hd_hit = "0"b;
 	call cu_$arg_count (acount);
 	do i = 1 to acount;				/* fetch arguments */
 	     call cu_$arg_ptr (i, argp (i), argl (i), code);
