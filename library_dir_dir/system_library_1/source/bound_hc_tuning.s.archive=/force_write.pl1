@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1992   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -8,6 +10,18 @@
         * Technology and Honeywell Information Systems, Inc.      *
         *                                                         *
         *********************************************************** */
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(92-09-16,WAAnderson), approve(92-09-16,MCR8261),
+     audit(92-09-24,Vu), install(92-10-23,MR12.5-1040):
+     The values sst$fw_none and sst$force_pwrites were not being updated
+     correctly due to the uninitialized variable num_writ in WRITE_ONE_SEGMENT.
+     It was possible to use the value to determine the actions taken by a
+     conditional statement and used in a calculation before it was ever set.
+                                                   END HISTORY COMMENTS */
 
 
 /* format: style3 */
@@ -63,14 +77,10 @@ dcl	1 Flush		aligned like flush based (Flushp);
 
 /*  External  */
 
-dcl	dseg$		(0:1023) fixed bin (71) external static;
 dcl	error_table_$argerr fixed bin (35) external static;
-dcl	error_table_$bad_ring_brackets
-			fixed bin (35) external static;
 dcl	error_table_$dirseg fixed bin (35) external static;
 dcl	error_table_$invalidsegno
 			fixed bin (35) external static;
-dcl	error_table_$moderr fixed bin (35) external static;
 dcl	error_table_$unimplemented_version
 			fixed bin (35) external static;
 dcl	pds$force_write_limit
@@ -103,13 +113,13 @@ dcl	update_vtoce	entry (ptr);
 dcl	addr		builtin;
 dcl	addrel		builtin;
 dcl	baseno		builtin;
-dcl	binary		builtin;
-dcl	bit		builtin;
+dcl	baseptr		builtin;
 dcl	fixed		builtin;
+dcl	hbound		builtin;
 dcl	min		builtin;
 dcl	null		builtin;
 dcl	string		builtin;
-
+dcl	unspec		builtin;
 
 %page;
 
@@ -247,12 +257,12 @@ dcl	page_no		fixed bin;
 dcl	phm_bit		bit (1) aligned;
 dcl	ptp		pointer;
 dcl	segno		fixed bin (17);
-dcl	1 sdwi		aligned like sdw_info automatic;
 dcl	tuid		bit (36) aligned;
 
 
 
 	Code = 0;
+	num_writ = 0;
 	segno = fixed (baseno (segp));		/* Get segno */
 	kstp = pds$kstp;
 	force_write_limit = pds$force_write_limit (pds$validation_level);
@@ -385,9 +395,5 @@ ret:
 %page; %include flush_structures;
 %page; %include force_write_flags;
 %page; %include kst;
-%page; %include sdw_info;
 
 	end force_write;
-
-
-
