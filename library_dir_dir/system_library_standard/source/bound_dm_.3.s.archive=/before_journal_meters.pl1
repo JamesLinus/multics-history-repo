@@ -1,8 +1,27 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1984 *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1984 *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(90-09-10,Zimmerman), approve(90-09-10,MCR8199),
+     audit(90-10-12,Gray), install(90-10-16,MR12.4-1043):
+     Cause -rr and -rs to reset metering time, generate stats in absence of
+     before_journal, correct attemp to print no-existant data when process is
+     non-priveledged.
+                                                   END HISTORY COMMENTS */
+
+
+
+
 
 /* DESCRIPTION:
    before_journal_meters - command level interface to bjm_get_journal_status
@@ -136,7 +155,7 @@ bjmt:
 	dcl     dm_error_$system_not_initialized
 				 fixed bin (35) ext static;
 	dcl     error_table_$bad_arg	 fixed bin (35) ext static;
-
+          dcl     error_table_$no_info   fixed bin (35) ext static;
 
 /* Internal Static */
 
@@ -221,6 +240,9 @@ arg_processing_loop:
 		call metering_util_$fill_buffers (Region_id, binary_time, ascii_time, new_ptr, old_ptr, status_code);
 		if status_code = 0
 		then metering_regions_filled = "1"b;
+		else if status_code ^= error_table_$no_info 
+		     then call com_err_ (MY_NAME,status_code," :unable to load system meter buffers. ");
+		
 	     end;
 	else /* status_code set in prev do group */
 	     call ERROR_RETURN (status_code, "^/Undefined metering regions.");
@@ -292,7 +314,10 @@ should_we_reset_meters:
 		then free Saved_bj_status_ptr -> bj_status;
 		call before_journal_manager_$get_journal_status ("", "system", area_ptr, Saved_bj_status_ptr,
 		     Saved_bj_global_meters_ptr, status_code);
+		Saved_bj_global_meters_ptr -> bj_global_meters.time_of_bootload = clock();
 		call metering_util_$reset (Region_id, status_code);
+		if status_code ^= 0 then call com_err_(status_code, " reported by metering_util_$reset while attempting to reset meters.");
+		
 	     end;
 
 MAIN_RETURN:
@@ -436,6 +461,8 @@ PRINT_ONE_JOURNAL:
 	dcl     saved_journal_index	 fixed bin;
 	dcl     time_stamp		 char (24);
 	dcl     auth_string		 char (24);
+          dcl     Temp_status_ptr        ptr;
+     
 
 /* if the status is from an inactive journal, we don't print it */
 
@@ -459,21 +486,45 @@ PRINT_ONE_JOURNAL:
 
 /* search for the given journal in the saved copy - openings may have changed */
 
-	do saved_journal_index = 1 to bj_status_ptr -> bj_status.n_journals
+	do saved_journal_index = 1 to Saved_bj_status_ptr -> bj_status.n_journals
 	     while (Saved_bj_status_ptr -> bj_status.journal (saved_journal_index).bj_uid
 	     ^= bj_status_ptr -> bj_status.journal (p_bj_status_index).bj_uid);
 	end;
 
-	if saved_journal_index = bj_status_ptr -> bj_status.n_journals + 1
-	then do saved_journal_index = 1 to bj_status_ptr -> bj_status.n_journals
+	if saved_journal_index = Saved_bj_status_ptr -> bj_status.n_journals + 1
+	then do saved_journal_index = 1 to Saved_bj_status_ptr -> bj_status.n_journals
 		while (Saved_bj_status_ptr -> bj_status.journal (saved_journal_index).bj_uid ^= ""b);
 	     end;
 
-	if saved_journal_index = bj_status_ptr -> bj_status.n_journals + 1
-	then call ERROR_RETURN (0, "^/Unable to get space for meters of ^a^[>^]^a.",
-		bj_status_ptr -> bj_status.journal (saved_journal_index).dir,
-		(bj_status_ptr -> bj_status.journal (saved_journal_index).dir ^= ">"),
-		bj_status_ptr -> bj_status.journal (saved_journal_index).entry);
+
+
+/* Create a zero saved journal entry so that we can get some sort of stats out. */
+
+	if saved_journal_index = Saved_bj_status_ptr -> bj_status.n_journals + 1
+
+	then do;
+
+
+		bj_status_n_journals = Saved_bj_status_ptr -> bj_status.n_journals +1;
+		allocate bj_status set (Temp_status_ptr);
+		do journal_index = 1 to bj_status_n_journals -1;
+
+		     Temp_status_ptr -> bj_status.journal(journal_index) = Saved_bj_status_ptr -> bj_status.journal (journal_index);
+		    Temp_status_ptr -> bj_status.journal(journal_index).dir = Saved_bj_status_ptr -> bj_status.journal (journal_index).dir;
+		    Temp_status_ptr -> bj_status.journal(journal_index).entry = Saved_bj_status_ptr -> bj_status.journal (journal_index).entry;
+		   Temp_status_ptr -> bj_status.journal(journal_index).bj_uid =  Saved_bj_status_ptr -> bj_status.journal (journal_index).bj_uid;
+
+		end;
+
+		free Saved_bj_status_ptr -> bj_status;
+		Saved_bj_status_ptr = Temp_status_ptr;
+
+		unspec (Saved_bj_status_ptr -> bj_status.journal (bj_status_n_journals)) = ""b;
+		Saved_bj_status_ptr -> bj_status.journal (bj_status_n_journals).dir = "";
+		Saved_bj_status_ptr -> bj_status.journal (bj_status_n_journals).entry = "";
+		Saved_bj_status_ptr -> bj_status.journal (journal_index).bj_uid =
+		     bj_status_ptr -> bj_status.journal (journal_index).bj_uid;
+	     end;
 
 
 /* at this point we have found the entry in the saved meters */
@@ -537,15 +588,18 @@ PRINT_ONE_JOURNAL:
 	call ioa_ ("avg bytes/transaction^31t^i", avg_n_bytes_per_txn);
 	call ioa_ ("avg control intervals/recycle^31t^i", avg_n_ci_per_recycle);
 
-	dm_per_journalp = addr (dm_journal.per_journal (bj_status_ptr -> bj_status.journal (p_bj_status_index).bj_ix));
-	call date_time_ (dm_per_journal.time_stamp, time_stamp);
-	call convert_access_class_$to_string (dm_per_journal.access_class, auth_string, status_code);
+	if metering_regions_filled
+	     then do;
+	     dm_per_journalp = addr (dm_journal.per_journal (bj_status_ptr -> bj_status.journal (p_bj_status_index).bj_ix));
+	     call date_time_ (dm_per_journal.time_stamp, time_stamp);
+	     call convert_access_class_$to_string (dm_per_journal.access_class, auth_string, status_code);
 
-	call ioa_ ("time stamp^31t^a", time_stamp);
-	call ioa_ ("pages currently held^31t^i", dm_per_journal.n_held);
-	if (status_code = 0) & (auth_string ^= "")
-	then call ioa_ ("authorization^31t^a", auth_string);
-
+	     call ioa_ ("time stamp^31t^a", time_stamp);
+	     call ioa_ ("pages currently held^31t^i", dm_per_journal.n_held);
+	     if (status_code = 0) & (auth_string ^= "")
+		then call ioa_ ("authorization^31t^a", auth_string);
+	end;
+	
 	return;
 
      end PRINT_ONE_JOURNAL;
