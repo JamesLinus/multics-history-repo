@@ -1,36 +1,39 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   * Copyright (c) 1972 by Massachusetts Institute of        *
-   * Technology and Honeywell Information Systems, Inc.      *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
 
 
 /****^  HISTORY COMMENTS:
-  1) change(74-01-01,Klinger), approve(), audit(),
-     install(85-12-19,MR12.0-1003):
+  1) change(74-01-01,Klinger), approve(85-01-14,MCR7139),
+     audit(85-12-16,GDixon), install(85-12-19,MR12.0-1003):
       Written 1974 by Ross Klinger.
-  2) change(75-08-16,Grady), approve(), audit(), install(85-12-19,MR12.0-1003):
-      Modified by Mike Grady to add -ordered_fields.
-  3) change(82-05-11,GDixon), approve(), audit(),
+  2) change(75-08-16,Grady), approve(85-01-14,MCR7139), audit(85-12-16,GDixon),
      install(85-12-19,MR12.0-1003):
+      Modified by Mike Grady to add -ordered_fields.
+  3) change(82-05-11,GDixon), approve(85-01-14,MCR7139),
+     audit(85-12-16,Unknown), install(85-12-19,MR12.0-1003):
       Modified by Gary Dixon to generalize -field, allow
       non_case_sensitive sorting, greater control over handling of
       duplicates, use of regular expression sort unit/field
       delimiters, etc.
-  4) change(83-06-01,Schimke), approve(), audit(),
-     install(85-12-19,MR12.0-1003):
+  4) change(83-06-01,Schimke), approve(85-01-14,MCR7139),
+     audit(85-12-16,GDixon), install(85-12-19,MR12.0-1003):
       Modified to fix an error in the -to regular expression handling code
       which was not stripping off the delimiters.
-  5) change(83-08-01,Schimke), approve(), audit(),
-     install(85-12-19,MR12.0-1003):
+  5) change(83-08-01,Schimke), approve(85-01-14,MCR7139),
+     audit(85-12-16,GDixon), install(85-12-19,MR12.0-1003):
       Modified by Dave Schimke to add -numeric and -integer global
       sort modes.  Renamed the -segment and -sm control args to
       -output_file and -of.
-  6) change(84-04-05,GDixon), approve(), audit(),
-     install(85-12-19,MR12.0-1003):
+  6) change(84-04-05,GDixon), approve(85-01-14,MCR7139),
+     audit(85-12-16,Unknown), install(85-12-19,MR12.0-1003):
       Modified by Gary Dixon to add the sort_strings (sstr) entrypoint.
   7) change(84-12-12,Lippard), approve(85-01-16,MCR7139),
      audit(85-12-16,GDixon), install(85-12-17,MR12.0-1001):
@@ -42,6 +45,9 @@
      audit(85-12-19,GDixon), install(85-12-19,MR12.0-1003):
       Modified to keep proper field count when multiple fields are specified
       after one -field control arg.
+  9) change(90-03-15,Vu), approve(90-03-15,MCR8162), audit(90-03-21,Kallstrom):
+      The sstr command fails when one of the strings to be sorted contains a
+      newline character.
                                                    END HISTORY COMMENTS */
 
 
@@ -892,6 +898,7 @@ Therefore the strings cannot be sorted.");
 	   if index(string,new_delimiter) + index(arg,new_delimiter) > 0 then
 	      go to NEED_NEW_DELIMITER;
 	   string = translate (string, new_delimiter, delimiter);
+             delimiter = new_delimiter;
 	   end;
 	if length(string) + length(arg) + length(delimiter) > MLstring then do;
 	   Serrors_are_fatal = TRUE;
