@@ -1,6 +1,11 @@
 /* BEGIN INCLUDE FILE mtape_dcls.incl.pl1. Created by J. A. Bush 04/20/83 */
 /* format: style4 */
 
+/****^  HISTORY COMMENTS:
+  1) change(00-01-26,Schroth), approve(00-01-26,MECR-Y2K):
+     Add declaration of pfm_utils_$label_unexpired for label date expiry checks
+                                                   END HISTORY COMMENTS */
+
 /* Usage: call mtape_$alloc (mtdp, type, link_tail, length, alloc_ptr); */
 dcl  mtape_$alloc entry (ptr, fixed bin, ptr, fixed bin (21), ptr);
 
@@ -51,6 +56,9 @@ dcl  pfm_utils_$file_search entry (ptr, ptr, ptr, fixed bin (35));
 /* Usage: call pfm_utils_$init_label_record (mtdp, link_tail, link_head, lr_ptr, length); */
 dcl  pfm_utils_$init_label_record entry (ptr, ptr, ptr, ptr, fixed bin (21));
 
+/* Usage: bool_unexpired = pfm_utils_$label_unexpired (label_date_string); */
+dcl  pfm_utils_$label_unexpired entry (char (*)) returns (bit (1) aligned);
+
 /* Usage: blk_yyddd = pfm_utils_$julian_date (date_time_string); */
 dcl  pfm_utils_$julian_date entry (char (*)) returns (char (6));
 
@@ -70,3 +78,6 @@ dcl  pfm_utils_$truncate_file_set entry (ptr);
 dcl  pfm_utils_$write_file_labels entry (ptr, fixed bin, fixed bin (35));
 
 /* END INCLUDE FILE mtape_dcls.incl.pl1 */
+
+
+   
