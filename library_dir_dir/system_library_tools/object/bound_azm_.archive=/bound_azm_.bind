@@ -1,0 +1,64 @@
+
+
+
+/* HISTORY COMMENTS:
+  1) change(87-07-18,GDixon), approve(88-06-21,MCR7861),
+     audit(88-07-08,Farley), install(88-07-12,MR12.2-1055):
+      A) Add copy_liveproc command to copy_deadproc object.
+                                                   END HISTORY COMMENTS */
+
+
+
+/* bind file for azm */
+/* Modified 09/16/83 by B. Braun */
+/* Modified 10/01/84 by B. Braun */
+
+Objectname:	bound_azm_;
+Addname:		analyze_multics,azm,
+		copy_deadproc,
+		copy_liveproc, 
+		hran_,
+		structure_find_,structure_lib_mgr_,structure_ref_;
+
+Global:		delete;
+
+
+objectname:	analyze_multics;
+retain:		analyze_multics,azm;
+synonym:		azm;
+
+objectname:	azm_display_am_;
+objectname:	azm_display_fdump_events;
+objectname:	azm_display_mc_;
+objectname:	azm_dump_mem_;
+objectname:	azm_find_mem_box_;
+objectname:	azm_requests_1_;
+objectname:	azm_requests_2_;
+objectname:	azm_requests_3_;
+objectname:	azm_address_space_;
+objectname:	azm_stack_requests_;
+objectname:	azm_pds_trace_;
+objectname:	azm_request_table_;
+objectname:	azm_pdir_rq_table_;
+objectname:	azm_ret_x7_stack_;
+objectname:	azm_stack_trace_;
+objectname:	azm_str_util_;
+objectname:	azm_syserr_;
+objectname:	azm_verify_dump_ams_;
+objectname:	azm_why_;
+objectname:	hran_;
+retain:		hran_, hranl, bos_no_thread, no_thread, hran_bos, hrlgnd, hrlgnd_dps8_, hrlgnd_l68_;
+objectname:	hran_l68_;
+objectname:	hran_dps8_;
+objectname:	structure_find_;
+retain:		search,pathname,pointer;
+objectname:	structure_lib_mgr_;
+retain:		next_segment,get_segment,get_segment_ptr;
+objectname:	structure_ref_;
+retain:		parse;
+objectname:	copy_deadproc;
+retain:		copy_deadproc, copy_liveproc;
+synonym:		copy_liveproc;
+objectname:	copy_pdir_;
+retain:		deadproc;
+/* end bind file */

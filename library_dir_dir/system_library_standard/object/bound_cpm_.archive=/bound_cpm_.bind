@@ -1,0 +1,54 @@
+
+/* bound_cpm_ -- The Multics Control Point Manager */
+
+/* HISTORY COMMENTS:
+  1) change(86-08-12,Kissel), approve(86-08-12,MCR7473),
+     audit(86-10-20,Fawcett), install(86-11-03,MR12.0-1206):
+     Written to support control point management in March 1985 by G. Palter.
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:	bound_cpm_;
+
+   Global:	   delete;
+   Perprocess_Static;
+
+   Addname:	   control_point_manager_call,
+		   cpmc,
+		   cpm_,
+		   cpm_data_,
+		   cpm_et_;
+
+   Order:		   cpm_et_,
+		   cpm_data_,
+		   cpm_,
+		   cpm_alm_,
+		   cpm_overseer_,
+		   cpm_initialize_,
+		   control_point_manager_call;
+
+
+/* Instructions for individual components */
+
+objectname:	control_point_manager_call;
+   synonym:	   cpmc;
+   retain:	   control_point_manager_call, cpmc;
+
+objectname:	cpm_;
+   retain:	   block, create, destroy, generate_call,
+		   generate_call_preferred, generate_call_when_ready,
+		   get_control_point_meters, get_preferred_control_point,
+		   get_scheduler_meters, get_user_cl_intermediary,
+		   pop_preferred_control_point,
+		   push_preferred_control_point, scheduler,
+		   set_preferred_control_point, set_user_cl_intermediary,
+		   start, stop, wakeup; 
+
+objectname:	cpm_data_;
+   retain:	   n_control_points;
+
+objectname:	cpm_et_;
+   global:	   retain;
+   delete:	   symbol_table;
+
+/* end; */

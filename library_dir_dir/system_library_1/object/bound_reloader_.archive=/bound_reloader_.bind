@@ -1,0 +1,65 @@
+/* Bindfile for bound_reloader_ */
+/* Modified: November 1980 by A. R. Downing to retain backup_util$idline */
+/* Modified: July 1982 by G. Palter to add backup_control_mgr_ */
+
+Objectname:	bound_reloader_;
+  Global:		  delete;
+
+/*  Addname:	  backup_load, backup_load_,
+		  bk_arg_reader_,
+		  backup_control_mgr_,
+		  backup_map_,
+		  bk_ss_,
+		  backup_util,
+		  bk_input,
+		  reload, iload, retrieve;  */
+
+  Order:		  bk_ss_,
+		  backup_load,
+		  backup_load_dir_list,
+		  bk_input,
+		  backup_util,
+		  backup_map_,
+		  bk_arg_reader_,
+		  bk_retrieve,
+		  backup_control_mgr_,
+		  reload;
+
+
+/* Entries for individual components */
+
+objectname:	backup_control_mgr_;	/* used by backup_dump_ */
+  retain:		  initiate, terminate;
+
+objectname:	backup_load;
+  synonym:	  backup_load_;
+  retain:		  backup_load, backup_load_;
+
+objectname:	backup_load_dir_list;
+
+objectname:	bk_arg_reader_;		/* used by bound_dumper_ */
+  global:		  retain;
+
+objectname:	backup_map_;		/* used by bound_dumper_ */
+  global:		  retain;
+
+objectname:	bk_ss_;			/* used by bound_dumper_ */
+  global:		  retain;
+
+objectname:	backup_util;
+  retain:		  get_real_name,		/* used by bound_dumper_ */
+		  idline;			/* used by copy_dump_tape */
+
+objectname:	bk_input;			/* used by carry_load */
+  retain:		  input_finish;
+
+objectname:	bk_retrieve;
+
+objectname:	reload;
+  synonym:	  iload, retrieve;
+  retain:		  iload, reload, retrieve, system_release;
+
+/* end; */
+
+
+

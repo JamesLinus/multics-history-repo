@@ -1,0 +1,35 @@
+/* Bindfile for bound_lang_tools_
+   RAB 4/21/74 */
+/* Modified: 17 Dec 1979 by PCK to add pl1_version tools	*/
+
+Global:		retain;
+
+Objectname:	bound_lang_tools_;
+
+Addname:		compile_messages, tmg, table, generate_compatible,
+		print_pl1_version, update_pl1_version, gen_pl1_version_;
+
+Order:		tmg,
+		compile_messages,
+		build_message_segment,
+		generate_compatible,
+		update_pl1_version,
+		gen_pl1_version_,
+		print_pl1_version;
+
+objectname:	tmg;
+   synonym:	table;
+
+objectname:	build_message_segment;
+    global:	delete;
+
+objectname:	generate_compatible;
+
+objectname:	print_pl1_version;
+
+objectname:	update_pl1_version;
+
+objectname:	gen_pl1_version_;
+
+
+

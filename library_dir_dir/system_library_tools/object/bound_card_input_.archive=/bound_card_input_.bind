@@ -1,0 +1,43 @@
+/* Bind file for bound_card_input_, created July 1975 by J. C. Whitmore */
+/* Modified Feb 1978 by J. C. Whitmore to add validate_card_input_ */
+/* Modified 1981*01*21 by Benson I. Margulies for reder_driver_ */
+
+Objectname:	bound_card_input_;
+
+Addname:		cards_overseer_,
+		reader_driver_,
+		read_cards_,
+		validate_card_input_,
+		clean_card_pool;
+
+Order:		read_cards_,
+		reader_driver_,
+		validate_card_input_,
+		cards_overseer_,
+		clean_card_pool;
+
+Global:		delete;
+
+objectname:	read_cards_;
+ retain:		read_cards_, set_station, set_rqt;
+
+objectname:	reader_driver_;
+ retain:		init, command, request;
+
+objectname:	validate_card_input_;
+ retain:		station, user, test;
+
+objectname:	cards_overseer_;
+ retain:		cards_overseer_, test;
+
+objectname:	clean_card_pool;
+ retain:		clean_card_pool,
+		test_card_pool,
+		clean_tape_pool,
+		test_tape_pool;
+ synonym:		test_card_pool,
+		test_tape_pool,
+		clean_tape_pool;
+
+/* END */
+

@@ -1,0 +1,39 @@
+"  ******************************************************
+"  *                                                    *
+"  *                                                    *
+"  * Copyright (c) 1972 by Massachusetts Institute of   *
+"  * Technology and Honeywell Information Systems, Inc. *
+"  *                                                    *
+"  *                                                    *
+"  ******************************************************
+
+	name	round_
+	entry	round_
+round_:	
+	fld	ap|2,*	get high-order fl.pt. number.
+	tze	store	special case if zero.
+	lrs	72	mantissa = 0 if +, -2**(-71) if -.
+	adla	128,dl	add 2**(-28) to mantissa.
+	dfad	ap|2,*	round d.p. fl.pt. number.
+store:	fst	ap|4,*	store rounded s.p. number.
+	short_return
+	entry	expon_
+expon_:	
+	lda	ap|2,*	get high-order fl.pt. number.
+	lrs	28	make exponent an integer.
+	qrl	8	then isolate high order mantissa.
+	stq	ap|2,*	store high-order mantissa.
+	sta	ap|4,*	store integer exponent.
+	short_return		number = mantissa * 2**exponent.
+	entry	adexp_
+adexp_:	
+	lda	ap|2,*	get high-order fl.pt. number.
+	lrs	28	make exponent an integer.
+	adla	ap|4,*	add power to exponent.
+	lrs	8	attach high-order mantissa.
+	stq	ap|2,*	store high-order result:
+	short_return		number * 2**power.
+	end
+
+
+

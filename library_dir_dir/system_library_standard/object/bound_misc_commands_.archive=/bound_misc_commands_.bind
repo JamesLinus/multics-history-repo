@@ -1,0 +1,205 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*					   */
+/* Name: bound_misc_commands_			   */
+/*					   */
+/* 1) Modified: 26 sept 1972 by R S Coren.	   */
+/* 2) Modified: 18 Jan 1973 by R Mullen.	   */
+/* 3) Modified: 11 July 1973 by P B Kelley - add     */
+/*	suffixed_name_			   */
+/* 3) Modified: 21 Aug 1973 by C L WONG	   	   */
+/* 5) Modified: 30 May 1974 by R E Klinger -         */
+/*              sort_file deleted                    */
+/* 6) Modified: by R.J.C. Kissel 11/11/76 to add     */
+/*    bcd_to_ascii_ and ebcdic8_to_ascii_            */
+/* 7) Modified: 761221 by PG to delete               */
+/* 	print_entry_usage.			   */
+/* 8) Modified Summer '77 R.E.Mullen merge_ascii	   */
+/* 9) Modified: by R.J.C. Kissel 09/21/77 to delete  */
+/*    bcd_to_ascii_ and gcos_cv_gebcd_to_ascii_, they*/
+/*     are moved to bound_tape_label_util_.	   */
+/* 10) Modified: by J. C. Whitmore 2/21/78 to add    */
+/*     rje_args and set_epilogue_command.	   */
+/*  11) Modified: by Ed Wallman, 05/79 to add	   */
+/*      the canonicalize_tabs_ entrypoint.	   */
+/*  12) Modified by D. Vinograd to add		   */
+/*      manage_volume_pool 11/79.		   */
+/*  13) Modified by Mike Grady, 4/80 to add	   */
+/*      exponent control entries		   */
+/*  14) Modified by W. Olin Sibert, 04/06/81, to	   */
+/*      add print_error_message                      */
+/*  15) Modified by Paul W. Benjamin, 04/08/82 to    */
+/*      add format_document_ and fdoc_et_.	   */
+/*  16) Modified by B. Braun, 03/19/84 to retain     */
+/*      force_allocate on manage_volume_pool_.       */
+/*  17) Modified by Gary C. Dixon,  05/08/84 to add  */
+/*      format_string command/af.		   */
+/*  18) Modified by Charlie Spitzer, 84-08-10 to     */
+/*      retain dump_segment_$string		   */
+/*					   */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+
+/* HISTORY COMMENTS:
+  1) change(86-04-08,Kissel), approve(86-07-30,MCR7476), audit(86-08-01,Ex),
+     install(86-08-19,MR12.0-1132):
+     Changed to retain the translate_bytes_to_hex9_ entry for use by others.
+     It used to be called translate_to_hex9.
+  2) change(88-04-28,GDixon), approve(88-08-15,MCR7969),
+     audit(88-08-03,Lippard), install(88-08-29,MR12.2-1093):
+      A) Add synonym statement to dump_segment for dump_seg_, dump_segment_,
+         ring_zero_dump and rzd.  This avoids error_table_$dup_ent_name
+         confusing dump_segment_$string with format_document_$string.
+         (Commands 467, phx20305)
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:	bound_misc_commands_;
+
+Order:		merge_ascii,
+		merge_ascii_,
+		ma_resynch_,
+		ma_analyze_,
+		ma_edit_,
+		compare,
+		walk_subtree,
+		indent,
+		suffixed_name_,
+		convert_characters,
+		enter_retrieval_request,
+		dump_segment,
+		translate_bytes_to_hex9_,
+		overlay,
+		canonicalize,
+		print_conv_,
+		rje_args,
+		manage_volume_pool,
+		set_epilogue_command,
+		exponent_control,
+		exponent_control_,
+		print_error_message,
+		format_string, 
+		format_document_,
+		fdoc_et_;
+
+Addname:		canonicalize_, canonicalize_tabs_,  /* pls keep names */
+		canonicalize, canon,	      /* alphabetized.  */
+		compare,
+		compare_ascii, cpa,
+		convert_characters, cvc,
+		dump_segment, ds,
+		dump_segment_, dump_seg_,
+		enter_retrieval_request, err,
+		exponent_control, exponent_control_,
+		fdoc_et_,
+		format_document_, 
+		format_string, fstr,
+		indent, ind,
+		manage_volume_pool, mvp,  
+		manage_volume_pool_, mvp_,
+		merge_ascii, ma,
+		overlay, ov,
+		print_conv_,
+		print_error_message, pel, pem, peo, peol,
+		ring_zero_dump, rzd,
+		rje_args,
+		set_epilogue_command,
+		suffixed_name_,
+		translate_bytes_to_hex9_,
+		walk_subtree, ws;
+
+Global:		delete;
+
+objectname:	compare;
+ retain:		compare;
+
+objectname:	merge_ascii;
+ synonym:		cpa, compare_ascii, ma;
+ retain:		compare_ascii, cpa, merge_ascii, ma;
+
+objectname:	merge_ascii_;
+
+objectname:	ma_resynch_;
+
+objectname:	ma_analyze_;
+
+objectname:	ma_edit_;
+
+objectname:	convert_characters;
+ synonym:		cvc;
+ retain:		convert_characters, cvc;
+
+objectname:	enter_retrieval_request;
+ retain:		enter_retrieval_request, err, test;
+ synonym:		err;
+
+objectname:	dump_segment;
+ synonym:		ds, dump_seg_, dump_segment_, ring_zero_dump, rzd;
+ retain:		dump_segment, ds, dump_seg_, dump_segment_, ring_zero_dump, rzd, string;
+
+objectname:	indent;
+ synonym:		ind;
+ retain:		indent,  ind;
+
+objectname:	suffixed_name_;
+ retain:		find,
+		make,
+		new_suffix;
+
+objectname:	translate_bytes_to_hex9_;
+ retain:		translate_bytes_to_hex9_;
+
+objectname:	walk_subtree;
+ synonym:		ws;
+ retain:		walk_subtree,
+		ws;
+
+objectname:	overlay;
+ synonym:		ov;
+ retain:		overlay, ov;
+
+objectname:	canonicalize;
+ synonym:		canon,
+		canonicalize_, canonicalize_tabs_;
+ retain:		canonicalize, canon,
+		canonicalize_, canonicalize_tabs_;
+
+objectname:	print_conv_;
+ retain:		print_conv_;
+
+objectname:	rje_args;
+ retain:		rje_args, set, list;
+
+objectname:	set_epilogue_command;
+ retain:		set_epilogue_command, do;
+
+objectname:	manage_volume_pool;
+ synonym:		manage_volume_pool_, mvp_, mvp;
+ retain:		manage_volume_pool, manage_volume_pool_, mvp, mvp_,
+		allocate, check_reserved, delete, free, status, reserve, set_volid,
+		force_allocate, set_pool_path, get_pool_path;
+
+objectname:	exponent_control;
+ retain:		exponent_control;
+
+objectname:	exponent_control_;
+ retain:		fault_underflow, fault_overflow, restart_underflow,
+		restart_overflow, restart_overflow_value;
+
+objectname:	print_error_message;
+ synonym: 	pel, pem, peo, peol;
+ retain:		print_error_message, pel, pem, peo, peol;
+
+objectname:	format_document_;
+ retain:		format_document_, string, switch;
+
+objectname:	fdoc_et_;
+ global:		retain;
+
+objectname:	format_string;
+  synonym:	fstr;
+  retain:		format_string, fstr;
+
+/*   End   */
+
+
+

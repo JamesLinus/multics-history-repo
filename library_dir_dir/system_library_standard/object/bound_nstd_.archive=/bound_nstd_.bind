@@ -1,0 +1,21 @@
+/* Bindfile for bound_nstd_	*/
+/* Re-created on 11/22/71 by C. D. Tavares */
+/* modules renamed by M. Weaver 3/14/72 */
+/* Temporary GCOS facility added by Bob May, 08/09/78 */
+/* Temporary GCOS facility removed by Ron Barstad, 83-08-15 */
+
+Objectname:	bound_nstd_;
+
+Order:		nstd_,
+		nstd_dim;
+
+Addname:		nstd_;
+
+Global:		delete;
+
+objectname:	nstd_;
+ retain:		nstd_module;
+
+objectname:	nstd_dim;
+
+/* End */

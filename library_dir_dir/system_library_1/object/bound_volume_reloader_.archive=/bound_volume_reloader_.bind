@@ -1,0 +1,38 @@
+/* Bindfile for bound_volume_reloader_.
+   Created by D. Vinograd 3/77
+   Modified to add rldr_vtoc_buffer_ 8/77 by D. Vinograd
+   */
+
+Objectname:	bound_volume_reloader_;
+Order:              reload_volume_,
+		rldr_volume_map_,
+		rldr_vtoc_header_,
+		rldr_input_,
+		rldr_check_pvol_,
+		rldr_label_,
+ 		rldr_report_,
+		rldr_arg_reader_,
+                    rldr_output_,
+                    reloader,
+		rldr_vtoc_buffer_,
+                    rldr_finish_;
+Global:		delete;
+
+objectname:	rldr_input_;
+objectname:	rldr_vtoc_header_;
+objectname:	rldr_volume_map_;
+objectname:	rldr_report_;
+objectname:	reload_volume_;
+objectname:	rldr_finish_;
+objectname:	rldr_arg_reader_;
+objectname:	rldr_output_;
+objectname:	reloader;
+synonym:		reload_volume, end_reload_volume;
+retain:		reload_volume, end_reload_volume;
+objectname:	rldr_label_;
+objectname:	rldr_check_pvol_;
+objectname:	rldr_vtoc_buffer_;
+/* End */
+
+
+

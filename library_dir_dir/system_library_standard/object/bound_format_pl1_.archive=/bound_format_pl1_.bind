@@ -1,0 +1,29 @@
+/* Bindfile for format_pl1.
+
+   17-Oct-79 Added journalization comment, M. N. Davidoff.
+*/
+Objectname:	bound_format_pl1_;
+
+Addname:		format_pl1,
+		fp;
+
+Global:		delete;
+
+Order:		format_pl1,
+		format_pl1_lex_,
+		format_pl1_stmt_type_,
+		format_pl1_,
+		format_pl1_modes_,
+		format_pl1_record_style_,
+		format_pl1_long_,
+		format_pl1_error_;
+
+objectname:	format_pl1;
+ synonym:		fp;
+ retain:		format_pl1,
+		fp;
+
+/* End */
+
+
+

@@ -1,0 +1,32 @@
+/* Bindfile for bound_tape_archive_ */
+/* Written 06/22/77 by C. D. Tavares */
+
+Objectname:	bound_tape_archive_;
+Addname:		tape_archive,
+		ta;
+
+Order:		tape_archive,
+		ta_util_,
+		ta_replace_,
+		ta_extract_,
+		ta_delete_,
+		ta_table_mgr_,
+		ta_process_volume_set_,
+		ta_file_io_,
+		ta_filesys_util_,
+		ta_list_table_,
+		ta_load_table_,
+		ta_reconstruct_table_,
+		ta_upgrade_version_;
+
+Global:		delete;
+
+
+objectname:	tape_archive;
+ synonym:		ta;
+ retain:		tape_archive, ta;
+
+/* END */
+
+
+

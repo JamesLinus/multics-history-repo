@@ -1,0 +1,212 @@
+
+/* HISTORY COMMENTS:
+  1) change(86-09-18,JPFauche), approve(86-09-18,MCR7525),
+     audit(86-09-18,Martinson), install(86-11-12,MR12.0-1208):
+     Retained probe_et_$no_address, probe_check_ptr_$convert, get_size_in_bits_
+     and probe_increment_indices_ to support Version 8.03 pascal.
+  2) change(88-09-30,WAAnderson), approve(88-09-30,MCR7952),
+     audit(88-09-30,JRGray), install(88-10-24,MR12.2-1184):
+     Modified as part of C-Probe support. Added new C specialty routines.
+                                                   END HISTORY COMMENTS */
+
+/* MR10 version to support PASCAL, from JMAthane, installed by Steve Herbst */
+/* Added probe_generic_math_ 03/14/84 Steve Herbst */
+/* Deleted probe_generic_math_, now that generic_math_ is installed 01/31/85 Steve Herbst */
+/* Moved relocate_instruction_ into hardcore for bce, Keith Loepere, March 1985. */
+
+Objectname:	bound_probe_;
+
+Addname:		probe,
+		pb,
+		probe_break_,
+		probe_data_,
+		display_data_,
+		format_pointer_,
+		get_size_in_bits_,
+		inst_length_,
+		ioa_util_,
+		print_instructions_,
+		probe,
+		probe_announce_entry_,
+		probe_array_bounds_,
+		probe_assign_value_,
+		probe_block_name_,
+		probe_break_,
+		probe_break_handler_,
+		probe_break_mgr_,
+		probe_builtins_,
+		probe_check_ptr_,
+		probe_command_,
+		probe_compare_reference_,
+		probe_create_reference_,
+		probe_ctl_requests_,
+		probe_cv_stu_code_,
+		probe_display_data_,
+		probe_display_request_,
+		probe_error_,
+		probe_et_,
+		probe_eval_,
+		probe_expr_requests_,
+		probe_fault_handler_,
+		probe_find_location_,
+		probe_find_procedure_,
+		probe_get_,
+		probe_get_c_address_,
+		probe_get_expr_,
+		probe_get_generation_,
+		probe_get_line_,
+		probe_get_misc_,
+		probe_get_value_,
+		probe_increment_indices_,
+		probe_info_requests_,
+		probe_invoke_,
+		probe_lang_type_,
+		probe_language_request_,
+		probe_line_number_,
+		probe_listen_,
+		probe_map_sequence_,
+		probe_modes_mgr_,
+		probe_operate_,
+		probe_pascal_,
+		probe_pretty_source_info_,
+		probe_print_algol68_attr_,
+		probe_print_arglist_,
+		probe_print_c_attr_,
+		probe_print_cobol_attr_,
+		probe_print_fortran_attr_,
+		probe_print_handlers_,
+		probe_print_pascal_,
+		probe_print_pl1_attr_,
+		probe_print_stack_,
+		probe_request_mgr_,
+		probe_request_table_,
+		probe_requests_,
+		probe_scan_data_,
+		probe_scan_input_,
+		probe_seg_info_,
+		probe_seg_mgr_,
+		probe_source_segment_,
+		probe_stack_trace_,
+		probe_statement_number_,
+		probe_subsys_util_,
+		probe_trace_a_stack_,
+		probe_variable_mgr_,
+		probe_vars_requests_;
+
+
+Global:		delete;
+
+/* No_Table;  */
+
+Perprocess_Static;
+
+
+Order:		probe,
+		probe_announce_entry_,
+		probe_array_bounds_,
+		probe_assign_value_,
+		probe_block_name_,
+		probe_break_,
+		probe_break_handler_,
+		probe_break_mgr_,
+		probe_builtins_,
+		probe_check_ptr_,
+		probe_command_,
+		probe_compare_reference_,
+		probe_create_reference_,
+		probe_ctl_requests_,
+		probe_cv_stu_code_,
+		probe_data_,
+		probe_display_data_,
+		probe_display_request_,
+		probe_error_,
+		probe_et_,
+		probe_eval_,
+		probe_expr_requests_,
+		probe_fault_handler_,
+		probe_find_location_,
+		probe_find_procedure_,
+		probe_get_,
+		probe_get_c_address_,
+		probe_get_expr_,
+		probe_get_generation_,
+		probe_get_line_,
+		probe_get_misc_,
+		probe_get_value_,
+		probe_increment_indices_,
+		probe_info_requests_,
+		probe_invoke_,
+		probe_language_request_,
+		probe_lang_type_,
+		probe_line_number_,
+		probe_listen_,
+		probe_map_sequence_,
+		probe_modes_mgr_,
+		probe_operate_,
+		probe_pascal_,
+		probe_pretty_source_info_,
+		probe_print_arglist_,
+		probe_print_c_attr_,
+		probe_print_cobol_attr_,
+		probe_print_fortran_attr_,
+		probe_print_handlers_,
+		probe_print_pascal_,
+		probe_print_pl1_attr_,
+		probe_print_algol68_attr_,
+		probe_print_stack_,
+		probe_request_mgr_,
+		probe_request_table_,
+		probe_requests_,
+		probe_scan_data_,
+		probe_scan_input_,
+		probe_seg_info_,
+		probe_seg_mgr_,
+		probe_source_segment_,
+		probe_stack_trace_,
+		probe_statement_number_,
+		probe_subsys_util_,
+		probe_trace_a_stack_,
+		probe_vars_requests_,
+		probe_variable_mgr_,
+
+		inst_length_,
+		display_data_,
+		format_pointer_,
+		get_size_in_bits_,
+		ioa_util_,
+		print_instructions_;
+
+/*  */
+
+/*	Now come the components themselves */
+
+
+objectname:         display_data_;
+ retain:            for_azm;
+
+objectname:	get_size_in_bits_;
+ retain:		get_size_in_bits_;
+
+objectname:	inst_length_;
+ retain:		inst_length_;
+
+objectname:	probe;
+  synonym:	pb;
+  retain: 	probe,
+		pb,
+		break;
+
+objectname:	probe_check_ptr_;
+ retain:		convert;
+
+objectname:	probe_data_;
+ global:		retain;
+
+objectname:	probe_et_;
+ retain:		no_address;
+
+objectname:	probe_increment_indices_;
+ retain:		probe_increment_indices_;
+
+
+/*                  END                 */

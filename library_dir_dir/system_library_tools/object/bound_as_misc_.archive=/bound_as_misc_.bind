@@ -1,0 +1,211 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+   *                                                         *
+   *********************************************************** */
+
+/* *	82-03-07, E. N. Kittlitz: torn from bound_user_control_
+   * 	82-04-27, E. N. Kittlitz: deleted test_dialup, admin_tv_, 
+   *	   added admin_ as synonym for admin.
+   *      82-08-11, E. N. Kittlitz: renamed admin to admin_.
+   *	82-10-19, E. N. Kittlitz:  renamed as_request_ to as_request_server_,
+   *	   added as_check_condition_.
+   *      10/02/84, R. Michael Tague: added as_request_bump_user_.
+   *	84-10-17, WOS: Added as_any_other_handler_.
+   *    1984-10-22, BIM: Added as_send_user_mail_,
+   *		           as_send_user_message_;
+   *    1985-01-18, E. Swenson: added as_access_audit_.
+   *    1985-01-25, E. Swenson for as_request_note_pnt_change_.
+   *    1985-02-19, BIM: asr_daemon_command_server_, asr_com_channel_info_server_.
+   */
+
+
+/* HISTORY COMMENTS:
+  1) change(86-08-01,MSharpe), approve(87-06-10,MCR7690),
+     audit(87-07-24,Martinson), install(87-08-04,MR12.1-1055):
+      A) Added operator_com_channel_cmds_, operator_mc_cmds_,and
+         operator_process_cmds_.  There modules contain code that was
+         removed from admin_.
+  2) change(86-08-10,Swenson), approve(87-07-24,MCR7681),
+     audit(87-07-24,Martinson), install(87-08-04,MR12.1-1055):
+      A) Added ls_request_server, ls_request_server_ and login_server_info_.
+      B) Added send_ls_request_.
+  3) change(87-03-10,GDixon), approve(87-07-24,MCR7681),
+     audit(87-07-24,Martinson), install(87-08-04,MR12.1-1055):
+      A) Added connection_list_manager_.
+  4) change(87-05-14,Brunelle), approve(87-07-24,MCR7681),
+     audit(87-07-24,Martinson), install(87-08-04,MR12.1-1055):
+     Added display_connection_list.
+  5) change(87-06-11,GDixon), approve(87-07-24,MCR7681),
+     audit(87-07-24,Martinson), install(87-08-04,MR12.1-1055):
+      A) Retain connection_list_manager_$priv_delete_offset.
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:	bound_as_misc_;
+
+Addname:		admin_,
+		as_,
+		as_access_audit_,
+		as_add_admin_acl_,
+		as_any_other_handler_,
+		as_check_condition_,
+		as_dump_,
+		as_init_,
+		as_request_server_,
+		as_send_user_mail_,
+		as_send_user_message_,
+		cdt_mgr_,
+		connection_list_manager_, 
+		dial_ctl_,
+		display_connection_list,
+		ec_shift_config_change_,
+		login_server_info_,
+		ls_request_server, 
+		ls_request_server_,
+		multiplexer_mgr_,
+		operator_com_channel_cmds_,
+		operator_mc_cmds_,
+		operator_process_cmds_,
+		reassign_work_classes_,
+		send_ls_request_,
+		syserr_log_man_;
+
+Order:		as_,
+		admin_,
+		operator_mc_cmds_,
+		operator_process_cmds_,
+		operator_com_channel_cmds_,
+		as_access_audit_,
+		as_request_bump_user_,
+		as_request_server_,
+		as_dump_,
+		cdt_mgr_,
+		dial_ctl_,
+		ec_shift_config_change_,
+		multiplexer_mgr_,
+		login_server_info_,
+		ls_request_server_,
+		ls_request_server,
+		connection_list_manager_, 
+		reassign_work_classes_,
+		send_ls_request_,
+		syserr_log_man_,
+		as_any_other_handler_,
+		as_check_condition_,
+		as_init_,
+		as_send_user_mail_,
+		as_send_user_message_,
+		as_add_admin_acl_,
+	          as_request_note_pnt_change_,
+		asr_com_channel_info_srvr_,
+		asr_daemon_command_server_,
+		display_connection_list;
+
+objectname:	admin_;
+ global:		retain;
+
+objectname:	as_;
+ global:		retain;
+
+objectname:	as_access_audit_;
+  global:		retain;
+
+objectname:	as_add_admin_acl_;
+ global:		retain;
+
+objectname:	as_any_other_handler_;
+ retain:		as_any_other_handler_,
+		no_cleanup;
+
+objectname:	as_check_condition_;
+ global:		retain;
+
+objectname:	as_dump_;
+ global:		retain;
+
+objectname:	as_init_;
+ global:		retain;
+
+objectname:	as_request_bump_user_;
+ global:		retain;
+
+objectname:	as_request_note_pnt_change_;
+ global:		delete;
+
+objectname:	as_request_server_;
+ global:		retain;
+
+objectname:	as_send_user_mail_;
+ retain:		as_send_user_mail_;
+
+objectname:	as_send_user_message_;
+ retain:		as_send_user_message_;
+ 
+objectname:	cdt_mgr_;
+ global:		retain;
+
+objectname:	connection_list_manager_;
+  retain:		add,
+		delete_offset, 
+		hpriv_delete_all_for_user,
+		hpriv_delete_name,
+		hpriv_delete_offset,
+		hpriv_get_name,
+		hpriv_get_next,
+		hpriv_get_next_owner,
+		hpriv_get_next_user,
+		init,
+		priv_change_user,
+		priv_delete_all_for_user,
+		priv_delete_name,
+		priv_delete_offset,
+		priv_get_name,
+		priv_get_next_owner,
+		priv_get_next_user,
+		priv_remove_user;
+
+objectname:	dial_ctl_;
+ global:		retain;
+
+objectname:	display_connection_list;
+ retain:		display_connection_list;
+
+objectname:	ec_shift_config_change_;
+ global:		retain;
+
+objectname:	login_server_info_;
+  retain:		request_info,
+		test;
+
+objectname:	ls_request_server_;
+ global:		delete;
+
+objectname:	ls_request_server;
+  retain:		ls_request_server;
+
+objectname:	multiplexer_mgr_;
+ global:		retain;
+
+objectname:	operator_com_channel_cmds_;
+ global:		retain;
+
+objectname:	operator_mc_cmds_;
+ global:		retain;
+
+objectname:	operator_process_cmds_;
+ global:		retain;
+
+objectname:	reassign_work_classes_;
+ global:		retain;
+
+objectname:	send_ls_request_;
+  retain:		send_ls_request_;
+
+objectname:	syserr_log_man_;
+ global:		retain;
+
+/* End */
+
+
+

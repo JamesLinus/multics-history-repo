@@ -1,0 +1,86 @@
+/* *	79-05-12, MJG: Modified for ring 0 stack sharing
+   *	82-07-01, J. Bongiovanni: Added init_scavenger_data
+   *	82-10-05, J. Bongiovanni: Added init_dm_journal_seg
+   *	83-05-25, BIM: Updated for dir_lock_init
+   *	84-10-17, WOS: Updated for init_syserr_log, deleted symbol_table
+   *	   definitions to save on definitions_ space
+   */
+
+
+/* HISTORY COMMENTS:
+  1) change(85-09-26,Farley), approve(86-07-18,MCR7439),
+     audit(86-09-26,Fawcett), install(86-10-20,MR12.0-1189):
+     Added fnp_init (from bound_io_init, which was deleted).
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:	bound_temp_2;
+Global:		retain;			/* Init-segs */
+
+Order:		init_sst_name_seg,
+		init_str_seg,
+		init_root_dir, create_root_vtoce, create_root_dir,
+		init_sys_var,
+		init_hardcore_gates,
+		init_vtoc_man,
+		init_lvt,
+		init_stack_0,
+		init_syserr_log,
+		accept_rpv,
+		init_scavenger_data,
+		init_dm_journal_seg,
+		dir_lock_init,
+		fnp_init;
+
+objectname:	init_sst_name_seg;
+ delete:		symbol_table;
+
+objectname:	init_str_seg;
+ delete:		symbol_table;
+
+objectname:	init_root_dir;
+ delete:		symbol_table;
+
+objectname:	create_root_vtoce;
+ delete:		symbol_table;
+
+objectname:	create_root_dir;
+ delete:		symbol_table;
+
+objectname:	init_sys_var;
+ delete:		symbol_table;
+
+objectname:	init_hardcore_gates;
+ delete:		symbol_table;
+
+objectname:	init_vtoc_man;
+ delete:		symbol_table;
+
+objectname:	init_lvt;
+ delete:		symbol_table;
+
+objectname:	init_stack_0;
+ delete:		symbol_table;
+
+objectname:	init_syserr_log;
+ delete:		symbol_table;
+
+objectname:	accept_rpv;
+ delete:		symbol_table;
+
+objectname:	init_scavenger_data;
+ delete:		symbol_table;
+
+objectname:	init_dm_journal_seg;
+ delete:		symbol_table;
+
+objectname:	dir_lock_init;
+ delete:		symbol_table;
+
+objectname:	fnp_init;
+ delete:		symbol_table;
+
+/*		END		*/
+
+
+

@@ -1,0 +1,50 @@
+/*  Bindfile for bound_priv_rtnes_  */
+
+
+/*  These procedures either manipulate or require system privileges */
+/*  within the access isolation mechanism to perform their functions  */
+
+/*  access to the system privilege gate is assumed by some of the procedures */
+
+/*  Written 5/75 by J. C. Whitmore */
+/*  Modified 5/12/76 by Steve Herbst to add set_dir_quota and priv_move_quota_$dir */
+
+Objectname:	bound_priv_rtnes_;
+
+Addname:		set_quota,
+		setquota,
+		sq,
+		set_dir_quota,
+		priv_move_quota,
+		priv_move_quota_,
+		privileged_make_seg_,
+		register_mdir,
+		check_mdcs;
+
+Order:		set_quota,
+		priv_move_quota_,
+		privileged_make_seg_,
+		register_mdir,
+		check_mdcs;
+
+Global:		delete;
+
+objectname:	set_quota;
+ retain:		setquota, set_quota, sq, set_dir_quota, priv_move_quota;
+
+objectname:	priv_move_quota_;
+ retain:		priv_move_quota_, dir;
+
+objectname:	privileged_make_seg_;
+ retain:		privileged_make_seg_;
+
+objectname:	register_mdir;
+ retain:		register_mdir;
+
+objectname:	check_mdcs;
+ retain:		check_mdcs;
+
+/* END */
+
+
+

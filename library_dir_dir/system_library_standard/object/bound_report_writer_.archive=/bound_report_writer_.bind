@@ -1,0 +1,82 @@
+/*
+	Bind file for report_writer_.
+	Created October 1984 - Al Dupuis
+*/
+
+
+/* HISTORY COMMENTS:
+  1) change(86-08-18,JSLove), approve(86-08-18,MCR7518),
+     audit(86-08-20,Parisek), install(86-10-02,MR12.0-1175):
+     Changed to delete rw_match_star_name_ because match_star_name_ (HARDCORE)
+     is used instead.
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:	bound_report_writer_;
+
+Global:		delete;
+
+Order:
+                    report_writer_,
+                    report_writer,
+                    report_writer_info_dirs_,
+                    report_writer_request_table_,
+                    rw_error_,
+                    rw_column_value,
+                    rw_convert_and_move_row,
+                    rw_define_columns,
+                    rw_display,
+                    rw_display_process_args,
+                    rw_display_scroll,
+                    rw_display_builtins,
+                    rw_fr_build_page,
+                    rw_fr_delete_report,
+                    rw_fr_get_page,
+                    rw_fr_new_report,
+                    rw_table_manager,
+                    rw_temp_seg_mgr,
+                    rw_list_format_options,
+                    rw_options,
+                    rw_requests,
+                    rw_restore_format_options,
+                    rw_save_format_options,
+                    rw_set_format_options;
+
+Addname:
+		report_writer_,
+		report_writer_request_table_,
+		report_writer_info_dirs_,
+		rw_error_;
+
+objectname:	report_writer_;
+global:		retain;
+objectname:	report_writer_info_dirs_;
+global:		retain;
+objectname:	report_writer_request_table_;
+global:		retain;
+objectname:	rw_error_;
+global:		retain;
+
+objectname:	report_writer;
+objectname:	rw_column_value;
+objectname:	rw_convert_and_move_row;
+objectname:	rw_define_columns;
+objectname:	rw_display;
+objectname:	rw_display_builtins;
+objectname:	rw_display_process_args;
+objectname:	rw_display_scroll;
+objectname:	rw_fr_build_page;
+objectname:	rw_fr_delete_report;
+objectname:	rw_fr_get_page;
+objectname:	rw_fr_new_report;
+objectname:	rw_list_format_options;
+objectname:	rw_options;
+objectname:	rw_requests;
+objectname:	rw_restore_format_options;
+objectname:	rw_save_format_options;
+objectname:	rw_set_format_options;
+objectname:	rw_table_manager;
+objectname:	rw_temp_seg_mgr;
+
+
+

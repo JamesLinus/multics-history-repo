@@ -1,0 +1,42 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1986 *
+   *                                                         *
+   *********************************************************** */
+
+
+
+/* HISTORY COMMENTS:
+  1) change(86-10-31,Fakoury), approve(86-10-31,MCR7515),
+     audit(87-01-07,Farley), install(87-01-08,MR12.0-1263):
+     Created 12/85 by Rick Fakoury
+                                                   END HISTORY COMMENTS */
+
+/* bind file for bound_dfm_ */
+
+
+Objectname:	bound_dfm_;
+
+Order:		deckfile_manager,
+		dfm_,
+		dfm_util_,
+		dfm_request_table_;
+
+Addname:		deckfile_manager,
+		dfm;
+
+Global:		delete;
+
+objectname:	deckfile_manager;
+ synonym:           dfm;
+ retain:		deckfile_manager,
+ 		dfm;
+
+objectname:	dfm_;
+
+objectname:	dfm_util_;
+
+objectname:	dfm_request_table_;
+
+
+/* end of bind file for bound_dfm_ */

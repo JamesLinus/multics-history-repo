@@ -1,0 +1,3941 @@
+/****^  ******************************************************
+        *                                                    *
+        * Copyright, (C) Honeywell Bull Inc., 1987           *
+        *                                                    *
+        * Copyright (c) 1972 by Massachusetts Institute of   *
+        * Technology and Honeywell Information Systems, Inc. *
+        *                                                    *
+        ****************************************************** */
+
+
+/****^  HISTORY COMMENTS:
+  1) change(87-04-15,RWaters), approve(87-04-15,MCR7639), audit(87-04-28,Huen),
+     install(87-05-21,MR12.1-1033):
+     Fixes bugs #1926,2145
+  2) change(87-06-26,Huen), approve(87-06-26,MCR7712), audit(87-12-01,RWaters),
+     install(87-12-01,MR12.2-1005):
+     Fix bug2042
+  3) change(88-01-29,RWaters), approve(88-01-29,MCR7724), audit(88-02-05,Huen),
+     install(88-02-16,MR12.2-1024):
+     Allow option(constant) variables as arguments to builtin functions.
+  4) change(89-03-28,Huen), approve(89-03-28,MCR8077), audit(89-04-03,JRGray),
+     install(89-04-24,MR12.3-1032):
+     Fix bug 2193 - Display the existing error message (#127) when the first
+     argument to hbound builtin is not an array value.
+  5) change(89-07-10,RWaters), approve(89-07-10,MCR8118), audit(89-07-19,Vu),
+     install(89-07-31,MR12.3-1066):
+     Fix reference thru null pointer in action (33).
+                                                   END HISTORY COMMENTS */
+
+/* format: style2,^indattr,ifthendo,ifthen,^indnoniterdo,^elsestmt,dclind9 */
+builtin:
+     proc (cur_block, statement_ptr, input_tree, subscripts, builtin_symbol, context) returns (ptr);
+
+/* Modified 770617 by PG to add clock, vclock, stacq
+   Modified 780213 by RAB to fix 1707	
+   Modified 780329 by PCK to add stackframeptr, stackbaseptr, environmentptr, and codeptr builtins
+   Modified 780412 by PG to fix 1723, and to fix unreported bugs in decat and unspec
+   Modified 780807 by RAB to fix 1749
+   Modified 780824 by PCK to fix 1701, 1766, and 1777
+   Modified 780825 by RAB to fix 1780
+   Modified Dec 1978 by David Spector to make addr arg non-set xref
+   Modified 790416 by PCK to implement 4-bit decimal fix bugs 1826 and 1830
+   Modified 790516 by RAB for reference.substr
+   Modified 790606 by PG to add byte and rank
+   Modified 791107 by BSG for index (reverse) etc.
+   Modified: 26 Dec 1979 by PCK to implement by name assignment
+   Modified 820726 by BIM for segno, wordno
+   Modified 830909 by BIM never to have bif return unsigned.
+		assign_op gets CONFUSED.
+   Modified 870727 by RW to fix phx16821 & phx16584, invalid substr ranges.
+   Modified 870523 by SH to fix bug 2042 by displaying new error 390 if the
+		argument used in rank builtin is not a non_varying
+		character string of length 1.
+   Modified 880129 by RW to fix bug 1994 and bug 2186.
+   Modified 890302 by SH to display error 127 if the first argument to hbound
+	         builtin is not an array value. (pl1_2193)
+   Modified 890714 by RW to check for null pointer in action(33)
+*/
+
+	dcl      (cur_block, builtin_symbol, statement_ptr, subscripts, input_tree, tree) ptr;
+
+	dcl      (
+	         arg (128),
+	         ref (128),
+	         arg_symbol (128),
+	         length,
+	         offset,
+	         p,
+	         q,
+	         r,
+	         rlength,
+	         s,
+	         t,
+	         off,
+	         save_arg_one
+	         ) ptr,
+	         cur_length (2) ptr,
+	         (agg_ref, dcl_length) ptr init (null),
+	         (units, cunits) fixed bin (3),
+	         error_number fixed bin (15),
+	         constant fixed bin,
+	         (arg_number, builtin_number, code, i, indicator, jump_index, m, reserved_number, rprecision, rscale,
+	         temp_size) fixed bin (31),
+	         (c_length, c_offset, coff, integer, number, substr_index, p1, p2, q1, q2, rcount) fixed bin (31),
+	         integer_24 fixed bin (24),
+	         based_type bit (36) based,
+	         (desc_reqd, decimal_result, arith_size_ck, string_size_ck) bit (1) aligned init ("0"b),
+	         pseudo_variable bit (1) aligned init ("0"b),
+	         (full_attribute_set, not_flag) bit (1) aligned,
+	         bit4 bit (4) aligned,
+	         modified bit (1) aligned,
+	         opcode bit (9) aligned,
+	         constant_string_length fixed bin (21),
+	         constant_char_string char (constant_string_length) based,
+	         constant_bit_string bit (constant_string_length) based,
+	         builtin_string char (8) aligned,
+	         collating_sequence char (128) aligned internal static init ("	
+ !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~");
+
+	dcl      pl1_data$long_collating_sequence char (512) aligned ext static;
+
+	dcl      pl1_stat_$use_old_area bit (1) aligned ext static,
+	         pl1_stat_$check_ansi bit (1) aligned ext static,
+	         pl1_stat_$eis_mode bit (1) aligned ext static,
+	         pl1_stat_$root ptr ext static,
+	         pl1_stat_$cur_statement ptr ext static;
+
+	dcl      (addr, bit, divide, fixed, max, min, null, reverse, string, substr, unspec) builtin;
+
+/*
+abs		13
+acos		54
+add		14
+addr		33
+addrel		41
+after		55
+
+allocation	36
+asin		54
+atan		25
+atand		25
+atanh		25
+baseno		39
+segno               70
+
+baseptr		41
+before		56
+bin		15
+binary		15
+bit		18
+
+bool		23
+byte		68
+ceil		16
+char		18
+clock		62
+codeptr		63
+collate		 1
+collate9		59
+
+complex		17
+conjg		50
+convert		46
+copy		 9
+cos		25
+
+cosd		25
+cosh		25
+cplx		17
+currentsize	64
+date		31
+dec		15
+
+decat		24
+decimal		18
+dim		26
+divide		14
+dot		45
+
+empty		28
+environmentptr	63
+erf		25
+erfc		25
+exp		25
+fixed		 3
+
+float		 2
+floor		16
+hbound		26
+high		 5
+high9		60
+
+imag		19
+index		 6
+lbound		26
+length		 7
+lineno		30
+
+log		25
+log10		25
+log2		25
+low		 8
+ltrim		57
+
+max		20
+maxlength		65
+min		20
+mod		21
+multiply		14
+null		29
+
+nullo		44
+onchar		51
+oncode		53
+onfield		42
+onfile		42
+
+onkey		42
+onloc		42
+onsource		52
+pageno		30
+pointer		34
+
+prec		 4
+prod		43
+ptr		34
+rank		69
+real		19
+rel		39
+wordno		71
+charno		72
+bitno		73
+addwordno 	41
+addcharno 	41
+addbitno		41
+setwordno 	41
+setcharno 	41
+setbitno		41
+
+reverse		27
+round		22
+rtrim		58
+search		37
+sign		38
+
+sin		25
+sind		25
+sinh		25
+size		47
+sqrt		25
+
+stac		40
+stackbaseptr	61
+stackframeptr	61
+stacq		66
+string		10
+substr		11
+substraddr	67
+subtract		14
+sum		43
+tan		25
+
+tand		25
+tanh		25
+time		32
+translate		49
+trunc		16
+
+unspec		12
+valid		48
+vclock		62
+verify		37
+*/
+
+	dcl      1 rtype like type;
+
+	dcl      1 arg_type (128) like type;
+
+	dcl      defined_arg_type (128) bit (36) defined (arg_type);
+
+	dcl      1 as_if_type (128) like type;
+
+	dcl      defined_as_if_type (128) bit (36) defined (as_if_type);
+
+	dcl      targ_type bit (36) aligned;
+	dcl      targ_prec fixed bin (31);
+
+	dcl      save_context bit (36),
+	         1 def_save_context defined (save_context),
+		 2 aggregate bit (1),
+		 2 arg_list bit (1),
+		 2 left_side bit (1),
+		 2 return bit (1),
+		 2 evaluate_offset bit (1),
+		 2 top bit (1),
+		 2 RHS_aggregate bit (1),
+		 2 return_from_empty bit (1),
+		 2 ignore_based bit (1),
+		 2 ext_param bit (1),
+		 2 cross_section bit (1),
+		 2 string_unspec bit (1);
+
+	tree = input_tree;
+
+	if def_context.top then
+	     if statement_ptr -> statement.statement_type = call_statement then
+		call semantic_translator$abort (224, builtin_symbol);
+
+	if subscripts = null then
+	     arg_number = 0;
+	else
+	     arg_number = subscripts -> list.number;
+
+	builtin_number = builtin_symbol -> symbol.c_dcl_size;
+	opcode = pl1_data$builtin_name.description (builtin_number).opcode;
+	jump_index = pl1_data$builtin_name.description (builtin_number).jump_index;
+	reserved_number = pl1_data$builtin_name.description (builtin_number).reserve_list_number;
+
+	if pl1_stat_$check_ansi then
+	     if pl1_data$builtin_name.description (builtin_number).nonstandard then
+		call semantic_translator$error (202, builtin_symbol);
+
+
+	indicator = pl1_data$builtin_name.description (builtin_number).check_indicator;
+
+	if indicator = 1 then
+	     if arg_number ^= pl1_data$builtin_name.description (builtin_number).number1 then
+		call semantic_translator$abort (121, builtin_symbol);
+	     else
+		;
+	else if indicator = 2 then
+	     if arg_number < pl1_data$builtin_name.description (builtin_number).number1 then
+		call semantic_translator$abort (122, builtin_symbol);
+	     else
+		;
+	else if indicator = 3 then
+	     if arg_number < pl1_data$builtin_name.description (builtin_number).number1
+		| arg_number > pl1_data$builtin_name.description (builtin_number).number2 then
+		call semantic_translator$abort (123, builtin_symbol);
+
+	if def_context.left_side then do;
+	     builtin_string = builtin_symbol -> symbol.token -> token.string;
+
+	     if builtin_string ^= "real" & builtin_string ^= "imag" & builtin_string ^= "string"
+		& builtin_string ^= "substr" & builtin_string ^= "unspec" & builtin_string ^= "onchar"
+		& builtin_string ^= "onsource" & builtin_string ^= "pageno" then
+		call semantic_translator$abort (244, builtin_symbol);
+	     else
+		pseudo_variable = "1"b;
+	end;
+
+	save_context = "0"b;
+
+	do i = 1 to arg_number;
+
+	     this_context = "0"b;
+	     if i = 1 & (jump_index = 10 | jump_index = 12 | jump_index = 33) /*  string, unspec, addr */ then do;
+		def_this_context.evaluate_offset = "1"b;
+
+		if jump_index ^= 33 then
+		     def_this_context.string_unspec = "1"b;
+	     end;
+
+	     if (jump_index = 46 & i = 1) /* convert */ | jump_index = 47 /* size */ then
+		def_this_context.ignore_based = "1"b;
+
+	     if i = 1
+		& (def_context.f_offset_to_be_added | jump_index = 11 /* substr */
+		| (jump_index >= 55 & jump_index <= 58)) /* after, before, ltrim, rtrim */ then
+		def_this_context.f_offset_to_be_added = "1"b;
+
+	     arg (i) =
+		expression_semantics (cur_block, statement_ptr, (subscripts -> element (arg_number + 1 - i)),
+		this_context);
+
+	     if def_this_context.aggregate then do;
+		if pl1_data$builtin_name.description (builtin_number).descriptor (i).check_code = 5 then
+		     if jump_index ^= 11 /* substr */ then
+			goto err124;
+
+		if pl1_data$builtin_name.description (builtin_number).aggregate_result then
+		     if ^def_context.by_name_assignment then do;
+			subscripts -> element (arg_number + 1 - i), arg (i) =
+			     expand_primitive (cur_block, statement_ptr, arg (i), this_context);
+		     end;
+		     else
+			go to err381;
+	     end;
+
+	     save_context = save_context | this_context;
+
+	     ref (i) = arg (i);
+
+	     do while (ref (i) -> node.type = operator_node);
+		ref (i) = ref (i) -> operand (1);
+	     end;
+
+	     if ref (i) -> node.type = token_node then do;
+		ref (i), arg_symbol (i) = null;
+		if arg (i) -> token.type = dec_integer then
+		     defined_arg_type (i) = dec_integer_type;
+		else
+		     defined_arg_type (i) = decoded_type (fixed (arg (i) -> token.type, 15));
+	     end;
+	     else if ref (i) -> node.type = label_node then do;
+		arg_symbol (i) = ref (i);
+		ref (i) = null;
+		defined_arg_type (i) = "0"b;
+	     end;
+	     else if ref (i) -> node.type = reference_node then do;
+		arg_symbol (i) = ref (i) -> reference.symbol;
+		defined_arg_type (i) =
+		     substr (string (arg_symbol (i) -> symbol.attributes), 1, 36) & ^dimensioned_mask
+		     & ^initialed_mask;
+	     end;
+	end;
+
+	this_context = "0"b;
+
+/*   Processing of aggregate arguments   */
+
+	if def_save_context.aggregate then
+	     if pl1_data$builtin_name.description (builtin_number).aggregate_result then do;
+		if jump_index = 24 /*   decat   */ then
+		     call semantic_translator$abort (478, builtin_symbol);
+
+		if def_context.left_side then
+		     call propagate_bit (arg_symbol (1), set_bit);
+
+		def_context.aggregate = "1"b;
+		tree = expand_arguments ();
+
+		goto exit;
+	     end;
+
+	do i = 1 to min (arg_number, pl1_data$builtin_name.description (builtin_number).number_of_descriptions);
+
+	     code = pl1_data$builtin_name.description (builtin_number).descriptor (i).check_code;
+	     string (type) = pl1_data$builtin_name.description (builtin_number).descriptor (i).type;
+
+	     if code = 0 then
+		goto next_descriptor;
+
+	     if code = 1 then
+		if string (type) & defined_arg_type (i) then
+		     goto conv_arg;
+		else
+		     goto err124;
+
+	     if code = 2 then
+		goto conv_arg;
+
+	     if code = 3 | code = 11 then do;
+		if code = 11 then
+		     if arg_type (i).complex then
+			goto err124;
+
+		if arg_type (i).picture | arg_type (i).decimal | arg_type (i).char then do;
+		     if arg_type (i).decimal then
+			string (type) = defined_arg_type (i) & ^fixed_mask | float_mask;
+		     else if arg_type (i).complex then
+			string (type) = float_decimal_complex_mask;
+		     else
+			string (type) = float_decimal_real_mask;
+		     t = convert$from_builtin ((arg (i)), string (type));
+						/* call by value to protect arg(i) */
+		     if t -> node.type = operator_node then
+			t = t -> operand (1) -> reference.symbol;
+		     else
+			t = t -> reference.symbol;
+		     targ_type = string (type);
+		     if decimal_result then
+			targ_prec = max (targ_prec, t -> symbol.c_dcl_size);
+		     else if i = 1 then do;
+			decimal_result = "1"b;
+			targ_prec = t -> symbol.c_dcl_size;
+		     end;
+		end;
+		string (type) = float_mask | binary_mask;
+		goto conv_arg;
+	     end;
+
+	     if code = 4 then do;
+		if arg_type (i).bit then
+		     string (type) = fixed_binary_real_mask;
+		else if arg_type (i).char then
+		     string (type) = fixed_decimal_real_mask;
+		else if arg_type (i).picture then
+		     if arg_symbol (i) -> symbol.complex then
+			if arg_symbol (i) -> symbol.pix.pic_float then
+			     string (type) = float_decimal_complex_mask;
+			else
+			     string (type) = fixed_decimal_complex_mask;
+		     else if arg_symbol (i) -> symbol.pix.pic_float then
+			string (type) = float_decimal_real_mask;
+		     else
+			string (type) = fixed_decimal_real_mask;
+		else if defined_arg_type (i) & arithmetic_mask then
+		     string (type) = defined_arg_type (i);
+		else
+		     goto err124;
+
+		goto conv_arg;
+	     end;
+
+	     if code = 5 then do;
+		string (type) = fixed_binary_real_mask;
+
+		if arg_type (i).fixed | arg_type (i).float then do;
+		     ref (i), arg (i) = convert$to_integer (arg (i), integer_type);
+
+		     if ref (i) -> node.type = operator_node then do;
+			ref (i) -> operator.processed = "1"b;
+			ref (i) = ref (i) -> operand (1);
+		     end;
+
+		     arg_symbol (i) = ref (i) -> reference.symbol;
+		     defined_arg_type (i) = integer_type;
+
+		     goto next_descriptor;
+		end;
+
+		goto conv_arg;
+	     end;
+
+	     if code = 6 then do;
+		if arg (i) -> node.type = reference_node then
+		     if symbol_is_constant (arg_symbol (i)) then
+			if ^arg_type (i).fixed | ^arg_type (i).binary | ^arg_type (i).real then
+			     arg (i) = subscripts -> element (arg_number + 1 - i);
+			else
+			     goto next_descriptor;
+		     else
+			goto err124;
+
+		if arg (i) -> node.type ^= token_node then
+		     goto err124;
+
+
+		if arg (i) -> token.type ^= dec_integer then
+		     goto err124;
+
+		string (type) = fixed_binary_real_mask;
+
+		goto conv_arg;
+	     end;
+
+	     if code = 7 then do;
+		if arg_type (i).bit | arg_type (i).char then
+		     string (type) = defined_arg_type (i);
+		else if arg_type (i).binary | arg_type (i).picture | arg_type (i).decimal then
+		     string (type) = char_mask;
+		else
+		     goto err124;
+
+		goto conv_arg;
+	     end;
+
+	     if code = 8 then do;
+		if arg_type (i).bit then
+		     string (type) = bit_mask;
+		else if arg_type (i).fixed | arg_type (i).float then do;
+		     ref (i), arg (i) = convert$to_integer (arg (i), integer_type);
+
+		     if ref (i) -> node.type = operator_node then do;
+			ref (i) -> operator.processed = "1"b;
+			ref (i) = ref (i) -> operand (1);
+		     end;
+
+		     arg_symbol (i) = ref (i) -> reference.symbol;
+		     defined_arg_type (i) = integer_type;
+
+		     go to next_descriptor;
+		end;
+		else
+		     string (type) = fixed_binary_real_mask;
+
+		go to conv_arg;
+
+	     end;
+
+	     if code = 9 then
+		if ref (i) = null then
+		     goto err124;
+		else
+		     goto next_descriptor;
+
+	     if code = 10 then do;
+		if (defined_arg_type (i) & computational_mask) = "0"b then
+		     goto err124;
+
+		goto next_descriptor;
+	     end;
+
+	     if code = 12 then do;
+		if ^arg_type (i).label & ^arg_type (i).entry & ^arg_type (i).format
+		     & arg (i) -> node.type ^= label_node then
+		     go to err124;
+		go to next_descriptor;
+	     end;
+
+conv_arg:
+	     call convert_arg;
+
+next_descriptor:
+	end;
+
+	string (rtype) = defined_arg_type (1) & ^unaligned_mask | aligned_mask;
+
+	rprecision, rscale = 0;
+	rlength = null;
+
+	do i = 1 to arg_number;
+	     if ref (i) ^= null then
+		if ref (i) -> reference.varying_ref then do;
+		     if i = 1 then
+			if jump_index = 9 /* copy */ | jump_index = 24 /* decat */ | jump_index = 27 /* reverse */
+			     | jump_index = 49 /* translate */ then do;
+			     rlength = create_length_fun (arg (1));
+			     string (rtype) = string (rtype) & ^varying_mask;
+			end;
+		end;
+	end;
+
+	if arg_number ^= 0 & arg_symbol (1) ^= null then
+	     if arg_symbol (1) -> node.type = symbol_node then do;
+		rprecision = arg_symbol (1) -> symbol.c_dcl_size;
+		if arg_type (1).bit | arg_type (1).char then
+		     if rlength = null then
+			rprecision = ref (1) -> reference.c_length;
+		     else
+			rprecision = 0;
+
+		rscale = fixed (arg_symbol (1) -> symbol.scale, 31, 0);
+
+		if ref (1) ^= null & rlength = null then
+		     if jump_index = 9 /* copy */ | jump_index = 24 /* decat */ | jump_index = 27 /* reverse */
+			| jump_index = 49 /* translate */ then do;
+			rlength = share_expression ((ref (1) -> reference.length));
+			string (rtype) = string (rtype) & ^varying_mask;
+		     end;
+
+	     end;
+
+	goto action (jump_index);
+
+action (0):
+	call semantic_translator$abort (131, builtin_symbol);
+	goto ret;
+
+action (1):					/* collate */
+	tree = declare_constant$char (collating_sequence);
+
+	goto ret;
+
+action (2):					/* float */
+	string (rtype) = float_mask;
+
+	if arg_number = 2 then
+	     rprecision = constant_value (arg_symbol (2));
+	else do;
+	     rprecision = 0;
+	     if pl1_stat_$check_ansi then
+		call semantic_translator$error (172, builtin_symbol);
+	end;
+
+	goto convert_to_arith;
+
+action (3):					/* fixed */
+						/* Warn users away from fixed(<dec_integer_constant>...) */
+	if arg (1) -> node.type = token_node then
+	     if arg (1) -> token.type = dec_integer then
+		call semantic_translator$error (484, null);
+
+	string (rtype) = fixed_mask;
+
+	if arg_number = 3 then
+	     rscale = constant_value (arg_symbol (3));
+	else
+	     rscale = 0;
+
+	if arg_number >= 2 then
+	     rprecision = constant_value (arg_symbol (2));
+	else do;
+	     rprecision = 0;
+	     if pl1_stat_$check_ansi then
+		call semantic_translator$error (172, builtin_symbol);
+	end;
+
+	goto convert_to_arith;
+
+action (4):					/* prec
+   precision */
+	if arg_type (1).char then
+	     string (rtype) = fixed_decimal_real_mask | aligned_mask;
+	else if arg_type (1).bit then
+	     string (rtype) = fixed_binary_real_mask | aligned_mask;
+
+	if arg_type (1).float & arg_number = 3 then
+	     call semantic_translator$abort (167, builtin_symbol);
+
+	if arg_number = 3 then
+	     rscale = constant_value (arg_symbol (3));
+
+	rprecision = constant_value (arg_symbol (2));
+
+	full_attribute_set = "1"b;
+
+	goto check_prec_scale;
+
+action (5):					/* high */
+	arg (2) = arg (1);
+	ref (2) = ref (1);
+	arg_symbol (2) = arg_symbol (1);
+
+	arg (1), ref (1) = declare_constant ("001111111"b, char_type, 1, 0);
+	arg_symbol (1) = arg (1) -> reference.symbol;
+
+	arg_number = 2;
+	string (rtype) = char_type;
+
+	goto repeat;
+
+action (6):					/* index */
+	if arg_type (1).bit & arg_type (2).bit then
+	     string (type) = bit_mask;
+	else
+	     string (type) = char_mask;
+
+	do i = 1 to 2;
+	     call convert_arg;
+	end;
+
+	if type.char then
+	     if check_reverse (arg (1)) then do;
+		opcode = index_rev_fun;		/* Will use reverse index */
+		arg (1) = arg (1) -> operator.operand (2);
+						/* Use the unreversed thing */
+		if check_reverse (arg (2)) /* If 2 is a reverse too, .. */ then
+		     arg (2) = arg (2) -> operator.operand (2);
+						/* Eliminate it.. or */
+		else
+		     arg (2) = make_builtin_reference ("reverse", 1, arg (2), null, null);
+	     end;
+
+	string (rtype) = fixed_binary_real_mask;
+	rprecision = max_length_precision;
+
+	goto create_operator_node;
+
+action (7):					/* length */
+action (65):					/* maxlength */
+	if arg (1) -> node.type = operator_node then
+	     if arg (1) -> op_code = std_call then do;
+		s = create_statement (call_statement, (statement_ptr -> statement.back), null,
+		     (statement_ptr -> statement.prefix));
+		s -> statement.root = share_expression (arg (1));
+	     end;
+
+	if ref (1) -> reference.varying_ref then do;
+	     if jump_index = 7 then do;
+
+/* length */
+
+		string (rtype) = integer_type;
+		rprecision = max_length_precision;
+		goto create_operator_node;
+	     end;
+
+	     else do;
+
+/* maxlength */
+
+		if arg_symbol (1) -> symbol.dcl_size = null then
+		     tree = declare_constant$integer ((arg_symbol (1) -> symbol.c_dcl_size));
+		else do;
+		     tree = copy_expression (arg_symbol (1) -> symbol.dcl_size);
+		     if arg_symbol (1) -> symbol.refer_extents then
+			call refer_extent (tree, (ref (1) -> reference.qualifier));
+		     tree = expression_semantics ((arg_symbol (1) -> symbol.block_node), statement_ptr, tree, "0"b);
+		     tree = convert$to_integer (tree, integer_type);
+		end;
+
+		goto ret;
+	     end;
+	end;
+
+	if ref (1) -> reference.length = null then
+	     tree = declare_constant$integer ((ref (1) -> reference.c_length));
+	else
+	     tree = ref (1) -> reference.length;
+
+	goto ret;
+
+action (8):					/* low */
+	arg (2) = arg (1);
+	ref (2) = ref (1);
+	arg_symbol (2) = arg_symbol (1);
+
+	arg (1), ref (1) = declare_constant ("000000000"b, char_type, 1, 0);
+	arg_symbol (1) = arg (1) -> reference.symbol;
+
+	arg_number = 2;
+	string (rtype) = char_type;
+
+	goto repeat;
+
+action (9):					/* copy */
+repeat:
+	if symbol_is_constant (arg_symbol (2)) then
+	     m = constant_value (arg_symbol (2));
+
+	if ref (1) -> reference.varying_ref then
+	     length = rlength;
+	else if ref (1) -> reference.length ^= null then
+	     length = ref (1) -> reference.length;
+	else if ^symbol_is_constant (arg_symbol (2)) then
+	     length = declare_constant$integer ((ref (1) -> reference.c_length));
+	else
+	     length = null;
+
+	if length ^= null then do;
+	     rprecision = 0;
+	     arg (2) = share_expression (arg (2));
+	     if ref (1) -> reference.c_length = 1 then
+		rlength = arg (2);
+	     else do;
+		rlength = create_operator (mult, 3);
+		rlength -> operand (1) = declare_temporary (integer_type, max_length_precision, 0, null);
+		rlength -> operand (2) = length;
+		rlength -> operand (3) = arg (2);
+		rlength -> operator.processed = "1"b;
+	     end;
+	end;
+	else do;
+	     rprecision = ref (1) -> reference.c_length * max (m, 0);
+	     if jump_index ^= 9 /* we have told users we will NOT optimize this for copy */ then
+		if m = 1 then
+		     goto return_arg1;
+	end;
+
+	goto create_operator_node;
+
+action (10):					/* string */
+	if arg (1) -> node.type = token_node then do;
+	     i = 1;
+	     if arg_type (1).bit then
+		string (type) = defined_arg_type (1);
+	     else
+		string (type) = char_mask;
+
+	     call convert_arg;
+
+	     if def_context.left_side then
+		call semantic_translator$abort (141, builtin_symbol);
+
+	     goto return_arg1;
+	end;
+
+	if arg (1) -> node.type = reference_node & arg (1) = arg_symbol (1) -> symbol.reference then
+	     arg (1), ref (1) = copy_expression ((ref (1)));
+
+	string (rtype) = defined_arg_type (1);
+
+	if def_context.left_side then
+	     call propagate_bit (arg_symbol (1), set_bit);
+
+	if arg (1) -> node.type = operator_node then do;
+	     if arg (1) -> operator.op_code = loop | arg (1) -> operator.op_code = join | arg_type (1).structure
+		| ref (1) -> reference.array_ref then
+		call semantic_translator$abort (294, builtin_symbol);
+
+	     i = 1;
+	     if arg_type (1).bit then
+		string (type) = defined_arg_type (1);
+	     else
+		string (type) = char_mask;
+
+	     call convert_arg;
+
+	     if def_context.left_side then
+		call semantic_translator$abort (141, builtin_symbol);
+
+	     goto return_arg1;
+	end;
+
+	if arg_type (1).structure then do;
+	     p = arg_symbol (1);
+	     do while (p -> symbol.structure);
+		p = p -> symbol.son;
+	     end;
+
+	     if p -> symbol.bit then
+		units = bit_;
+	     else if p -> symbol.char | p -> symbol.picture then
+		units = character_;
+	     else
+		goto err124;
+
+	     call check_strings ((arg_symbol (1) -> symbol.son));
+
+	     goto aggregate;
+	end;
+
+	if arg_type (1).bit | arg_type (1).char | arg_type (1).picture then do;
+	     if ^ref (1) -> reference.array_ref then do;
+		if ^arg_type (1).picture then
+		     goto return_arg1;
+		else do;
+		     units = character_;
+		     c_length = ref (1) -> reference.c_length;
+		     length = null;
+		     goto make_reference;
+		end;
+	     end;
+
+	     if arg_type (1).bit then
+		units = bit_;
+	     else
+		units = character_;
+
+	     if arg_symbol (1) -> symbol.packed then
+		goto aggregate;
+
+	     if def_context.left_side then
+		call semantic_translator$abort (141, builtin_symbol);
+	     else
+		call semantic_translator$abort (142, builtin_symbol);
+	     goto ret;
+	end;
+	else do;
+	     if arg (1) -> reference.array_ref then
+		call semantic_translator$abort (139, arg_symbol (1));
+
+	     i = 1;
+	     string (type) = char_mask;
+	     call convert_arg;
+
+	     goto return_arg1;
+	end;
+
+action (11):					/* substr */
+	if rtype.bit then
+	     units = bit_;
+	else
+	     units = character_;
+
+	if arg (1) -> node.type = operator_node then do;
+	     if def_context.left_side then
+		call semantic_translator$abort (148, builtin_symbol);
+
+	     ref (1) = arg (1) -> operand (1);
+	end;
+	else if def_context.left_side then do;
+	     call propagate_bit (arg_symbol (1), set_bit);
+	     arg_symbol (1) -> symbol.passed_as_arg = "1"b;
+	end;
+
+/* If user didn't specify 3rd argument (new length), or stringrange is enabled, save info
+	   about length of first argument now. */
+
+	if arg_number = 2 | substr (statement_ptr -> statement.prefix, 8, 1) /* stringrange */ then do;
+	     if ref (1) -> reference.varying_ref then do;
+		length = create_length_fun (arg (1));
+		c_length = 0;
+	     end;
+	     else do;
+		length = ref (1) -> reference.length;
+		c_length = ref (1) -> reference.c_length;
+		if length ^= null then
+		     if arg (1) -> node.type = operator_node | ref (1) -> reference.ref_count > 1 then
+			length = share_expression (length);
+	     end;
+
+	     if arg_number = 2 & substr (statement_ptr -> statement.prefix, 8, 1) then
+		if length ^= null then
+		     length = share_expression (length);
+	end;
+
+/* Compute (offset - 1) and save it in "offset". */
+
+	if symbol_is_constant (arg_symbol (2)) then do;
+	     offset = null;
+	     c_offset = constant_value (arg_symbol (2)) - 1;
+	end;
+	else do;
+	     c_offset = 0;
+
+	     if arg (2) -> node.type = operator_node then
+		if arg (2) -> operator.op_code = add then
+		     if arg (2) -> operand (3) -> node.type = reference_node then
+			if symbol_is_constant ((arg (2) -> operand (3) -> reference.symbol)) then
+			     if constant_value ((arg (2) -> operand (3) -> reference.symbol)) = 1 then
+				if fb1_value ((arg (2) -> operand (3) -> reference.symbol)) then do;
+				     r = arg (2) -> operand (2);
+				     if r -> node.type = operator_node then
+					r = r -> operand (1);
+
+				     if fb1_value ((r -> reference.symbol)) then do;
+					offset = arg (2) -> operand (2);
+					go to chk_context;
+				     end;
+				end;
+
+	     offset = create_operator (sub, 3);
+	     offset -> operand (2) = arg (2);
+	     offset -> operand (3) = declare_constant$integer (1);
+	end;
+
+chk_context:
+	if def_context.arg_list then do;
+	     tree, p = create_operator (assign, 2);
+	     r = create_symbol (null, null, by_compiler);
+	     r -> symbol.temporary = "1"b;
+	     p -> operand (1) = r -> symbol.reference;
+	     p -> operand (2) = arg (1);
+	end;
+
+	if arg (1) -> node.type = operator_node | arg_symbol (1) -> symbol.picture then do;
+	     s = create_symbol (null, null, by_compiler);
+	     p = s -> symbol.reference;
+	     t = ref (1) -> reference.symbol;
+	     s -> symbol = t -> symbol;		/* structure assignment */
+	     s -> symbol.next = null;
+	     s -> symbol.reference = p;
+	     s -> symbol.defined, s -> symbol.overlayed, s -> symbol.position = "1"b;
+	     s -> symbol.return_value, s -> symbol.temporary = "0"b;
+	     p -> reference.qualifier = arg (1);
+	     p -> reference.shared = "0"b;
+	     p -> reference.ref_count = 1;
+
+	     if s -> symbol.picture then do;
+		s -> symbol.picture = "0"b;
+		s -> symbol.char = "1"b;
+		s -> symbol.general = null;
+	     end;
+
+	     if arg (1) -> node.type ^= operator_node then do;
+
+/* move the offset from the defined variable up */
+
+		if ref (1) = arg_symbol (1) -> symbol.reference then
+		     p -> reference.qualifier, ref (1) = copy_expression ((ref (1)));
+		else if ref (1) -> reference.ref_count > 1 then do;
+		     ref (1) -> reference.ref_count = ref (1) -> reference.ref_count - 1;
+		     r = create_reference (null);
+		     r -> reference = ref (1) -> reference;
+		     r -> reference.ref_count = 1;
+		     call reuse_qual_and_offset (r);
+		     p -> reference.qualifier, ref (1) = r;
+		end;
+		p -> reference.offset = ref (1) -> reference.offset;
+		p -> reference.c_offset = ref (1) -> reference.c_offset;
+		p -> reference.units = ref (1) -> reference.units;
+		p -> reference.modword_in_offset = ref (1) -> reference.modword_in_offset;
+		ref (1) -> reference.offset = null;
+		ref (1) -> reference.c_offset = 0;
+		ref (1) -> reference.modword_in_offset = "0"b;
+
+/* this must not be commoned by optimizer */
+
+		ref (1) -> reference.inhibit = "1"b;
+	     end;
+	end;
+	else do;
+	     p = create_reference ((ref (1) -> reference.symbol));
+	     p -> reference = ref (1) -> reference;	/* structure assignment */
+	     p -> reference.shared = "0"b;
+	     p -> reference.ref_count = 1;
+	     if ^ref (1) -> reference.shared then do;
+		rcount, ref (1) -> reference.ref_count = ref (1) -> reference.ref_count - 1;
+		if rcount > 0 then
+		     call reuse_qual_and_offset (p);	/* we may have substr(varying,<expr>) */
+	     end;
+	end;
+
+/* Begin filling in the new reference node expressing the
+	   result of substr.  Save the original argument because
+	   we still need some of the info in it. */
+
+	save_arg_one = arg (1);
+	arg (1) = p;
+
+	arg (1) -> reference.varying_ref, arg (1) -> reference.padded_ref, arg (1) -> reference.aligned_ref = "0"b;
+
+	off = arg (1) -> reference.offset;
+	coff = arg (1) -> reference.c_offset;
+	cunits = arg (1) -> reference.units;
+	call offset_adder (off, coff, cunits, (arg (1) -> reference.modword_in_offset), (offset), (c_offset), units,
+	     "0"b, arg (1) -> reference.fo_in_qual);
+	arg (1) -> reference.offset = off;
+	arg (1) -> reference.c_offset = coff;
+	arg (1) -> reference.units = cunits;
+	arg (1) -> reference.modword_in_offset = "0"b;
+
+	if ^pl1_stat_$eis_mode then
+	     if arg (1) -> reference.offset ^= null then
+		if arg (1) -> reference.units <= half_ then do;
+		     if arg (1) -> reference.units = bit_ then
+			opcode = mod_bit;
+		     else if arg (1) -> reference.units = character_ then
+			opcode = mod_byte;
+		     else
+			opcode = mod_half;
+
+		     p = create_operator (opcode, 3);
+		     p -> operand (1), p -> operand (2) =
+			declare_temporary (integer_type, default_fix_bin_p, 0, null);
+		     p -> operand (3) = arg (1) -> reference.offset;
+
+		     arg (1) -> reference.offset = p;
+		end;
+
+/* Fill in length of result. */
+
+	if arg_number = 2 then
+	     if length = null & offset = null then
+		arg (1) -> reference.c_length = c_length - c_offset;
+	     else do;
+		p = create_operator (sub, 3);
+		p -> operand (1) = declare_temporary (fixed_binary_real_mask, default_fix_bin_p, 0, null);
+		p -> operand (2) = length;
+		p -> operand (3) = offset;
+
+		arg (1) -> reference.length = p;
+		arg (1) -> reference.c_length = 0;
+
+		if length = null then
+		     p -> operand (2) = declare_constant$integer (c_length);
+
+		if offset = null then
+		     p -> operand (3) = declare_constant$integer (c_offset);
+		else do;
+		     if offset -> node.type = operator_node then
+			offset = expression_semantics (cur_block, statement_ptr, offset, "0"b);
+
+		     offset = share_expression (offset);
+		end;
+	     end;
+	else if symbol_is_constant (arg_symbol (3)) then do;
+	     arg (1) -> reference.c_length = constant_value (arg_symbol (3));
+	     arg (1) -> reference.length = null;
+	end;
+	else do;
+	     arg (1) -> reference.c_length = 0;
+	     arg (1) -> reference.length = arg (3);
+	end;
+
+	if substr (statement_ptr -> statement.prefix, 8, 1) /* stringrange */ then
+	     if symbol_is_constant (arg_symbol (2)) /* if 2nd arg (offset) is a constant */
+		& arg (1) -> reference.length = null /* and new length is constant */
+		& length = null /* and old length is constant */ then do;
+						/* then make checks now */
+		substr_index = constant_value (arg_symbol (2));
+
+		if substr_index < 1 then
+		     call semantic_translator$error (147, builtin_symbol);
+
+/* if there is a problem here, diagnose it later */
+		if arg (1) -> reference.c_length < 0 then
+		     c_length = substr_index - 1;
+
+		if c_length < (substr_index + arg (1) -> reference.c_length - 1) then
+		     call semantic_translator$error (147, builtin_symbol);
+	     end;
+	     else do;
+		if arg (1) -> reference.length = null then do;
+		     arg (1) -> reference.length = declare_constant$integer ((arg (1) -> reference.c_length));
+		     arg (1) -> reference.c_length = 0;
+		end;
+
+/* Generate operator to check that:
+			   0 <= new_length <= (orig_length - offset + 1) */
+
+		p = create_operator (range_ck, 4);
+		p -> operand (1) = declare_temporary (integer_type, default_fix_bin_p, 0, null);
+		p -> operand (2) = arg (1) -> reference.length;
+		p -> operand (3) = declare_constant$integer (0);
+
+		p -> operand (4) = create_operator (sub, 3);
+		p -> operand (4) -> operand (1) = declare_temporary (integer_type, default_fix_bin_p, 0, null);
+
+/* Fill in length of original argument */
+
+		if length = null then
+		     p -> operand (4) -> operand (2) = declare_constant$integer (c_length);
+		else
+		     p -> operand (4) -> operand (2) = length;
+
+		if offset = null then
+		     p -> operand (4) -> operand (3) = declare_constant$integer (c_offset);
+		else
+		     p -> operand (4) -> operand (3) = copy_expression ((offset));
+
+		if offset = null & length = null then
+		     if c_offset < 0 | c_offset > c_length then
+			call semantic_translator$abort (147, builtin_symbol);
+		     else
+			;
+		else do;
+		     r = create_operator (range_ck, 4);
+		     r -> operand (1) = declare_temporary (integer_type, default_fix_bin_p, 0, null);
+		     r -> operand (2) = p -> operand (4) -> operand (3);
+		     r -> operand (3) = declare_constant$integer (0);
+		     r -> operand (4) = copy_expression ((p -> operand (4) -> operand (2)));
+
+		     p -> operand (4) -> operand (3) = r;
+		end;
+
+		arg (1) -> reference.length = p;
+	     end;
+
+/* fix to avoid problems later in convert 
+	   if a constant substr length is < 0 */
+	if arg (1) -> reference.c_length < 0 then do;
+	     call semantic_translator$error (147, builtin_symbol);
+	     arg (1) -> reference.c_length = 0;
+	end;
+
+	arg (1) -> reference.length =
+	     expression_semantics (cur_block, statement_ptr, (arg (1) -> reference.length), "0"b);
+	if arg (1) -> reference.length ^= null then
+	     arg (1) -> reference.length = convert$to_integer ((arg (1) -> reference.length), integer_type);
+
+	arg (1) -> reference.offset =
+	     expression_semantics (cur_block, statement_ptr, (arg (1) -> reference.offset), "0"b);
+	if arg (1) -> reference.offset ^= null then
+	     arg (1) -> reference.offset = convert$to_integer ((arg (1) -> reference.offset), integer_type);
+
+	arg (1) -> reference.substr = "1"b;
+
+	call simplify_offset (arg (1), context);
+
+	if def_context.arg_list then do;
+	     tree -> operand (2) = arg (1);
+	     tree = operator_semantics (cur_block, statement_ptr, tree, this_context);
+	     goto ret;
+	end;
+
+	goto return_arg1;
+
+action (12):					/* unspec */
+	if arg (1) -> node.type = token_node then do;
+	     call semantic_translator$error (485, null);
+	     i = 1;
+	     string (type) = defined_arg_type (1);
+	     call convert_arg;
+	end;
+
+	if arg (1) -> node.type = reference_node & arg (1) = arg_symbol (1) -> symbol.reference then
+	     arg (1), ref (1) = copy_expression ((ref (1)));
+
+	string (rtype) = bit_mask;
+	units = bit_;
+
+	if def_context.left_side then
+	     if arg (1) -> node.type = operator_node then
+		call semantic_translator$abort (148, builtin_symbol);
+	     else do;
+		call propagate_bit (arg_symbol (1), set_bit);
+		arg_symbol (1) -> symbol.passed_as_arg = "1"b;
+	     end;
+
+	if arg_type (1).structure | ref (1) -> reference.array_ref then do;
+	     if pl1_stat_$check_ansi then
+		call semantic_translator$error (172, builtin_symbol);
+	     goto aggregate;
+	end;
+
+	if ref (1) -> reference.varying_ref then do;
+	     length = create_length_fun (arg (1));
+	     c_length = 0;
+	end;
+	else do;
+	     length = ref (1) -> reference.length;
+	     c_length = ref (1) -> reference.c_length;
+	end;
+
+	if arg_symbol (1) -> symbol.bit then
+	     goto make_reference;
+
+	if arg_symbol (1) -> symbol.char | arg_symbol (1) -> symbol.picture then do;
+	     if length ^= null then do;
+		p = create_operator (mult, 3);
+		p -> operand (2) = length;
+		p -> operand (3) = declare_constant$integer (bits_per_character);
+		length = p;
+	     end;
+	     else
+		c_length = c_length * bits_per_character;
+
+	     goto make_reference;
+	end;
+
+aggregate:
+	if arg (1) -> node.type = operator_node then
+	     call semantic_translator$abort (294, builtin_symbol);
+
+	if arg_symbol (1) -> symbol.array ^= null & ^ref (1) -> reference.array_ref then do;
+	     c_length = arg_symbol (1) -> symbol.array -> array.c_element_size_bits;
+	     length = copy_expression (arg_symbol (1) -> symbol.array -> array.element_size_bits);
+	end;
+	else do;
+	     c_length = arg_symbol (1) -> symbol.c_bit_size;
+	     length = copy_expression (arg_symbol (1) -> symbol.bit_size);
+
+	     if ref (1) -> reference.offset ^= null then
+		if ref (1) -> reference.offset -> node.type = list_node then
+		     call semantic_translator$abort (338, ref (1));
+	end;
+
+	if units = character_ then
+	     if length ^= null then do;
+		p = create_operator (bit_to_char, 2);
+		p -> operand (2) = length;
+
+		length = p;
+	     end;
+	     else
+		c_length = divide (c_length, bits_per_character, 15, 0);
+
+
+	if arg_symbol (1) -> symbol.defined then
+	     if arg_symbol (1) -> symbol.structure | ref (1) -> reference.array_ref then
+		arg (1) = defined_reference (cur_block, statement_ptr, arg (1), null, arg_symbol (1), "0"b);
+
+make_reference:
+	if arg (1) -> node.type = operator_node then do;
+	     call make_assignment;
+
+	     if agg_ref = null then
+		arg (1) = p -> operand (1);
+	     else do;
+		arg (1) = agg_ref;
+		defined_arg_type (1) = string (agg_ref -> reference.symbol -> symbol.attributes);
+		c_length = agg_ref -> reference.symbol -> symbol.c_bit_size;
+		length = copy_expression (agg_ref -> reference.symbol -> symbol.bit_size);
+	     end;
+
+	     if arg_type (1).bit | jump_index = 12 then
+		units = bit_;
+	     else
+		units = character_;
+	end;
+
+	if def_context.arg_list then do;
+	     tree, p = create_operator (assign, 2);
+	     r = create_symbol (null, null, by_compiler);
+	     r -> symbol.temporary = "1"b;
+	     p -> operand (1) = r -> symbol.reference;
+	     p -> operand (2) = arg (1);
+	end;
+
+	if units = character_ then
+	     string (rtype) = char_mask;
+	else
+	     string (rtype) = bit_mask;
+
+	rtype.unaligned = arg_symbol (1) -> symbol.packed;
+
+	if ^arg_symbol (1) -> symbol.overlayed_by_builtin then
+	     call propagate_bit (arg_symbol (1), overlayed_by_builtin_bit);
+
+	p = declare_defined_overlay (string (rtype), c_length, 0, length, arg (1));
+
+/* we omit setting ref(1)->reference.c_length=0 because ref(1) might be a constant and,
+	   therefore, still a symbol.reference since copy_expression works differently here */
+	ref (1) -> reference.length = null;
+
+	p -> reference.padded_ref = "0"b;
+
+
+/*  move the offsets from the defined variable up */
+
+	p -> reference.qualifier = arg (1);
+	p -> reference.fo_in_qual = ref (1) -> reference.fo_in_qual;
+	p -> reference.offset = arg (1) -> reference.offset;
+	p -> reference.c_offset = arg (1) -> reference.c_offset;
+	p -> reference.units = arg (1) -> reference.units;
+	p -> reference.modword_in_offset = arg (1) -> reference.modword_in_offset;
+
+	if ^pl1_stat_$eis_mode then
+	     if p -> reference.offset ^= null then
+		if p -> reference.units <= half_ then do;
+		     if p -> reference.units = bit_ then
+			opcode = mod_bit;
+		     else if p -> reference.units = character_ then
+			opcode = mod_byte;
+		     else
+			opcode = mod_half;
+
+		     offset = create_operator (opcode, 3);
+		     offset -> operand (1), offset -> operand (2) =
+			declare_temporary (integer_type, default_fix_bin_p, 0, null);
+		     offset -> operand (3) = p -> reference.offset;
+
+		     p -> reference.offset = offset;
+		end;
+
+	if (p -> reference.units = character_ | p -> reference.units = digit_) & units = bit_ & pl1_stat_$eis_mode
+	then do;					/* string(bit_structure) or unspec */
+	     p -> reference.c_offset = p -> reference.c_offset * bits_per_character;
+
+	     if p -> reference.units = digit_ then
+		p -> reference.c_offset = divide (p -> reference.c_offset, packed_digits_per_character, 24, 0);
+
+	     if p -> reference.offset ^= null & ^p -> reference.modword_in_offset then
+		if p -> reference.units = character_ then do;
+		     offset = create_operator (mult, 3);
+		     offset -> operand (2) = declare_constant$integer (bits_per_character);
+		     offset -> operand (3) = p -> reference.offset;
+		     p -> reference.offset = offset;
+		end;
+		else do;
+		     offset = create_operator (digit_to_bit, 2);
+		     offset -> operand (2) = p -> reference.offset;
+		     p -> reference.offset = offset;
+		end;
+	     p -> reference.units = bit_;
+	end;
+
+	if p -> reference.qualifier -> node.type = reference_node then do;
+	     p -> reference.qualifier -> reference.c_offset = 0;
+	     p -> reference.qualifier -> reference.offset = null;
+	     p -> reference.qualifier -> reference.modword_in_offset = "0"b;
+	     p -> reference.qualifier -> reference.inhibit = "1"b;
+	end;
+
+	p -> reference.length = fill_refer ((p -> reference.length), (ref (1) -> reference.qualifier), "1"b);
+	p -> reference.length = expression_semantics (cur_block, statement_ptr, (p -> reference.length), "0"b);
+	if p -> reference.length ^= null then
+	     p -> reference.length = convert$to_integer ((p -> reference.length), integer_type);
+
+	p -> reference.offset = expression_semantics (cur_block, statement_ptr, (p -> reference.offset), "0"b);
+	if p -> reference.offset ^= null then
+	     p -> reference.offset = convert$to_integer ((p -> reference.offset), integer_type);
+
+	call simplify_offset (p, context);
+
+	if def_context.arg_list then do;
+	     tree -> operand (2) = p;
+	     tree = operator_semantics (cur_block, statement_ptr, tree, this_context);
+	end;
+	else
+	     tree = p;
+
+	goto ret;
+
+action (13):					/* abs */
+	string (rtype) = defined_arg_type (1) & ^unaligned_mask & ^complex_mask | real_mask | aligned_mask;
+
+	goto create_operator_node;
+
+action (14):					/* add
+   divide
+   multiply
+   subtract */
+	string (rtype) = "0"b;
+
+	do i = 1 to 2;
+	     defined_as_if_type (i) = defined_arg_type (i);
+
+	     if as_if_type (i).bit then
+		defined_as_if_type (i) = fixed_binary_real_mask;
+	     else if as_if_type (i).char then
+		defined_as_if_type (i) = fixed_decimal_real_mask;
+	     else if as_if_type (i).picture then
+		if arg_symbol (i) -> symbol.complex then
+		     if arg_symbol (i) -> symbol.pix.pic_float then
+			defined_as_if_type (i) = float_decimal_complex_mask;
+		     else
+			defined_as_if_type (i) = fixed_decimal_complex_mask;
+		else if arg_symbol (i) -> symbol.pix.pic_float then
+		     defined_as_if_type (i) = float_decimal_real_mask;
+		else
+		     defined_as_if_type (i) = fixed_decimal_real_mask;
+	end;
+
+	if as_if_type (1).fixed & as_if_type (2).fixed then
+	     string (rtype) = string (rtype) | fixed_mask;
+	else
+	     string (rtype) = string (rtype) & ^fixed_mask | float_mask;
+
+	if as_if_type (1).decimal & as_if_type (2).decimal then
+	     string (rtype) = string (rtype) | decimal_mask;
+	else
+	     string (rtype) = string (rtype) & ^decimal_mask | binary_mask;
+
+	if ^as_if_type (1).complex & ^as_if_type (2).complex then
+	     string (rtype) = string (rtype) | real_mask;
+	else
+	     string (rtype) = string (rtype) & ^real_mask | complex_mask;
+
+	string (type) = string (rtype);
+
+	do i = 1 to 2;
+	     call convert_arg;
+	end;
+
+	if rtype.float & arg_number = 4 then
+	     call semantic_translator$abort (167, builtin_symbol);
+
+	if arg_number = 4 then
+	     rscale = constant_value (arg_symbol (4));
+
+	rprecision = constant_value (arg_symbol (3));
+
+	if rtype.decimal & rprecision > max_p_dec then
+	     goto err146;
+
+	if rtype.fixed & rprecision > max_p_fix_bin_2 | rtype.float & rprecision > max_p_flt_bin_2 then
+	     goto err146;
+
+	arg_number = 2;
+
+	goto create_operator_node;
+
+action (15):					/* bin
+   binary
+   dec
+   decimal */
+	string (rtype) = pl1_data$builtin_name.description (builtin_number).descriptor (1).type | aligned_mask;
+
+	if arg_number = 3 then
+	     rscale = constant_value (arg_symbol (3));
+	else
+	     rscale = 0;
+
+	if arg_number >= 2 then
+	     rprecision = constant_value (arg_symbol (2));
+	else
+	     rprecision = 0;
+
+	goto convert_to_arith;
+
+action (16):					/* ceil
+   floor
+   trunc */
+	if arg_type (1).complex then
+	     goto err124;
+
+	if arg_type (1).fixed then
+	     if arg_type (1).binary then
+		rprecision = min (max_p_fix_bin_2, max (rprecision - rscale + 1, 1));
+	     else
+		rprecision = min (max_p_dec, max (rprecision - rscale + 1, 1));
+	rscale = 0;
+
+	goto create_operator_node;
+
+action (17):					/* complex
+   cplx */
+	string (rtype) = "0"b;
+
+	do i = 1 to 2;
+	     defined_as_if_type (i) = defined_arg_type (i);
+
+	     if as_if_type (i).bit then
+		defined_as_if_type (i) = fixed_binary_real_mask;
+	     else if as_if_type (i).char then
+		defined_as_if_type (i) = fixed_decimal_real_mask;
+	     else if as_if_type (i).picture then
+		if arg_symbol (i) -> symbol.pix.pic_float then
+		     defined_as_if_type (i) = float_decimal_real_mask;
+		else
+		     defined_as_if_type (i) = fixed_decimal_real_mask;
+
+	     if as_if_type (i).complex then
+		goto err124;
+	end;
+
+	if as_if_type (1).fixed & as_if_type (2).fixed then
+	     string (rtype) = string (rtype) | fixed_mask;
+	else
+	     string (rtype) = string (rtype) & ^fixed_mask | float_mask;
+
+	if as_if_type (1).decimal & as_if_type (2).decimal then
+	     string (rtype) = string (rtype) | decimal_mask;
+	else
+	     string (rtype) = string (rtype) & ^decimal_mask | binary_mask;
+
+	string (type) = string (rtype);
+	string (rtype) = string (rtype) & ^real_mask | complex_mask;
+
+	do i = 1 to 2;
+	     call convert_arg;
+	end;
+
+	p1 = arg_symbol (1) -> symbol.c_dcl_size;
+	p2 = arg_symbol (2) -> symbol.c_dcl_size;
+	q1 = fixed (arg_symbol (1) -> symbol.scale, 31, 0);
+	q2 = fixed (arg_symbol (2) -> symbol.scale, 31, 0);
+
+	rscale = max (q1, q2);
+
+	if rtype.fixed & rtype.binary then
+	     rprecision = min (max_p_fix_bin_2, max (p1 - q1, p2 - q2) + rscale);
+	else
+	     rprecision = min (max_p_flt_bin_2, max (p1 - q1, p2 - q2) + rscale);
+
+	if rtype.decimal then
+	     rprecision = min (max_p_dec, max (p1 - q1, p2 - q2) + rscale);
+
+	goto create_operator_node;
+
+action (18):					/* bit
+   char */
+	string (rtype) = pl1_data$builtin_name.description (builtin_number).descriptor (1).type | aligned_mask;
+
+	string_size_ck = "1"b;
+
+	if arg_number = 2 then
+	     if symbol_is_constant (arg_symbol (2)) then do;
+		rprecision = constant_value (arg_symbol (2));
+		rlength = null;
+	     end;
+	     else do;
+		rprecision = 0;
+		rlength = copy_expression ((arg (2)));
+	     end;
+
+	full_attribute_set = arg_number > 1;
+
+	if arg (1) -> node.type = token_node then do;
+	     arg (1) = convert$from_builtin (arg (1), string (rtype));
+	     if ^full_attribute_set then
+		rprecision = arg (1) -> reference.c_length;
+	     opcode = assign;
+	     arg_number = 1;
+
+	     goto create_operator_node;
+	end;
+
+	goto convert_label;
+
+action (19):					/* imag
+   real */
+	string (rtype) = string (rtype) & ^complex_mask | real_mask;
+
+	if ^def_context.arg_list then do;
+	     if arg_symbol (1) -> symbol.packed then
+		string (rtype) = string (rtype) & ^aligned_mask | unaligned_mask;
+
+	     t = declare_defined_overlay (string (rtype), rprecision, (rscale), rlength, arg (1));
+	     s = t -> reference.symbol;
+
+	     s -> symbol.boundary = arg_symbol (1) -> symbol.boundary;
+
+	     if def_context.left_side then
+		call propagate_bit (arg_symbol (1), set_bit);
+
+	     arg_symbol (1) -> symbol.overlayed_by_builtin = "1"b;
+
+	     if opcode = imag_fun /* imag */ then
+		if s -> symbol.decimal then do;
+		     if s -> symbol.unaligned then do;
+			t -> reference.units = digit_;
+			t -> reference.c_offset = divide (s -> symbol.c_bit_size, bits_per_digit, 15, 0);
+		     end;
+		     else do;
+			t -> reference.units = character_;
+			t -> reference.c_offset = divide (s -> symbol.c_bit_size, bits_per_character, 15, 0);
+		     end;
+		end;
+		else do;
+		     if s -> symbol.packed then do;
+			t -> reference.units = bit_;
+			t -> reference.c_offset = s -> symbol.c_bit_size;
+		     end;
+		     else do;
+			t -> reference.units = word_;
+			t -> reference.c_offset = s -> symbol.c_word_size;
+		     end;
+		end;
+
+	     if arg (1) -> node.type = operator_node then do;
+		r = create_statement (assignment_statement, (statement_ptr -> statement.back), null,
+		     (statement_ptr -> statement.prefix));
+		r -> statement.root = share_expression (arg (1));
+		r -> statement.generated = "1"b;
+
+		ref (1) = arg (1) -> operand (1);
+	     end;
+	     else if arg (1) = arg_symbol (1) -> symbol.reference then
+		arg (1), ref (1) = copy_expression ((arg (1)));
+
+	     off = t -> reference.offset;
+	     coff = t -> reference.c_offset;
+	     cunits = t -> reference.units;
+
+	     call offset_adder (off, coff, cunits, "0"b, (ref (1) -> reference.offset), (ref (1) -> reference.c_offset),
+		(ref (1) -> reference.units), (ref (1) -> reference.modword_in_offset),
+		ref (1) -> reference.fo_in_qual);
+
+	     t -> reference.offset = off;
+	     t -> reference.c_offset = coff;
+	     t -> reference.units = cunits;
+	     ref (1) -> reference.offset = null;
+	     ref (1) -> reference.c_offset = 0;
+	     ref (1) -> reference.modword_in_offset = "0"b;
+	     ref (1) -> reference.inhibit = "1"b;
+	     t -> reference.qualifier = arg (1);
+	     t -> reference.fo_in_qual = ref (1) -> reference.fo_in_qual;
+
+	     if t -> reference.offset ^= null then do;
+		t -> reference.offset =
+		     expression_semantics (cur_block, statement_ptr, (t -> reference.offset), "0"b);
+		call simplify_offset (t, "0"b);
+	     end;
+
+
+	     tree = t;
+	     goto ret;
+	end;
+
+	goto create_operator_node;
+
+action (20):					/* max
+   min */
+	string (rtype) = "0"b;
+	rprecision, rscale = 0;
+
+	do i = 1 to arg_number;
+	     defined_as_if_type (i) = defined_arg_type (i);
+
+	     if as_if_type (i).bit then
+		defined_as_if_type (i) = fixed_binary_real_mask;
+	     else if as_if_type (i).char then
+		defined_as_if_type (i) = fixed_decimal_real_mask;
+	     else if as_if_type (i).picture then
+		if arg_symbol (i) -> symbol.pix.pic_float then
+		     defined_as_if_type (i) = float_decimal_real_mask;
+		else
+		     defined_as_if_type (i) = fixed_decimal_real_mask;
+
+	     if as_if_type (i).complex then
+		goto err124;
+	end;
+
+	do i = 1 to arg_number;
+	     rtype.float = rtype.float | as_if_type (i).float;
+	     rtype.binary = rtype.binary | as_if_type (i).binary;
+	end;
+
+	if ^rtype.float then
+	     rtype.fixed = "1"b;
+
+	if ^rtype.binary then
+	     rtype.decimal = "1"b;
+
+	rtype.real = "1"b;
+
+	string (type) = string (rtype);
+
+	do i = 1 to arg_number;
+	     call convert_arg;
+	     rprecision = max (rprecision, arg_symbol (i) -> symbol.c_dcl_size);
+	     rscale = max (rscale, fixed (arg_symbol (i) -> symbol.scale, 31, 0));
+	end;
+
+	goto create_operator_node;
+
+action (21):					/* mod */
+	string (rtype) = real_mask | aligned_mask;
+	rprecision, rscale = 0;
+
+	do i = 1 to 2;
+	     defined_as_if_type (i) = defined_arg_type (i);
+
+	     if as_if_type (i).bit then
+		defined_as_if_type (i) = fixed_binary_real_mask;
+	     else if as_if_type (i).char then
+		defined_as_if_type (i) = fixed_decimal_real_mask;
+	     else if as_if_type (i).picture then
+		if arg_symbol (i) -> symbol.pix.pic_float then
+		     defined_as_if_type (i) = float_decimal_real_mask;
+		else
+		     defined_as_if_type (i) = fixed_decimal_real_mask;
+
+	     if as_if_type (i).complex then
+		goto err124;
+	end;
+
+	if as_if_type (1).fixed & as_if_type (2).fixed then
+	     string (rtype) = string (rtype) | fixed_mask;
+	else
+	     string (rtype) = string (rtype) & ^fixed_mask | float_mask;
+
+	if as_if_type (1).decimal & as_if_type (2).decimal then
+	     string (rtype) = string (rtype) | decimal_mask;
+	else
+	     string (rtype) = string (rtype) & ^decimal_mask | binary_mask;
+
+	string (type) = string (rtype);
+
+	do i = 1 to 2;
+	     call convert_arg;
+	end;
+
+	p1 = arg_symbol (1) -> symbol.c_dcl_size;
+	p2 = arg_symbol (2) -> symbol.c_dcl_size;
+	q1 = fixed (arg_symbol (1) -> symbol.scale, 31, 0);
+	q2 = fixed (arg_symbol (2) -> symbol.scale, 31, 0);
+
+	rscale = max (q1, q2);
+
+	if rtype.float then
+	     rprecision = max (p1, p2);
+	else if rtype.binary then
+	     rprecision = min (max_p_fix_bin_2, p2 - q2 + rscale);
+	else
+	     rprecision = min (max_p_dec, p2 - q2 + rscale);
+
+	goto create_operator_node;
+
+action (22):					/* round */
+	i = constant_value (arg_symbol (2));
+
+	if rtype.fixed then do;
+	     if rtype.decimal then
+		rprecision =
+		     max (1,
+		     min (arg_symbol (1) -> symbol.c_dcl_size - arg_symbol (1) -> symbol.scale + 1 + i, max_p_dec));
+	     else
+		rprecision =
+		     max (1,
+		     min (arg_symbol (1) -> symbol.c_dcl_size - arg_symbol (1) -> symbol.scale + 1 + i,
+		     max_p_fix_bin_2));
+	     rscale = i;
+	end;
+	if rtype.float then do;
+	     if i <= 0 then
+		call semantic_translator$abort (271, builtin_symbol);
+
+	     if rtype.decimal then
+		rprecision = min (i, max_p_dec);
+	     else
+		rprecision = min (i, max_p_flt_bin_2);
+	end;
+
+	goto create_operator_node;
+
+action (23):					/* bool */
+	do i = 1 to 2;
+	     if ref (i) -> reference.varying_ref then
+		cur_length (i) = create_length_fun (arg (i));
+	     else if ref (i) -> reference.length ^= null then
+		cur_length (i) = share_expression ((ref (i) -> reference.length));
+	     else
+		cur_length (i) = null;
+	end;
+
+	if cur_length (1) = null & cur_length (2) = null then
+	     rprecision = max (ref (1) -> reference.c_length, ref (2) -> reference.c_length);
+	else do;
+	     rprecision = 0;
+	     rlength = create_operator (max_fun, 3);
+	     rlength -> operand (1) = declare_temporary (integer_type, default_fix_bin_p, 0, null);
+	     rlength -> operand (2) = cur_length (1);
+	     rlength -> operand (3) = cur_length (2);
+
+	     if cur_length (1) = null then
+		rlength -> operand (2) = declare_constant$integer ((ref (1) -> reference.c_length));
+
+	     if cur_length (2) = null then
+		rlength -> operand (3) = declare_constant$integer ((ref (2) -> reference.c_length));
+	end;
+
+	if ^arg_symbol (3) -> symbol.constant then do;
+	     t = declare_temporary (bit_mask, 4, 0, null);
+	     arg (3) = convert$to_target (arg (3), t);
+	     goto create_operator_node;
+	end;
+
+	if rlength ^= null | rprecision > bits_per_double then
+	     goto create_operator_node;
+
+	bit4 = substr (arg_symbol (3) -> symbol.initial -> based_type, 1, 4);
+	not_flag = substr (bit4, 1, 1);
+
+	if not_flag then
+	     bit4 = ^bit4;
+
+	if bit4 = "0000"b then do;
+	     tree = create_operator (assign, 2);
+	     tree -> operand (2) = declare_constant$bit ("000000000000000000000000000000000000"b);
+	end;
+	else if bit4 = "0011"b then do;
+	     tree = create_operator (assign, 2);
+	     tree -> operand (2) = arg (1);
+	end;
+	else if bit4 = "0101"b then do;
+	     tree = create_operator (assign, 2);
+	     tree -> operand (2) = arg (2);
+	end;
+
+	else do;
+	     if bit4 = "0001"b then
+		opcode = and_bits;
+	     else if bit4 = "0111"b then
+		opcode = or_bits;
+	     else if bit4 = "0110"b then
+		opcode = xor_bits;
+
+	     else do;
+		opcode = and_bits;
+
+		if bit4 = "0100"b then
+		     m = 1;
+		else
+		     m = 2;
+
+		r = create_operator (assign, 2);
+		r -> operand (1) = declare_temporary (bit_mask, rprecision, 0, rlength);
+		r -> operand (2) = arg (m);
+
+		p = create_operator (not_bits, 2);
+		p -> operand (1) = declare_temporary (bit_mask, rprecision, 0, rlength);
+		p -> operand (2) = r;
+
+		arg (m) = p;
+	     end;
+
+	     tree = create_operator (opcode, 3);
+	     tree -> operand (2) = arg (1);
+	     tree -> operand (3) = arg (2);
+	end;
+
+	tree -> operand (1) = declare_temporary (bit_mask, rprecision, 0, rlength);
+
+	if not_flag then do;
+	     p = create_operator (not_bits, 2);
+	     p -> operand (1) = declare_temporary (bit_mask, rprecision, 0, rlength);
+	     p -> operand (2) = tree;
+
+	     tree = p;
+	end;
+
+	goto ret;
+
+action (24):					/* decat */
+	if arg_type (1).bit & arg_type (2).bit then
+	     string (type) = bit_mask;
+	else do;
+	     string (type) = char_mask;
+	     reserved_number = reserved_number + 1;
+	end;
+
+	do i = 1 to 2;
+	     call convert_arg;
+	end;
+
+	string (type) = bit_mask;			/* i will be 3 at this point */
+	call convert_arg;
+
+	do i = 1 to arg_number;
+	     if ref (i) -> reference.varying_ref then do;
+		length = create_length_fun (arg (i));
+
+		p = create_operator (assign, 2);
+		ref (i), p -> operand (1) = declare_temporary (string (rtype) & ^varying_mask, 0, 0, length);
+		p -> operand (2) = arg (i);
+
+		arg (i) = p;
+		arg_symbol (i) = ref (i) -> reference.symbol;
+	     end;
+	end;
+
+	desc_reqd = "1"b;
+
+	goto create_call;
+
+action (25):					/* atanh
+   cosh
+   erf
+   erfc
+   sinh
+   tanh */
+	if arg_type (1).complex then
+	     reserved_number = reserved_number + 2;
+
+	if rprecision > max_p_flt_bin_1 then
+	     reserved_number = reserved_number + 1;
+
+	goto create_call;
+
+action (26):					/* dim
+   hbound
+   lbound */
+	if arg_symbol (1) = null then
+	     call semantic_translator$abort (127, builtin_symbol);
+
+	if arg_symbol (1) -> node.type = label_node then do;
+						/* bug 2193: Error 127 is printed when the first argument
+		     to hbound is not an array value */
+	     if ^(arg_symbol (1) -> label.array) then
+		call semantic_translator$abort (127, builtin_symbol);
+	     if reserved_number = 1 then
+		number = arg_symbol (1) -> label.low_bound;
+	     else if reserved_number = 2 then
+		number = arg_symbol (1) -> label.high_bound;
+	     else
+		number = arg_symbol (1) -> label.high_bound - arg_symbol (1) -> label.low_bound + 1;
+
+	     tree = declare_constant (unspec (number), integer_type, max_offset_precision, 0);
+
+	     goto ret;
+	end;
+
+	if arg_symbol (1) -> symbol.array = null then
+	     call semantic_translator$abort (127, builtin_symbol);
+
+	if arg_symbol (1) -> symbol.defined then
+	     arg (1) = defined_reference (cur_block, statement_ptr, arg (1), null, arg_symbol (1), "0"b);
+
+	p = arg_symbol (1) -> symbol.array;
+
+	if ^symbol_is_constant (arg_symbol (2)) then do;
+	     ref (3), arg (3) = declare_constant$integer ((p -> array.number_of_dimensions));
+	     arg_symbol (3) = arg (3) -> reference.symbol;
+
+	     ref (4), arg (4) = declare_constant$integer (reserved_number);
+	     arg_symbol (4) = arg (4) -> reference.symbol;
+
+	     reserved_number = 6;
+	     arg_number = 4;
+	     string (rtype) = fixed_binary_real_mask;
+	     rprecision = max_offset_precision;
+	     rscale = 0;
+
+	     goto create_call;
+	end;
+
+	integer = constant_value (arg_symbol (2));
+
+	if integer > p -> array.number_of_dimensions | integer < 1 then
+	     call semantic_translator$abort (128, builtin_symbol);
+
+	p = p -> array.bounds;
+	do i = 1 to arg_symbol (1) -> symbol.array -> array.number_of_dimensions - integer;
+	     p = p -> bound.next;
+	end;
+
+	if p -> bound.lower ^= null then do;
+	     call simplify_expression ((p -> bound.lower), constant, modified);
+	     if modified then do;
+		p -> bound.c_lower = constant;
+		p -> bound.lower = null;
+	     end;
+	end;
+
+	if p -> bound.upper ^= null then do;
+	     call simplify_expression ((p -> bound.upper), constant, modified);
+	     if modified then do;
+		p -> bound.c_upper = constant;
+		p -> bound.upper = null;
+	     end;
+	end;
+
+	if reserved_number = 1 then
+	     if p -> bound.lower = null then do;
+		tree = declare_constant (unspec (p -> bound.c_lower), integer_type, max_offset_precision, 0);
+		goto ret;
+	     end;
+	     else do;
+		tree = copy_expression (p -> bound.lower);
+		tree = fill_refer (tree, (ref (1) -> reference.qualifier), "1"b);
+		tree = expression_semantics (cur_block, statement_ptr, tree, this_context);
+
+		arg (1) = tree;
+		goto create_assign;
+	     end;
+
+	if reserved_number = 2 then
+	     if p -> bound.upper = null then do;
+		tree = declare_constant (unspec (p -> bound.c_upper), integer_type, max_offset_precision, 0);
+		goto ret;
+	     end;
+	     else do;
+		tree = copy_expression (p -> bound.upper);
+		tree = fill_refer (tree, (ref (1) -> reference.qualifier), "1"b);
+		tree = expression_semantics (cur_block, statement_ptr, tree, this_context);
+
+		arg (1) = tree;
+		goto create_assign;
+	     end;
+
+	if p -> bound.upper = null & p -> bound.lower = null then do;
+	     number = p -> bound.c_upper - p -> bound.c_lower + 1;
+	     tree = declare_constant (unspec (number), integer_type, max_offset_precision, 0);
+
+	     goto ret;
+	end;
+
+	arg (1) = copy_expression (p -> bound.upper);
+	if arg (1) = null then
+	     arg (1) = declare_constant$integer ((p -> bound.c_upper));
+	else do;
+	     arg (1) = fill_refer (arg (1), (ref (1) -> reference.qualifier), "1"b);
+
+	     if arg (1) -> node.type = token_node then
+		arg (1) = expression_semantics (cur_block, statement_ptr, arg (1), "0"b);
+
+	     if arg (1) -> node.type = reference_node then
+		if arg (1) -> reference.symbol -> symbol.arg_descriptor then do;
+		     t = create_operator (assign, 2);
+		     t -> operand (1) = declare_temporary (integer_type, max_offset_precision, 0, null);
+		     t -> operand (2) = arg (1);
+		     arg (1) = t;
+		end;
+	end;
+
+	arg (2) = copy_expression (p -> bound.lower);
+	if arg (2) = null then
+	     arg (2) = declare_constant$integer (p -> bound.c_lower - 1);
+	else do;
+	     arg (2) = fill_refer (arg (2), (ref (1) -> reference.qualifier), "1"b);
+
+	     if arg (2) -> node.type = token_node then
+		arg (2) = expression_semantics (cur_block, statement_ptr, arg (2), "0"b);
+
+	     if arg (2) -> node.type = reference_node then
+		if arg (2) -> reference.symbol -> symbol.arg_descriptor then do;
+		     t = create_operator (assign, 2);
+		     t -> operand (1) = declare_temporary (integer_type, default_fix_bin_p, 0, null);
+		     t -> operand (2) = arg (2);
+		     arg (2) = t;
+		end;
+
+	     p = create_operator (sub, 3);
+	     p -> operand (1) = declare_temporary (fixed_binary_real_mask, max_offset_precision, 0, null);
+	     p -> operand (2) = arg (2);
+	     p -> operand (3) = declare_constant$integer (1);
+
+	     arg (2) = p;
+	end;
+
+	do i = 1 to 2;
+	     arg (i) = expression_semantics (cur_block, statement_ptr, arg (i), "0"b);
+	end;
+
+	string (rtype) = fixed_binary_real_mask;
+	rprecision = max_offset_precision;
+	rscale = 0;
+
+	goto create_operator_node;
+
+action (27):					/* reverse */
+	if check_reverse (arg (1)) then do;		/* reverse (reverse (..)) */
+	     tree = arg (1) -> operator.operand (2);
+	     go to ret;
+	end;
+	if is_this_constant (arg (1)) then do;
+	     constant_string_length = arg (1) -> reference.c_length;
+	     if arg_type (1).bit then
+		tree = declare_constant$bit (reverse (arg_symbol (1) -> symbol.initial -> constant_bit_string));
+	     else
+		tree = declare_constant$char (reverse (arg_symbol (1) -> symbol.initial -> constant_char_string));
+	     go to exit;
+	end;
+	if ref (1) -> reference.c_length = 1 then do;	/* reverse of 1 doesn't reverse */
+	     tree = arg (1);
+	     go to ret;
+	end;
+	goto create_operator_node;
+
+action (28):					/* empty */
+	if pl1_stat_$cur_statement -> statement.root -> operand (2) ^= tree
+	     & pl1_stat_$cur_statement -> statement.root -> operand (2) ^= tree -> reference.symbol -> symbol.token then
+	     call semantic_translator$abort (187, builtin_symbol);
+
+	arg (2) = pl1_stat_$cur_statement -> statement.root -> operand (1);
+	arg_symbol (2) = arg (2) -> reference.symbol;
+
+	if string (arg_symbol (2) -> symbol.data_type) = "0"b then do;
+	     arg_symbol (2) -> symbol.area = "1"b;
+	     arg_symbol (2) -> symbol.c_dcl_size, arg_symbol (2) -> symbol.c_word_size = min_area_size;
+	     integer_24 = min_area_size;
+	end;
+	else if ^arg_symbol (2) -> symbol.area then
+	     call semantic_translator$abort (188, arg (2));
+	else if arg_symbol (2) -> symbol.dcl_size = null then
+	     integer_24 = arg_symbol (2) -> symbol.c_dcl_size;
+	else
+	     integer_24 = 0;			/* this will get reset anyway if dcl_size^=0	*/
+
+
+	if arg_symbol (2) -> symbol.structure then
+	     call semantic_translator$abort (265, arg_symbol (2));
+
+	if arg (2) -> reference.array_ref then do;
+	     t = expand_primitive (cur_block, statement_ptr, arg (2), "0"b);
+
+	     do r = t repeat t -> operand (1) while (r -> operand (1) -> node.type = operator_node);
+	     end;
+
+	     arg (2) = r -> operand (1);
+	end;
+	else
+	     r = null;
+
+	if ^pl1_stat_$use_old_area then do;
+	     p = create_operator (empty_area, 2);	/* op(1) of empty is the area, op(2) is its size */
+	     p -> operand (1) = arg (2);
+	     if integer_24 ^= 0 then
+		p -> operand (2) = declare_constant$integer ((integer_24));
+	     else do;
+		q = copy_expression (arg_symbol (2) -> symbol.dcl_size);
+
+		if arg_symbol (2) -> symbol.refer_extents then
+		     q = fill_refer (q, (arg (2) -> reference.qualifier), "1"b);
+
+		q = expression_semantics (cur_block, statement_ptr, q, "0"b);
+		p -> operand (2) = q;
+	     end;
+	end;
+
+	else do;
+
+	     p = create_operator (copy_words, 3);
+	     p -> operand (1) = arg (2);
+	     p -> operand (2) = declare_constant$bit ((84)"0"b || bit (integer_24, 24) || (36)"0"b);
+	     p -> operand (3) = declare_constant$integer (4);
+
+	     if arg_symbol (2) -> symbol.dcl_size ^= null then do;
+		if arg (2) -> reference.offset ^= null | arg (2) -> reference.c_offset ^= 0 then do;
+						/* not to destroy the offsets of arg(2) used in copy_words */
+		     q = create_reference (null);
+		     q -> reference = arg (2) -> reference;
+		     arg (2) = q;
+		     if ^q -> reference.shared then do;
+			q -> reference.ref_count = 0;
+			if q -> reference.offset ^= null then
+			     q -> reference.offset = copy_expression (q -> reference.offset);
+			if q -> reference.qualifier ^= null then
+			     q -> reference.qualifier = copy_expression (q -> reference.qualifier);
+		     end;
+		end;
+
+		q = create_operator (assign, 2);
+		q -> operand (1) = declare_integer (cur_block);
+		q -> operand (2) = copy_expression (arg_symbol (2) -> symbol.dcl_size);
+
+		if arg_symbol (2) -> symbol.refer_extents then
+		     q -> operand (2) = fill_refer ((q -> operand (2)), (arg (2) -> reference.qualifier), "1"b);
+
+		q -> operand (2) = expression_semantics (cur_block, p, (q -> operand (2)), "0"b);
+
+		arg (2) = expression_semantics (cur_block, statement_ptr, arg (2), "0"b);
+
+		q -> operand (1) -> reference.units = word_;
+		q -> operand (1) -> reference.offset = arg (2) -> reference.offset;
+		q -> operand (1) -> reference.c_offset = arg (2) -> reference.c_offset + 2;
+
+		q -> operand (1) -> reference.qualifier = copy_expression ((arg (2)));
+
+		arg (2) -> reference.offset = null;
+		arg (2) -> reference.c_offset = 0;
+
+		q -> operand (1) -> reference.symbol -> symbol.defined,
+		     q -> operand (1) -> reference.symbol -> symbol.position,
+		     q -> operand (1) -> reference.symbol -> symbol.overlayed, q -> operator.processed = "1"b;
+
+		q -> operand (1) -> reference.shared, q -> operand (1) -> reference.symbol -> symbol.auto = "0"b;
+		q -> operand (1) -> reference.ref_count = 1;
+
+
+		tree = create_operator (join, 2);
+		tree -> operand (1) = p;
+		tree -> operand (2) = q;
+
+		p = tree;
+	     end;
+	end;
+
+	if r ^= null then do;
+	     r -> operand (1) = p;
+	     tree = t;
+	end;
+	else
+	     tree = p;
+
+
+	def_context.return_from_empty = "1"b;
+
+	goto ret;
+
+action (29):					/* null */
+	p = null;
+	tree = declare_constant (unspec (p), pointer_type, 0, 0);
+
+	goto exit;
+
+action (30):					/* lineno
+   pageno */
+	if def_save_context.aggregate then
+	     goto err124;
+	if def_context.left_side then do;
+	     tree = create_operator (std_call, 3);
+	     tree -> operand (2) = reserve$declare_lib (reserved_number - 7);
+	     tree -> operand (3) = create_operator (std_arg_list, 3);
+	     tree -> operand (3) -> operand (1) = declare_temporary (storage_block_type, 6, 0, null);
+	     tree -> operand (3) -> operand (2) = create_list (2);
+	     tree -> operand (3) -> operand (2) -> element (1) = arg (1);
+
+	     tree -> operand (3) -> operand (2) -> element (2) =
+		convert$to_integer ((pl1_stat_$cur_statement -> statement.root -> operand (2)), integer_type);
+
+	     def_context.return_from_empty = "1"b;
+
+	     goto ret;
+	end;
+
+	rprecision = max_p_fix_bin_1;
+	string (rtype) = integer_type;
+
+	goto create_call;
+
+action (31):					/* date */
+	string (rtype) = char_mask;
+	rprecision = 6;
+
+	goto create_call;
+
+action (32):					/* time */
+	string (rtype) = char_mask;
+	rprecision = 12;
+
+	goto create_call;
+
+action (33):					/* addr */
+	if arg (1) -> node.type ^= reference_node & pl1_stat_$check_ansi then
+	     call semantic_translator$abort (132, builtin_symbol);
+	else if arg (1) -> reference.temp_ref then
+	     call semantic_translator$error (299, builtin_symbol);
+						/* temp must mean an expression */
+
+	if arg_symbol (1) -> symbol.constant then
+	     if arg_symbol (1) -> symbol.initial ^= null then
+		call semantic_translator$abort (132, builtin_symbol);
+
+	call propagate_bit (arg_symbol (1), aliasable_bit);
+	call propagate_bit (arg_symbol (1), set_bit);
+	if arg_symbol (1) -> symbol.cross_references ^= null then
+	     arg_symbol (1) -> symbol.cross_references -> cross_reference.set_reference = "0"b;
+						/* Arg of "addr" is not considered a set xref */
+
+	if arg_symbol (1) -> symbol.defined & (arg (1) -> reference.array_ref | arg_symbol (1) -> symbol.structure)
+	then do;
+	     arg (1) = defined_reference (cur_block, statement_ptr, arg (1), null, arg_symbol (1), "0"b);
+	     if arg (1) -> reference.offset ^= null then
+		arg (1) -> reference.offset =
+		     expression_semantics (cur_block, statement_ptr, (arg (1) -> reference.offset), "0"b);
+	end;
+
+	if arg (1) -> reference.units < word_ & arg (1) -> reference.units ^= 0 | arg (1) -> reference.fo_in_qual then
+	     opcode = addr_fun_bits;
+
+	goto prepare_pointer;
+
+action (34):					/* pointer
+   ptr */
+	if def_save_context.aggregate then
+	     goto err124;
+	if arg_type (1).offset then
+	     if ^arg_type (2).area then
+		call semantic_translator$abort (437, arg (2));
+	     else
+		goto prepare_pointer;
+
+	if ^arg_type (1).ptr then
+	     call semantic_translator$abort (438, arg (1));
+
+	if pl1_stat_$check_ansi then
+	     call semantic_translator$error (172, builtin_symbol);
+
+	if ^arg_type (1).aligned then do;
+	     p = create_operator (assign, 2);
+	     p -> operand (1) = declare_temporary (pointer_type, 0, 0, null);
+	     p -> operand (2) = arg (1);
+	     arg (1) = p;
+	end;
+
+	if arg_type (2).bit then do;
+	     i = 2;
+	     string (type) = bit_mask;
+	     call convert_arg;
+
+	     goto prepare_pointer;
+	end;
+
+	if arg_type (2).char | defined_arg_type (2) & arithmetic_mask then do;
+	     i = 2;
+	     string (type) = fixed_binary_real_mask;
+	     call convert_arg;
+
+	     goto prepare_pointer;
+	end;
+	else
+	     call semantic_translator$abort (436, arg (2));
+
+action (35):					/* offset */
+	if def_save_context.aggregate then
+	     goto err124;
+	string (rtype) = offset_mask;
+
+	goto create_operator_node;
+
+action (36):					/* allocation */
+	if arg_symbol (1) -> symbol.father ^= null | ^arg_symbol (1) -> symbol.controlled then
+	     call semantic_translator$abort (124, builtin_symbol);
+
+/* prevent evaluation of a length expression when allocation = 0
+	   (fixes bug 1645) */
+
+	if ^arg (1) -> reference.shared then
+	     arg (1) -> reference.length = null;
+
+	string (rtype) = integer_type;
+	rprecision = default_fix_bin_p;
+	rscale = 0;
+	rlength = null;
+
+	goto create_operator_node;
+
+action (37):					/* search
+   verify */
+	if check_reverse (arg (1)) then do;
+	     arg (1) = arg (1) -> operator.operand (2);
+	     if opcode = search_fun then
+		opcode = search_rev_fun;
+	     else
+		opcode = verify_rev_fun;
+	end;
+
+	string (rtype) = fixed_binary_real_mask;
+	rprecision = max_length_precision;
+
+	goto create_operator_node;
+
+action (38):					/* sign */
+	if rtype.complex then
+	     goto err124;
+
+	string (rtype) = fixed_binary_real_mask;
+	rprecision = default_fix_bin_p;
+	rscale = 0;
+
+	goto create_operator_node;
+
+action (39):					/* baseno
+   rel */
+	if def_save_context.aggregate then
+	     goto err124;
+	if ^arg_type (1).ptr then
+	     goto err124;
+
+	string (rtype) = bit_mask;
+	rprecision = 18;
+
+	goto create_operator_node;
+
+action (70):					/* segno */
+	rprecision = 15;
+	go to pointer_decomp_common;
+action (71):					/* wordno */
+	rprecision = 18;
+	go to pointer_decomp_common;
+action (72):					/* charno */
+	rprecision = 21;
+	go to pointer_decomp_common;
+action (73):					/* bitno */
+	rprecision = 24;
+
+pointer_decomp_common:
+	if def_save_context.aggregate then
+	     goto err124;
+	if ^arg_type (1).ptr then
+	     goto err124;
+
+	string (rtype) = fixed_binary_real_mask;
+	rscale = 0;
+	rlength = null;
+
+	goto create_operator_node;
+
+action (74):					/* setcharno ... addbitno */
+	if def_save_context.aggregate then
+	     goto err124;
+
+	go to prepare_pointer;
+
+action (40):					/* stac */
+	string (rtype) = bit_mask;
+	rprecision = 1;
+
+	goto create_operator_node;
+
+action (41):					/* addrel
+   baseptr */
+	if def_save_context.aggregate then
+	     goto err124;
+	goto prepare_pointer;
+
+action (42):					/* onfield
+   onfile
+   onkey
+   onloc */
+	arg (1) = declare_temporary (char_mask, 256, 0, null);
+	arg_symbol (1) = arg (1) -> reference.symbol;
+
+	desc_reqd = "1"b;
+
+	goto create_call;
+
+action (43):					/* prod
+   sum */
+	if arg_symbol (1) = null then
+	     call semantic_translator$abort (127, builtin_symbol);
+
+	if arg_type (1).bit then do;
+	     string (rtype) = fixed_binary_real_mask;
+	     rprecision = max_p_fix_bin_2;
+	     rscale = 0;
+	end;
+	else if arg_type (1).char then do;
+	     string (rtype) = fixed_decimal_real_mask;
+	     rprecision = max_p_dec;
+	     rscale = 0;
+	end;
+	else if arg_type (1).picture then do;
+	     rprecision = arg_symbol (1) -> symbol.pix.pic_size;
+	     rscale = arg_symbol (1) -> symbol.pix.pic_scale;
+	     if arg_type (1).complex then
+		if arg_symbol (1) -> symbol.pix.pic_float then
+		     string (rtype) = float_decimal_complex_mask;
+		else
+		     string (rtype) = fixed_decimal_complex_mask;
+	     else if arg_symbol (1) -> symbol.pix.pic_float then
+		string (rtype) = float_decimal_real_mask;
+	     else
+		string (rtype) = fixed_decimal_real_mask;
+	end;
+
+	if rtype.fixed then
+	     if opcode = mult & rscale ^= 0 then do;
+		if rtype.binary then
+		     rprecision = max_p_flt_bin_2;
+		else
+		     rprecision = max_p_dec;
+		rscale = 0;
+		string (type), string (rtype) = string (rtype) & ^fixed_mask | float_mask;
+	     end;
+	     else if rtype.binary then
+		rprecision = max_p_fix_bin_2;
+	     else
+		rprecision = max_p_dec;
+
+	if arg (1) -> node.type ^= operator_node then
+	     arg (1) = expand_primitive (cur_block, statement_ptr, arg (1), "0"b);
+
+	if arg (1) -> operator.op_code ^= loop then
+	     call semantic_translator$abort (127, builtin_symbol);
+
+product:
+	p = arg (1);
+	do while (p -> operand (1) -> node.type = operator_node);
+	     if p -> operand (1) -> operator.op_code = loop then
+		p = p -> operand (1);
+	     else
+		goto leave;
+	end;
+
+leave:
+	r = create_operator (opcode, 3);
+	r -> operand (3) = p -> operand (1);
+
+	q = create_operator (assign, 2);
+	q -> operand (2) = r;
+
+	t = create_symbol (cur_block, null, by_compiler);
+	substr (string (t -> symbol.attributes), 1, 36) = string (rtype) & undesirable_mask & ^unaligned_mask;
+	t -> symbol.c_dcl_size = rprecision;
+	t -> symbol.scale = rscale;
+	t -> symbol.auto, t -> symbol.precision, t -> symbol.allocate = "1"b;
+
+	call declare (t);
+
+	t = t -> symbol.reference;
+
+	q -> operand (1), r -> operand (2) = t;
+
+	p -> operand (1) = expression_semantics (cur_block, statement_ptr, q, this_context);
+
+	r = create_statement (assignment_statement, (statement_ptr -> statement.back), null,
+	     (statement_ptr -> statement.prefix));
+	r -> statement.generated = "1"b;
+
+	p = create_operator (assign, 2);
+	p -> operand (1) = t;
+	if opcode = add then
+	     p -> operand (2) = create_token ("0", dec_integer);
+	else
+	     p -> operand (2) = create_token ("1", dec_integer);
+
+	r -> statement.root = operator_semantics (cur_block, r, p, this_context);
+
+	r = create_statement (assignment_statement, r, null, (r -> statement.prefix));
+	r -> statement.generated = "1"b;
+	r -> statement.root = operator_semantics (cur_block, r, arg (1), this_context);
+
+	tree = t;
+
+	goto ret;
+
+action (44):					/* nullo */
+	i = -1;
+	tree = declare_constant (unspec (i), offset_mask, 0, 0);
+
+	goto exit;
+
+action (45):					/* dot */
+	p = create_operator (mult, 3);
+	p -> operand (2) = arg (1);
+	p -> operand (3) = arg (2);
+
+	p = expand_infix (cur_block, statement_ptr, p, "0"b);
+
+	if p -> operator.op_code ^= loop then
+	     call semantic_translator$abort (190, builtin_symbol);
+	if p -> operand (1) -> operator.op_code ^= mult then
+	     call semantic_translator$abort (190, builtin_symbol);
+
+	r = p -> operand (1) -> operand (1);
+	string (rtype) = string (r -> reference.symbol -> symbol.attributes);
+	rprecision = constant_value (arg_symbol (3));
+	if arg_number = 4 then
+	     rscale = constant_value (arg_symbol (4));
+
+	arg (1) = p;
+
+	goto product;
+
+action (46):					/* convert */
+	arith_size_ck, string_size_ck = "1"b;
+
+	if def_save_context.aggregate then
+	     goto err124;
+	if arg (1) -> node.type ^= reference_node then
+	     goto err124;
+
+	tree = convert$to_target_fb (arg (2), arg (1));
+
+	goto ret;
+
+action (47):					/* size */
+action (64):					/* currentsize */
+	if arg (1) -> node.type ^= reference_node then
+	     goto err124;
+	if arg (1) -> reference.symbol -> symbol.father ^= null then
+	     goto err124;
+
+	p = arg (1) -> reference.symbol -> symbol.word_size;
+
+	if p = null then
+	     tree =
+		declare_constant (unspec (arg (1) -> reference.symbol -> symbol.c_word_size), integer_type,
+		max_offset_precision, 0);
+	else do;
+	     tree = copy_expression ((p));
+	     if jump_index = 64 then
+		if arg_symbol (1) -> symbol.refer_extents then
+		     call refer_extent (tree, (arg (1) -> reference.qualifier));
+
+	     tree =
+		expression_semantics ((arg (1) -> reference.symbol -> symbol.block_node), statement_ptr, tree,
+		this_context);
+	     arg (1) = tree;
+
+	     goto create_assign;
+	end;
+
+	goto ret;
+
+action (48):					/* valid */
+	if def_save_context.aggregate then
+	     goto err124;
+	if arg (1) -> node.type ^= reference_node then
+	     goto err124;
+	if ^arg_symbol (1) -> symbol.picture then
+	     goto err124;
+
+	string (rtype) = bit_mask;
+	rprecision = 1;
+
+	arg_number = 2;
+	arg (2) = arg_symbol (1) -> symbol.general;
+	if arg (2) -> node.type ^= reference_node then
+	     call semantic_translator$abort (440, arg_symbol (1));
+
+	goto create_call;
+
+action (49):					/* translate */
+	goto create_operator_node;
+
+action (50):					/* conjg */
+	goto create_operator_node;
+
+action (51):					/* onchar */
+	string (rtype) = char_mask;
+	rprecision = 1;
+
+	goto create_call;
+
+action (52):					/* onsource */
+	goto action (42);
+
+make_call:					/* this code is entered only for onsource & onchar pseudovariables */
+	if pl1_stat_$cur_statement -> statement.root -> operand (1) ^= input_tree
+	     & pl1_stat_$cur_statement -> statement.root -> operand (1)
+	     ^= input_tree -> reference.symbol -> symbol.token then
+	     if pl1_stat_$cur_statement -> statement.root -> op_code = assign then
+		call semantic_translator$abort (187, builtin_symbol);
+	     else
+		arg (1) = null;			/*   get list(onchar | onsource);   */
+
+	else do;					/*   onsource | onchar = ...;   */
+	     def_context.return_from_empty = "1"b;
+	     arg (1) =
+		expression_semantics (cur_block, statement_ptr,
+		(pl1_stat_$cur_statement -> statement.root -> operand (2)), "0"b);
+
+	     if arg (1) -> node.type = token_node then
+		arg (1) = convert (arg (1), char_mask);
+
+	     if arg (1) -> node.type = operator_node then
+		ref (1) = arg (1) -> operand (1);
+	     else
+		ref (1) = arg (1);
+	end;
+
+	if arg (1) = null | jump_index = 52 /*   get list(onchar|onsource);  |  onsource = ...;   */ then do;
+	     s = create_symbol (cur_block, null, by_compiler);
+	     s -> symbol.char, s -> symbol.auto, s -> symbol.passed_as_arg, s -> symbol.reference -> reference.shared =
+		"1"b;
+
+	     if jump_index = 52 then do;
+		s -> symbol.varying = "1"b;
+		s -> symbol.c_dcl_size = 256;
+	     end;
+	     else
+		s -> symbol.c_dcl_size = 1;
+
+	     s -> symbol.reference -> reference.c_length = s -> symbol.c_dcl_size;
+
+	     call declare (s);
+
+	     if ^def_context.return_from_empty then
+		arg (1) = s -> symbol.reference;
+	     else do;
+		p = create_operator (assign, 2);
+		p -> operand (1) = s -> symbol.reference;
+		p -> operand (2) = arg (1);
+
+		p -> operand (1) -> reference.c_length = t -> operand (1) -> reference.c_length;
+		p -> operand (1) -> reference.length = share_expression ((t -> operand (1) -> reference.length));
+
+		q = create_statement (assignment_statement, (statement_ptr -> statement.back), null,
+		     (statement_ptr -> statement.prefix));
+		q -> statement.root = p;
+
+		arg (1) = p -> operand (1);
+	     end;
+	end;
+
+	tree = create_operator (std_call, 3);
+	tree -> operand (2) = reserve$declare_lib ((reserved_number));
+	tree -> operand (3) = create_operator (std_arg_list, 3);
+	tree -> operand (3) -> operand (1) = declare_temporary (storage_block_type, 4, 0, null);
+	tree -> operand (3) -> operand (2) = create_list (1);
+	tree -> operand (3) -> operand (2) -> element (1) = arg (1);
+
+	if ^def_context.return_from_empty then do;
+	     p = tree;
+	     tree = create_operator (join, 3);
+	     tree -> operand (1) = create_operator (assign, 2);
+	     tree -> operand (1) -> operand (1) = share_expression (arg (1));
+	     tree -> operand (1) -> operand (2) = share_expression (t);
+						/*   result of create_call, to get_onchar or to getonsource   */
+	     tree -> operand (2) = share_expression (arg (1));
+	     tree -> operand (3) = p;
+	end;
+
+	goto exit;
+
+action (53):					/* oncode */
+	string (rtype) = integer_type;
+	rprecision = default_fix_bin_p;
+
+	goto create_call;
+
+action (54):					/* acos
+   asin
+   atan
+   atand
+   cos
+   cosd
+   exp
+   log
+   log10
+   log2
+   sin
+   sind
+   sqrt
+   tan
+   tand */
+	if arg_number > 1 then
+	     rprecision = max (rprecision, arg_symbol (2) -> symbol.c_dcl_size);
+
+	if arg_type (1).complex then
+	     goto action (25);
+
+	goto create_operator_node;
+
+action (55):					/* after */
+	if arg_type (1).bit & arg_type (2).bit then
+	     string (type) = bit_mask;
+	else
+	     string (type) = char_mask;
+
+	do i = 1 to 2;
+	     call convert_arg;
+	end;
+
+make_add:
+	offset = create_operator (add, 3);
+	offset -> operand (2) = create_index_or_verify ();
+	offset -> operand (3) = declare_constant$integer (1);
+
+	tree = make_builtin_reference ("substr", 2, arg (1), offset, null);
+	go to exit;
+
+action (56):					/* before */
+	if arg_type (1).bit & arg_type (2).bit then
+	     string (type) = bit_mask;
+	else
+	     string (type) = char_mask;
+
+	do i = 1 to 2;
+	     call convert_arg;
+	end;
+
+	tree = make_builtin_reference ("substr", 3, arg (1), declare_constant$integer (1), create_index_or_verify ());
+	go to exit;
+
+action (57):					/* ltrim */
+	if arg_number = 1 then
+	     arg (2) = declare_constant$char (" ");	/* <blank> */
+
+	go to make_add;
+
+action (58):					/* rtrim */
+	if arg_number = 1 then
+	     arg (2) = declare_constant$char (" ");	/* <blank> */
+
+	if ref (1) -> reference.varying_ref then
+	     p = create_length_fun (arg (1));
+	else if ref (1) -> reference.length = null then
+	     p = declare_constant$integer ((ref (1) -> reference.c_length));
+	else
+	     p = share_expression ((ref (1) -> reference.length));
+
+	length = create_operator (sub, 3);
+	length -> operand (2) = p;
+	length -> operand (3) = create_index_or_verify ();
+
+	tree = make_builtin_reference ("substr", 3, arg (1), declare_constant$integer (1), length);
+	go to exit;
+
+action (59):					/* collate9 */
+	tree = declare_constant$char (pl1_data$long_collating_sequence);
+
+	goto ret;
+
+action (60):					/* high9 */
+	arg (2) = arg (1);
+	ref (2) = ref (1);
+	arg_symbol (2) = arg_symbol (1);
+
+	arg (1), ref (1) = declare_constant ("111111111"b, char_type, 1, 0);
+	arg_symbol (1) = ref (1) -> reference.symbol;
+
+	arg_number = 2;
+	string (rtype) = char_type;
+
+	goto repeat;
+
+action (61):					/* stackbaseptr */
+						/* stackframeptr */
+	go to prepare_pointer;
+
+action (62):					/* clock */
+						/* vclock */
+	string (rtype) = integer_type;
+	rprecision = 71;
+	go to create_operator_node;
+
+action (63):					/* codeptr */
+						/* environmentptr */
+	go to prepare_pointer;
+
+action (66):					/* stacq */
+	string (rtype) = bit_mask;
+	rprecision = 1;
+	go to create_operator_node;
+
+action (67):					/* substraddr */
+	go to err359;
+
+action (68):					/* byte */
+	string (rtype) = char_type;
+	rprecision = 1;
+	go to create_operator_node;
+
+action (69):					/* rank */
+	if ^constant_length (ref (1), 1) then
+	     call semantic_translator$abort (390, arg_symbol (1));
+						/* first arg to rank must be char(1) */
+
+	string (rtype) = integer_type;
+	rprecision = 9;
+	go to create_operator_node;
+
+prepare_pointer:
+	rprecision, rscale = 0;
+
+	rlength = null;
+
+	string (rtype) = pointer_type;
+
+	goto create_operator_node;
+
+create_call:
+	p = create_list (arg_number + 1);
+	do i = 1 to arg_number;
+	     p -> element (i) = arg (i);
+	end;
+
+	tree = create_operator (std_call, 3);
+	tree -> operand (2) = reserve$declare_lib ((reserved_number));
+
+	if jump_index = 24 /* decat */ | jump_index = 25 /* math bifs */ | jump_index = 26 /* lbound, hbound, dim */
+	then do;
+	     tree -> operand (2) -> reference.symbol -> symbol.irreducible = "0"b;
+	     tree -> operand (2) -> reference.symbol -> symbol.reducible = "1"b;
+	end;
+
+	tree -> operand (3) = create_operator (std_arg_list, 3);
+	tree -> operand (3) -> operand (2) = p;
+
+	if desc_reqd then do;
+
+/* we will have star extents return value */
+
+	     tree -> operand (3) -> operand (1) = declare_temporary (storage_block_type, 4 * arg_number + 6, 0, null);
+	     q, tree -> operand (3) -> operand (3) = create_list (arg_number + 1);
+
+	     s = create_symbol (cur_block, null, by_compiler);
+
+	     string (s -> symbol.data_type) = string (arg_symbol (1) -> symbol.data_type);
+	     string (s -> symbol.misc_attributes) = string (arg_symbol (1) -> symbol.misc_attributes);
+
+	     s -> symbol.dimensioned, s -> symbol.initialed, s -> symbol.variable, s -> symbol.position,
+		s -> symbol.internal, s -> symbol.external, s -> symbol.like, s -> symbol.member = "0"b;
+
+	     s -> symbol.return_value, s -> symbol.passed_as_arg, s -> symbol.star_extents = "1"b;
+
+	     s -> symbol.dcl_size = create_token ("*", asterisk);
+
+	     call declare (s);
+
+	     q -> element (arg_number + 1) = s -> symbol.descriptor;
+
+	     do i = 1 to arg_number;
+		q -> element (i) =
+		     declare_descriptor (cur_block, statement_ptr, arg_symbol (i), (ref (i) -> reference.qualifier),
+		     "0"b);
+	     end;
+
+	     p -> element (p -> list.number), tree -> operand (1) = s -> symbol.reference;
+
+	     tree -> operand (1) -> reference.ref_count = 3;
+	     tree -> operand (1) -> reference.shared = "0"b;
+	     tree -> operand (1) -> reference.length -> operand (1) =
+		declare_temporary (integer_type, max_offset_precision, 0, null);
+	     tree -> operand (1) -> reference.length -> operator.processed = "1"b;
+
+	     call check_star_extents ((tree -> operand (2) -> reference.symbol), p);
+
+	     statement_ptr -> statement.force_nonquick = "1"b;
+	     call make_non_quick ((statement_ptr -> statement.root), "001"b);
+
+	     p = create_statement (call_statement, (statement_ptr -> statement.back), null,
+		(statement_ptr -> statement.prefix));
+	     p -> statement.root = tree;
+	     p -> statement.processed = "1"b;
+	end;
+	else do;
+	     t = declare_temporary (string (rtype), rprecision, (rscale), rlength);
+	     s = copy_expression (t -> reference.symbol);
+	     s -> symbol.passed_as_arg = "1"b;
+	     q = s -> symbol.reference;
+	     q -> reference.shared = "0"b;
+	     q -> reference.ref_count = 2;
+
+	     p -> element (p -> list.number), tree -> operand (1) = q;
+
+	     temp_size = 2 * (arg_number + 1) + 2;
+
+	     if jump_index = 26 /*   hbound, lbound, dim   */ then do;
+
+/* this has star_extent args but constant extent return_value */
+
+		temp_size = 4 * (arg_number + 1) + 2;
+
+		tree -> operand (3) -> operand (3), q = create_list (arg_number + 1);
+
+		ref (5) = q;
+		arg_symbol (5) = s;
+
+		do i = 1 to q -> list.number;
+		     q -> element (i) =
+			declare_descriptor (cur_block, statement_ptr, arg_symbol (i),
+			(ref (i) -> reference.qualifier), (ref (i) -> reference.array_ref));
+		end;
+	     end;
+
+	     tree -> operand (3) -> operand (1) = declare_temporary (storage_block_type, temp_size, 0, null);
+	end;
+
+	if def_context.left_side /*   only onchar and onsource has this property   */ then do;
+	     if jump_index = 51 /*   onchar   */ then
+		reserved_number = 11;		/*   on_data_$set_onchar   */
+	     else
+		reserved_number = 194;		/*   on_data_$setonsource   */
+
+	     tree -> operand (2) -> reference.symbol -> symbol.irreducible = "1"b;
+	     t = tree;
+
+	     goto make_call;
+	end;
+
+	goto exit;
+
+create_assign:
+	t = create_operator (assign, 2);
+	t -> operand (1) = declare_temporary (integer_type, max_offset_precision, 0, null);
+	t -> operand (2) = arg (1);
+
+	tree = t;
+
+	goto exit;
+
+convert_to_arith:
+	arith_size_ck = "1"b;			/* This makes us check size-enabled after assign_op  is made */
+	string (rtype) = string (rtype) | aligned_mask;
+
+	if arg_type (1).char then
+	     defined_arg_type (1) = fixed_decimal_real_mask;
+	else if arg_type (1).bit then
+	     defined_arg_type (1) = fixed_binary_real_mask;
+	else if arg_type (1).picture then
+	     if arg_symbol (1) -> symbol.complex then
+		if arg_symbol (1) -> symbol.pix.pic_float then
+		     defined_arg_type (1) = float_decimal_complex_mask;
+		else
+		     defined_arg_type (1) = fixed_decimal_complex_mask;
+	     else if arg_symbol (1) -> symbol.pix.pic_float then
+		defined_arg_type (1) = float_decimal_real_mask;
+	     else
+		defined_arg_type (1) = fixed_decimal_real_mask;
+
+	if ^rtype.fixed & ^rtype.float then do;
+	     rtype.fixed = arg_type (1).fixed;
+	     rtype.float = arg_type (1).float;
+	end;
+
+	if ^rtype.decimal & ^rtype.binary then do;
+	     rtype.decimal = arg_type (1).decimal;
+	     rtype.binary = arg_type (1).binary;
+	end;
+
+	if ^rtype.real & ^rtype.complex then do;
+	     rtype.real = arg_type (1).real;
+	     rtype.complex = arg_type (1).complex;
+	end;
+
+	full_attribute_set = arg_number > 1;
+
+check_prec_scale:
+	rlength = null;
+
+	if rscale < min_scale | rscale > max_scale then
+	     goto err146;
+
+	if rtype.decimal then
+	     if rprecision > max_p_dec then
+		goto err146;
+	     else
+		;
+
+	else if rtype.fixed then
+	     if rprecision > max_p_fix_bin_2 then
+		goto err146;
+	     else
+		;
+	else if rprecision > max_p_flt_bin_2 then
+	     goto err146;
+
+convert_label:
+	if rprecision < 0 then
+	     goto err481;
+
+	if full_attribute_set then do;
+	     t = declare_temporary (string (rtype), rprecision, (rscale), rlength);
+	     tree = convert$to_target_fb (arg (1), t);
+	end;
+	else
+	     tree = convert$from_builtin (arg (1), string (rtype));
+
+	goto ret;
+
+create_operator_node:
+	if rprecision < 0 then
+	     goto err481;
+
+	t = declare_temporary (string (rtype), rprecision, (rscale), rlength);
+
+	tree = create_operator (opcode, arg_number + 1);
+	tree -> operand (1) = t;
+
+	do i = 1 to arg_number;
+	     tree -> operand (i + 1) = arg (i);
+	end;
+
+	tree -> operator.processed = "1"b;
+
+	goto exit;
+
+return_arg1:
+	tree = arg (1);
+
+	goto ret;
+
+expand_arguments:
+     proc () returns (ptr);
+
+	dcl      (p, q, r) ptr,
+	         (lpp, jpp) ptr init (null),
+	         (lp, jp, cp) (128) ptr init ((128) null),
+	         (i, j, k, lll) fixed bin (15),
+	         (jcount, lcount) fixed bin (15) init (0),
+	         ll (128) fixed bin (15) init ((128) 0);
+
+	dcl      (full_processing, pure_array) bit (1) aligned init ("0"b);
+
+	do i = 1 to arg_number;
+	     p = subscripts -> element (i);
+
+	     if p -> node.type = operator_node then
+		if p -> op_code = loop then do;
+		     lp (i) = p;
+		     lcount = lcount + 1;
+
+		     do q = p repeat q -> operand (1) while (q -> op_code = loop);
+			ll (i) = ll (i) + 1;
+		     end;
+
+		     p = q;
+
+		     if lpp = null then do;
+			lpp = lp (i);
+			lll = ll (i);
+		     end;
+		end;
+
+	     if p -> node.type = operator_node then
+		if p -> op_code = join then do;
+		     jp (i) = p;
+		     jcount = jcount + 1;
+		end;
+
+	     if jp (i) ^= null then
+		if jpp = null then
+		     jpp = p;
+		else
+		     ;
+	     else
+		cp (i) = p;
+
+	     if lp (i) ^= null & cp (i) ^= null then
+		pure_array = "1"b;
+	end;
+
+	if lpp ^= null then
+	     do i = 1 to arg_number;
+		if ll (i) ^= lll & ll (i) ^= 0 then
+		     call semantic_translator$abort (79, null);
+	     end;
+
+	if pure_array then
+	     if jpp ^= null then
+		call semantic_translator$abort (79, null);
+	     else do;
+		p = create_list ((arg_number));
+		do i = 1 to arg_number;
+		     p -> element (i) = cp (i);
+		end;
+
+		p = builtin (cur_block, statement_ptr, tree, p, builtin_symbol, "0"b);
+	     end;
+
+	if jpp ^= null then
+	     jpp = merge (jpp, jp);
+
+	if lpp = null then
+	     return (jpp);
+
+	q = lpp;
+
+	do i = 2 to lll;
+	     q = q -> operand (1);
+	end;
+
+	if jpp ^= null then
+	     q -> operand (1) = jpp;
+	else
+	     q -> operand (1) = p;
+
+	if lcount = 1 then
+	     return (lpp);
+
+	do i = 1 to arg_number;
+
+	     p = lpp;
+	     q = lp (i);
+
+	     if q ^= null & q ^= p then
+		do j = 1 to lll;
+
+		     if ^compare_expression ((p -> operand (4)), (q -> operand (4))) then do;
+			if p -> operand (4) -> node.type = reference_node then
+			     if p -> operand (4) -> reference.symbol -> symbol.constant then
+				if q -> operand (4) -> node.type = reference_node then
+				     if q -> operand (4) -> reference.symbol -> symbol.constant then
+					call semantic_translator$abort (79, null);
+
+			full_processing = "1"b;
+		     end;
+
+		     p = p -> operand (1);
+		     q = q -> operand (1);
+		end;
+	end;
+
+	if ^full_processing then
+	     return (lpp);
+
+	if lcount = 2 then do;
+	     p = lpp;
+	     q = null;
+
+	     do i = arg_number to 1 by -1 while (q = null);
+		q = lp (i);
+	     end;
+
+	     do i = 1 to lll;
+
+		jpp = create_operator (bound_ck, 4);
+		jpp -> operand (1) = declare_temporary (integer_type, default_fix_bin_p, 0, null);
+		jpp -> operand (2) = p -> operand (4);
+		jpp -> operand (3) = q -> operand (4);
+		jpp -> operand (4) = share_expression ((q -> operand (4)));
+
+		p -> operand (4) = jpp;
+		p = p -> operand (1);
+		q = q -> operand (1);
+	     end;
+
+	     return (lpp);
+	end;
+
+	r = lpp;
+
+	do i = 1 to lll;
+
+	     jpp = create_operator (bound_ck, 4);
+	     p = create_operator (min_fun, lcount + 1);
+	     q = create_operator (max_fun, lcount + 1);
+	     p -> operand (1), q -> operand (1), jpp -> operand (1) =
+		declare_temporary (integer_type, default_fix_bin_p, 0, null);
+	     jpp -> operand (2) = p;
+	     jpp -> operand (3) = q;
+	     jpp -> operand (4) = share_expression (q);
+
+	     r -> operand (4) = jpp;
+	     r = r -> operand (1);
+
+	     k = 2;
+
+	     do j = 1 to arg_number;
+		if lp (j) ^= null then do;
+		     p -> operand (k) = share_expression ((lp (j) -> operand (4)));
+		     q -> operand (k) = share_expression ((lp (j) -> operand (4)));
+
+		     k = k + 1;
+		     lp (j) = lp (j) -> operand (1);
+		end;
+	     end;
+	end;
+
+	return (lpp);
+
+merge:
+     proc (p, rp) returns (ptr);
+
+	dcl      (
+	         p,
+	         pp,
+	         q,
+	         o1,
+	         o2,
+	         o3,
+	         rp (128),
+	         rpp (128)
+	         ) ptr,
+	         (i, j, k) fixed bin (15),
+	         unmatch_bound bit (1) aligned init ("0"b);
+
+	if p -> node.type = operator_node then do;
+	     if p -> op_code = loop then do;
+		do i = 1 to arg_number;
+		     if cp (i) = null then do;
+			if rp (i) -> node.type ^= operator_node then
+			     call semantic_translator$abort (79, null);
+			if rp (i) -> op_code ^= loop then
+			     call semantic_translator$abort (79, null);
+
+			if ^compare_expression ((p -> operand (4)), (rp (i) -> operand (4))) then
+			     unmatch_bound = "1"b;
+		     end;
+		end;
+
+		if unmatch_bound then do;
+		     o1 = create_operator (bound_ck, 4);
+		     o2 = create_operator (min_fun, jcount + 1);
+		     o3 = create_operator (max_fun, jcount + 1);
+
+		     o2 -> operand (1), o3 -> operand (1), o1 -> operand (1) =
+			declare_temporary (integer_type, default_fix_bin_p, 0, null);
+		     o1 -> operand (2) = o2;
+		     o1 -> operand (3) = o3;
+		     o1 -> operand (4) = share_expression (o3);
+
+		     k = 2;
+
+		     do i = 1 to arg_number;
+			if cp (i) = null then do;
+			     o2 -> operand (k) = share_expression ((rp (i) -> operand (4)));
+			     o3 -> operand (k) = share_expression ((rp (i) -> operand (4)));
+			     k = k + 1;
+			end;
+		     end;
+
+		     p -> operand (4) = o1;
+		end;
+
+		pp = p -> operand (1);
+
+		do i = 1 to arg_number;
+		     if cp (i) = null then
+			rpp (i) = rp (i) -> operand (1);
+		end;
+
+		p -> operand (1) = merge (pp, rpp);
+
+		return (p);
+	     end;
+
+	     if p -> op_code = join then do;
+		do i = 1 to arg_number;
+		     if cp (i) = null then do;
+			if rp (i) -> node.type ^= operator_node then
+			     call semantic_translator$abort (79, null);
+			if rp (i) -> op_code ^= join then
+			     call semantic_translator$abort (79, null);
+		     end;
+		end;
+
+		do j = 1 to p -> operator.number;
+		     pp = p -> operand (j);
+
+		     do i = 1 to arg_number;
+			if cp (i) = null then
+			     rpp (i) = rp (i) -> operand (j);
+			else if j > 1 then
+			     cp (i) = share_expression (cp (i));
+		     end;
+
+		     p -> operand (j) = merge (pp, rpp);
+		end;
+
+		return (p);
+	     end;
+	end;
+
+	do i = 1 to arg_number;
+	     if cp (i) = null then
+		if rp (i) -> node.type = operator_node then
+		     if rp (i) -> op_code = loop | rp (i) -> op_code = join then
+			call semantic_translator$abort (79, null);
+	end;
+
+	q = create_list ((arg_number));
+
+	do i = 1 to arg_number;
+	     if cp (i) = null then
+		q -> element (i) = rp (i);
+	     else
+		q -> element (i) = cp (i);
+	end;
+
+	return (builtin (cur_block, statement_ptr, tree, q, builtin_symbol, "0"b));
+
+     end merge;
+
+     end expand_arguments;
+
+check_reverse:
+     proc (p) returns (bit (1) aligned);
+
+/* See if pointer points to a call on reverse operator, unshared */
+	dcl      p ptr;
+
+	if p -> node.type = operator_node then
+	     if p -> operator.op_code = reverse_fun then
+		if p -> operator.operand (1) -> reference.shared
+		     | p -> operator.operand (1) -> reference.ref_count = 1 then
+		     return ("1"b);
+	return ("0"b);
+
+     end check_reverse;
+
+is_this_constant:
+     proc (p) returns (bit (1) aligned);
+
+	dcl      p ptr;
+
+	if p -> node.type = reference_node then
+	     if p -> reference.symbol -> symbol.constant then
+		if ^p -> reference.varying_ref then
+		     if p -> reference.length = null & p -> reference.offset = null & p -> reference.c_offset = 0 then
+			return ("1"b);
+	return ("0"b);
+
+     end is_this_constant;
+
+check_strings:
+     proc (pt);
+
+	dcl      (p, pt) ptr;
+
+	p = pt;
+
+	do while (p ^= null);
+
+	     if p -> symbol.structure then
+		call check_strings ((p -> symbol.son));
+
+	     else if units = bit_ & ^p -> symbol.bit | units = character_ & ^p -> symbol.char & ^p -> symbol.picture
+		then
+		call semantic_translator$abort (139, arg_symbol (1));
+
+	     p = p -> symbol.brother;
+	end;
+
+     end check_strings;
+
+convert_arg:
+     proc;
+
+	dcl      suppress_diagnostic bit (1) aligned;
+
+	if defined_arg_type (i) & structure_mask then
+	     return;
+
+	if string (type) & arithmetic_mask then do;
+	     if defined_arg_type (i) & arithmetic_mask then
+		;
+	     else if arg_type (i).bit then do;
+		type.fixed = ^type.float;
+		type.binary = ^type.decimal;
+		type.real = ^type.complex;
+	     end;
+
+	     else if arg_type (i).char then do;
+		type.fixed = ^type.float;
+		type.decimal = ^type.binary;
+		type.real = ^type.complex;
+	     end;
+
+	     if ^type.fixed & ^type.float then do;
+		type.fixed = arg_type (i).fixed;
+		type.float = arg_type (i).float;
+	     end;
+
+	     if ^type.decimal & ^type.binary then do;
+		type.decimal = arg_type (i).decimal;
+		type.binary = arg_type (i).binary;
+	     end;
+
+	     if ^type.real & ^type.complex then do;
+		type.real = arg_type (i).real;
+		type.complex = arg_type (i).complex;
+	     end;
+	end;
+
+	suppress_diagnostic = i = 1 & (jump_index = 17 | jump_index = 19);
+
+	if arg (i) -> node.type = token_node then
+	     if suppress_diagnostic then
+		arg (i) = convert$from_builtin (arg (i), string (type));
+	     else
+		arg (i) = convert (arg (i), string (type));
+
+	else if type.decimal & arg_type (i).decimal & ^arg_symbol (i) -> symbol.char then
+	     ;
+	else if type.binary & arg_type (i).binary & type.real = arg_type (i).real & type.fixed = arg_type (i).fixed then
+	     ;
+	else if suppress_diagnostic then
+	     arg (i) = convert$from_builtin (arg (i), string (type));
+	else
+	     arg (i) = convert (arg (i), string (type));
+
+	ref (i) = arg (i);
+	defined_arg_type (i) = string (type);
+
+	if ref (i) -> node.type = operator_node then do;
+	     ref (i) -> operator.processed = "1"b;	/* to prevent operator_semantics from calling convert$validate */
+	     ref (i) = ref (i) -> operand (1);
+	end;
+
+	arg_symbol (i) = ref (i) -> reference.symbol;
+
+     end convert_arg;
+
+make_assignment:
+     proc;
+
+	p = create_operator (assign, 2);
+	r = create_symbol (null, null, by_compiler);
+	r -> symbol.temporary = "1"b;
+	p -> operand (1) = r -> symbol.reference;
+	p -> operand (2) = arg (1);
+
+	r = create_statement (assignment_statement, (statement_ptr -> statement.back), null,
+	     (statement_ptr -> statement.prefix));
+	r -> statement.root = p;
+	r -> statement.generated = "1"b;
+
+	if arg (1) -> node.type = operator_node then
+	     if arg (1) -> operator.op_code = loop | arg (1) -> operator.op_code = join then do;
+		def_this_context.RHS_aggregate = "1"b;
+
+		r -> statement.root = expand_assign (cur_block, r, (r -> statement.root), this_context, agg_ref);
+		return;
+	     end;
+
+	r -> statement.root = operator_semantics (cur_block, r, (r -> statement.root), this_context);
+	agg_ref = r -> statement.root -> operand (1);
+	if agg_ref -> reference.shared then do;
+	     agg_ref -> reference.shared = "0"b;
+	     agg_ref -> reference.ref_count = 1;
+	end;
+
+     end make_assignment;
+
+/**/
+declare_defined_overlay:
+     proc (p_type, p_precision, p_scale, p_length, qual) returns (ptr);
+
+/* pools defined overlays in a similar fashion as declare_temporary
+	   pools temporarys.  Used for unspec, string, imag, real */
+
+	dcl      p_type bit (36) aligned,
+	         (p_precision, precision) fixed bin (31),
+	         (p_scale, scale) fixed bin (15),
+	         (p_length, length) ptr,
+	         qual ptr;
+
+	dcl      units fixed bin (3);
+	dcl      c_offset fixed bin (24);
+	dcl      (r, s, t) ptr;
+	dcl      pl1_stat_$defined_list ptr ext;
+	dcl      (addr, null) builtin;
+	dcl      bit36 bit (36) based (addr (s -> symbol.data_type));
+	dcl      found bit (1) aligned;
+
+/* Assumption:  if length is not null, then length must not be an
+	   unshared processed tree, because otherwise ref_count goes too
+	   high */
+
+	precision = p_precision;
+	scale = p_scale;
+	length = p_length;
+
+/* the qualifier's units and c_offset are used so that simplify_offset
+	   will correctly handle cases of substr(string(..),<expr>...) */
+
+	if qual -> node.type = reference_node then do;
+	     units = qual -> reference.units;
+	     c_offset = qual -> reference.c_offset;
+	end;
+	else
+	     units, c_offset = 0;
+
+	found = "0"b;
+
+/* search for suitable symbol */
+
+	s = pl1_stat_$defined_list;
+
+	do while (s ^= null & ^found);
+	     if bit36 = p_type & s -> symbol.position = "1"b & s -> symbol.c_dcl_size = precision
+		& s -> symbol.scale = scale & s -> symbol.dcl_size = length
+		& s -> symbol.reference -> reference.shared & s -> symbol.reference -> reference.c_offset = c_offset
+		& s -> symbol.reference -> reference.units = units then
+		found = "1"b;
+	     else
+		s = s -> symbol.multi_use;
+	end;
+
+	if ^found then do;
+
+/* None found -- make one with declare_temporary's help.
+	        Note that although declare_temporary makes unshared
+	        temporaries if length ^= null, that they are unique. */
+
+	     r = copy_expression (declare_temporary (p_type, precision, scale, length));
+
+	     s = create_symbol (null, null, by_compiler);
+	     t = r -> reference.symbol;
+	     s -> symbol = t -> symbol;
+	     s -> symbol.next = null;
+	     s -> symbol.reference = r;
+	     r -> reference.symbol = s;
+	     r -> reference.units = units;
+	     r -> reference.c_offset = c_offset;
+
+	     s -> symbol.packed = s -> symbol.unaligned;
+	     s -> symbol.defined, s -> symbol.overlayed, s -> symbol.position = "1"b;
+	     s -> symbol.temporary = "0"b;
+
+	     s -> symbol.multi_use = pl1_stat_$defined_list;
+	     pl1_stat_$defined_list = s;
+	end;
+
+/* we need a unique reference node */
+
+	r = copy_expression (s -> symbol.reference);
+	r -> reference.shared = "0"b;
+	r -> reference.ref_count = 1;
+	r -> reference.units = 0;
+	r -> reference.c_offset = 0;
+
+	return (r);
+
+     end;
+
+/*  subroutine to create a length_fun operator and return a ptr to it  */
+
+create_length_fun:
+     proc (op2) returns (ptr);
+
+	dcl      (op2, p) pointer;
+	p = create_operator (length_fun, 2);
+	p -> operand (1) = declare_temporary (integer_type, max_length_precision, 0, null);
+	p -> operand (2) = share_expression (op2);
+	p -> operator.processed = "1"b;
+	return (p);
+     end create_length_fun;
+
+
+
+
+
+
+/*  subroutine to increment a reference node's qualifier and offset's reference count	*/
+
+reuse_qual_and_offset:
+     proc (p_param);
+
+	dcl      (p, p_param) ptr;
+
+	p = p_param;
+
+	if p -> reference.qualifier ^= null then
+	     p -> reference.qualifier = share_expression ((p -> reference.qualifier));
+	if p -> reference.offset ^= null then
+	     p -> reference.offset = share_expression ((p -> reference.offset));
+
+     end reuse_qual_and_offset;
+
+
+/* function to see if a symbol represents an unpacked real fixed binary integer value */
+
+fb1_value:
+     proc (s) returns (bit (1) aligned);
+
+	dcl      s ptr;
+
+	if s -> symbol.fixed & s -> symbol.binary & ^s -> symbol.complex & ^s -> symbol.packed
+	     & s -> symbol.c_dcl_size <= max_p_fix_bin_1 & s -> symbol.scale = 0 then
+	     return ("1"b);
+
+	else
+	     return ("0"b);
+
+     end fb1_value;
+
+
+/* function to create an index or verify operator and operands for after, before, ltrim, or rtrim */
+
+create_index_or_verify:
+     proc returns (ptr);
+
+	dcl      p ptr;
+
+	p = create_operator (opcode, 3);
+	p -> operand (1) = declare_temporary (fixed_binary_real_mask, max_length_precision, 0, null);
+	p -> operand (2) = share_expression (arg (1));
+	p -> operand (3) = arg (2);
+	p -> operator.processed = "1"b;
+	return (p);
+
+     end create_index_or_verify;
+
+/* get the initial value of a fixed binary integer variable with a scale factor of zero */
+
+constant_value:
+     procedure (sym_ptr) returns (fixed bin (17));
+
+/* parameter */
+
+	dcl      sym_ptr ptr;
+
+/* based */
+
+	dcl      integer_1 based fixed bin (35);
+	dcl      integer_2 based fixed bin (71);
+
+/* constant */
+
+	dcl      max_24_bit_integer fixed bin (24) int static options (constant) init (111111111111111111111111b);
+
+/* builtin */
+
+	dcl      abs builtin;
+
+/* automatic */
+
+	dcl      initial_value fixed bin (71);
+
+	dcl      convert builtin;
+
+/* Accept the constant's bit pattern. */
+
+	if sym_ptr -> symbol.constant then
+	     if sym_ptr -> symbol.c_dcl_size > max_p_fix_bin_1 then
+		initial_value = sym_ptr -> symbol.initial -> integer_2;
+	     else
+		initial_value = sym_ptr -> symbol.initial -> integer_1;
+
+/* Convert the symbol's initializing token string. */
+
+	else if sym_ptr -> symbol.alloc_in_text then
+	     if sym_ptr -> symbol.initial -> list.element (1) -> token.string = "1" then
+		initial_value =
+		     convert (initial_value, sym_ptr -> symbol.initial -> list.element (2) -> token.string);
+
+	     else
+		initial_value = max_24_bit_integer + 1; /* ERROR */
+	else
+	     initial_value = max_24_bit_integer + 1;	/* ERROR */
+
+	if abs (initial_value) > max_24_bit_integer then
+	     go to err146;
+
+	return (initial_value);
+
+     end /* constant_value */;
+
+/* Return true if symbol is a constant. */
+
+symbol_is_constant:
+     proc (sym_ptr) returns (bit (1));
+
+	dcl      sym_ptr ptr;
+
+	if sym_ptr -> symbol.constant | (sym_ptr -> symbol.alloc_in_text & sym_ptr -> symbol.array = null ()) then
+	     return ("1"b);
+	else
+	     return ("0"b);
+     end symbol_is_constant;				/**/
+make_builtin_reference:
+     proc (builtin_name, nargs, arg1, arg2, arg3) returns (ptr);
+
+/* constructs a builtin reference and processes it.  the context given to builtin
+   is passed through */
+
+	dcl      builtin_name char (*),
+	         nargs fixed bin (15),
+	         (arg1, arg2, arg3) ptr;
+
+	dcl      (p, s, subs) ptr;
+	dcl      (i, n) fixed bin (15);
+
+/* since we don't know if the builtin is declared, we declare
+	   a special symbol in the root block */
+
+	n = nargs;
+	p = create_token ("cp.bif." || builtin_name, identifier);
+
+	if p -> token.declaration = null then do;
+
+/* we must make a symbol */
+
+	     do i = number_of_names to 1 by -1 while (pl1_data$builtin_name (i).name ^= builtin_name);
+	     end;
+
+	     s = create_symbol ((pl1_stat_$root), p, by_compiler);
+
+	     s -> symbol.builtin = "1"b;
+	     s -> symbol.c_dcl_size = i;
+	     p -> token.declaration = s;
+	end;
+
+	else
+	     s = p -> token.declaration;
+
+	subs = create_list (n);
+	if n > 0 then do;
+	     subs -> element (n) = arg1;
+	     if n > 1 then do;
+		subs -> element (n - 1) = arg2;
+		if n > 2 then
+		     subs -> element (n - 2) = arg3;
+	     end;
+	end;
+
+	return (builtin (cur_block, statement_ptr, (s -> symbol.reference), subs, s, context));
+
+     end;
+
+/*      */
+err124:
+	error_number = 124;
+	goto abort;
+
+err146:
+	error_number = 146;
+	goto abort;
+
+err481:
+	error_number = 481;
+	goto abort;
+
+err359:
+	error_number = 359;
+	goto abort;
+
+err381:
+	error_number = 381;
+	goto abort;
+
+abort:
+	call semantic_translator$abort (error_number, builtin_symbol);
+
+ret:
+	if def_context.arg_list & tree -> node.type = reference_node & ^pseudo_variable then do;
+	     arg (1) = tree;
+	     string (rtype) = string (tree -> reference.symbol -> symbol.attributes);
+	     if jump_index ^= 46 /* we dont change result type for convert!	*/ then
+		rtype.varying = "0"b;
+	     arg_number = 1;
+	     opcode = assign;
+	     goto create_operator_node;
+	end;
+
+	if arith_size_ck then			/* since we will mark the operator as processed, we must do the */
+						/* work of op_semantics in changeing an assign to an assign_size_ck */
+						/* if size or stringrange are enabled and the left hand side of the  */
+						/* assignment is subject to the condition.	*/
+	     if substr (statement_ptr -> statement.prefix, 6, 1) then
+		if arg_type (1).fixed | arg_type (1).float then
+		     if tree -> node.type = operator_node then
+			if tree -> operator.op_code = assign then
+			     tree -> operator.op_code = assign_size_ck;
+
+	if string_size_ck then
+	     if substr (statement_ptr -> statement.prefix, 9, 1) then
+		if arg_type (1).char | arg_type (1).bit then
+		     if tree -> node.type = operator_node then
+			if tree -> operator.op_code = assign then
+			     tree -> operator.op_code = assign_size_ck;
+
+exit:
+	if decimal_result then do;
+	     targ_type = targ_type & ^dimensioned_mask & ^initialed_mask;
+	     t = declare_temporary (targ_type, targ_prec, 0, null);
+	     tree = convert$to_target_fb (tree, t);
+	end;
+
+	if tree -> node.type = operator_node then
+	     tree -> operator.processed = "1"b;
+	else
+	     tree -> reference.processed = "1"b;
+
+	return (tree);
+
+/* include files */
+
+%include semant;
+%include array;
+%include block;
+%include boundary;
+%include builtin_table;
+%include cross_reference;
+%include decoded_token_types;
+%include declare_type;
+%include label;
+%include list;
+%include mask;
+%include nodes;
+%include operator;
+%include op_codes;
+%include reference;
+%include semantic_bits;
+%include statement;
+%include statement_types;
+%include symbol;
+%include pl1_symbol_type;
+%include symbol_bits;
+%include system;
+%include token;
+%include token_types;
+
+     end builtin;
+
+
+

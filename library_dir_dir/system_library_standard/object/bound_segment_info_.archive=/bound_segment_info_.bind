@@ -1,0 +1,88 @@
+/* bind file for bound_segment_info_
+   written 14 March 1971 by Dan Bricklin,
+   modified July 1973 by A. Scherer to rename the object segment to bound_segment_info_.
+   modified 75.06.10 by M. Weaver to  delete object_info_ and old_print_link_info
+	and to add $tptr to interpret_link_
+   Modified 761221 by PG to delete obsolete command names.
+   */
+
+Objectname:	bound_segment_info_;
+Addname:		print_link_info, pli,
+		print_linkage_usage, plu,
+		interpret_link_,
+		decode_definition_,
+		print_bind_map, pbm,
+		form_bind_map_,
+		display_component_name, dcn,
+		form_link_info_,
+		get_bound_seg_info_,
+		get_definition_,
+		component_info_,
+		date_compiled, dtc;
+
+Order:		print_link_info,
+		form_link_info_,
+		get_bound_seg_info_,
+		interpret_link_,
+		form_bind_map_,
+		print_bind_map,
+		display_component_name,
+		component_info_,
+		decode_definition_,
+		get_definition_,
+		print_linkage_usage,
+		date_compiled;
+
+Global:		delete;
+
+objectname:	print_link_info;
+ synonym: 	pli;
+ retain:		print_link_info,
+		pli;
+
+objectname:	print_linkage_usage;
+ synonym: 	plu;
+ retain:		print_linkage_usage,
+		plu;
+
+objectname:	interpret_link_;
+ retain:		interpret_link_,
+		tptr, given_exp;
+
+objectname:	decode_definition_;
+ retain:		decode_definition_,
+		init,
+		full,
+		decode_cref;
+
+objectname:	print_bind_map;
+ synonym: 	pbm;
+ retain:		print_bind_map,
+		pbm;
+
+objectname:	form_bind_map_;
+ retain:		form_bind_map_;
+
+objectname:	display_component_name;
+ synonym: 	dcn;
+ retain:		display_component_name,
+		dcn;
+
+objectname:	form_link_info_;
+ retain:		form_link_info_;
+
+objectname:	get_bound_seg_info_;
+ retain:		get_bound_seg_info_;
+
+objectname:	get_definition_;
+ retain:		get_definition_;
+
+objectname:	component_info_;
+ retain:		name,
+		offset;
+
+objectname:	date_compiled;
+ synonym:		dtc;
+ retain:		date_compiled, dtc;
+
+/* end */

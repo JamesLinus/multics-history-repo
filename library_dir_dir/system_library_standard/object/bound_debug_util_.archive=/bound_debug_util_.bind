@@ -1,0 +1,139 @@
+/* modified 21 Apr 80 JRDavis to add disassemble, moved from bound_debug_ */
+/* modified February 83 BIM to add pl1_operator_names_, op_mnemonic_ */
+/* Modified September 83 JMAthane to add runtime_symbol_info_ */
+/* Modified March 1985 Keith Loepere to move op_mnemonic_ to bound_multics_bce_. */
+
+Objectname:	bound_debug_util_;
+
+Order:		find_condition_info_,
+		continue_to_signal_,
+		stack_frame_exit_,
+		interpret_op_ptr_,
+		interpret_bind_map_,
+		find_condition_frame_,
+		get_entry_name_,
+		find_nonobject_info_,
+		find_owner_,
+		get_def_name_,
+		find_operator_name_,
+		get_operator_names_ptr_,
+		get_link_ptr_,
+		get_link_entry_name_,
+		pl1_operator_names_,
+		find_ls_owner_,
+		arithmetic_to_ascii_,
+		data_type_info_,
+		valid_decimal_,
+		validate_4bit_decimal_,
+		disassemble,
+		runtime_symbol_info_,
+		generic_math_;
+
+Addname:		find_condition_info_,
+		continue_to_signal_,
+		is_condition_frame_,
+		stack_frame_exit_,
+		interpret_op_ptr_,
+		interpret_bind_map_,
+		compare_offsets_,
+		find_condition_frame_,
+		get_entry_name_,
+		find_nonobject_info_,
+		find_owner_,
+		get_link_entry_name_,
+		pl1_operator_names_,
+		find_ls_owner_,
+		is_cls_,
+		get_def_name_,
+		find_operator_name_,
+		get_operator_names_ptr_,
+		get_link_ptr_,
+		valid_decimal_,
+		arithmetic_to_ascii_,
+		data_type_info_,
+		disassemble,
+		dissassemble,
+		runtime_symbol_info_,
+		generic_math_;
+
+Global:		delete;
+
+objectname:	find_condition_info_;
+ retain:		find_condition_info_;
+
+objectname:	continue_to_signal_;
+ synonym:		is_condition_frame_;
+ retain:		continue_to_signal_,
+		is_condition_frame_;
+
+objectname:	stack_frame_exit_;
+ retain:		stack_frame_exit_;
+
+objectname:	interpret_op_ptr_;
+ retain:		interpret_op_ptr_;
+
+objectname:	interpret_bind_map_;
+ synonym:		compare_offsets_;
+ retain:		interpret_bind_map_,
+		compare_offsets_;
+
+objectname:	find_condition_frame_;
+ retain:		find_condition_frame_;
+
+objectname:	get_entry_name_;
+ retain:		get_entry_name_;
+
+objectname:	find_nonobject_info_;
+ retain:		find_nonobject_info_;
+
+objectname:	find_owner_;
+ retain:		find_owner_;
+
+objectname:	get_def_name_;
+ retain:		get_def_name_;
+
+objectname:	find_operator_name_;
+ retain:		find_operator_name_;
+
+objectname:	get_operator_names_ptr_;
+ retain:		get_operator_names_ptr_;
+
+objectname:	get_link_ptr_;
+ retain:		get_link_ptr_;
+
+objectname:	get_link_entry_name_;
+ retain:		get_link_entry_name_;
+
+objectname:	find_ls_owner_;
+ synonym:		is_cls_;
+ retain:		find_ls_owner_, is_cls_;
+
+objectname:	valid_decimal_;
+ retain:		valid_decimal_;
+
+objectname:	validate_4bit_decimal_;
+
+objectname:	arithmetic_to_ascii_;
+ retain:		arithmetic_to_ascii_;
+
+objectname:	data_type_info_;
+ global:		retain;
+
+objectname:	disassemble;
+ synonym:		dissassemble;
+ retain:		disassemble,
+		dissassemble;
+
+objectname:	pl1_operator_names_;
+ global:		retain;
+
+objectname:	runtime_symbol_info_;
+ global:		retain;
+
+objectname:	generic_math_;
+global:		retain;
+
+/* End */
+
+
+

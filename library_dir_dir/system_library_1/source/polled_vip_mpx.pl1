@@ -1,0 +1,1426 @@
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) Honeywell Bull Inc., 1987                *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+/* format: style4,delnl,insnl,^ifthendo */
+polled_vip_mpx:
+     proc;
+
+/* This procedure contains the non-privileged entries of the polled
+   vip multiplexer.  These entries can be invoked at interrupt time
+   and therefore must be wired.
+
+   Coded December 1978 by J. Stern
+*/
+/* Modified August 1982 by Robert Coren to handle "MASKED" interrupt */
+
+
+
+/* Parameters */
+
+dcl  pm_chain_ptr ptr;				/* ptr to write chain (input) */
+dcl  pm_code fixed bin (35);				/* error code (output) */
+dcl  pm_infop ptr;					/* ptr to control order info structure (input) */
+dcl  pm_int_data bit (72) aligned;			/* interrupt data (input) */
+dcl  pm_int_type fixed bin;				/* interrupt type (input) */
+dcl  pm_mclp ptr;					/* ptr to modes change list */
+dcl  pm_modes char (*);				/* mode string (output) */
+dcl  pm_more_input bit (1) aligned;			/* ON if more input available after read (Output) */
+dcl  pm_order char (*);				/* control order name (input) */
+dcl  pm_pvmdp ptr;					/* ptr to multiplexer data base (input) */
+dcl  pm_subchan fixed bin;				/* subchannel number (input) */
+
+
+/* Automatic */
+
+dcl  adr bit (9);
+dcl  bmp ptr;
+dcl  chain_ptr ptr;
+dcl  code fixed bin (35);
+dcl  end_chain bit (1);
+dcl  eop_sw bit (1);
+dcl  ff_sent bit (1);
+dcl  found_text bit (1);
+dcl  1 frame_header aligned like frame_header_template;
+dcl  1 frame_trailer aligned like frame_trailer_template;
+dcl  headp ptr;
+dcl  i fixed bin;
+dcl  infop ptr;
+dcl  input_framep ptr;
+dcl  int_data bit (72) aligned;
+dcl  int_type fixed bin;
+
+dcl  1 lc_info aligned,				/* info structure for line control order */
+       2 type fixed bin (17) unal,
+       2 arg1 fixed bin (17) unal,
+       2 station_mask (0:35) bit (1) unal;
+
+dcl  leftover_chain_ptr ptr;
+
+dcl  1 ls_info aligned,				/* info structure for line status interrupt */
+       2 type fixed bin (17) unal,
+       2 adr fixed bin (9) unsigned unal,
+       2 sta char (1) unal,
+       2 unused bit (36);
+
+dcl  meter_ptr ptr;
+dcl  nchars fixed bin;
+dcl  nmsg fixed bin;
+dcl  order char (32);
+dcl  output_restarted bit (1);
+dcl  prev_blockp ptr;
+dcl  saved_write_chan fixed bin;
+dcl  subchan fixed bin;
+dcl  tailp ptr;
+dcl  text_lrc bit (9);
+dcl  ttybp ptr;
+dcl  xflag bit (1);
+
+
+/* Based */
+
+dcl  1 abort_info aligned based (infop),
+       2 resetwrite bit (1) unal,
+       2 resetread bit (1) unal;
+
+dcl  1 break_msg based (bmp),
+       2 soh char (1),
+       2 adr char (1),
+       2 sta char (1),
+       2 fc1 char (1),
+       2 fc2 char (1),
+       2 stx char (1),
+       2 text char (6);
+
+dcl  1 input_frame aligned based (input_framep),
+       2 msg (nmsg) unal,
+         3 soh char (1),
+         3 adr char (1),
+         3 sta char (1),
+         3 fc1 char (1),
+         3 fc2 char (1),
+         3 stx char (1),
+         3 etx char (1),
+         3 lrc char (1),
+       2 eot char (1) unal;
+
+dcl  1 write_status_info aligned based (infop),
+       2 ev_chan fixed bin (71),
+       2 output_pending bit (1);
+
+
+/* Internal static */
+
+dcl  et_action_not_performed fixed bin (35) int static;
+dcl  et_bad_mode fixed bin (35) int static;
+dcl  et_invalid_state fixed bin (35) int static;
+dcl  et_noalloc fixed bin (35) int static;
+dcl  et_undefined_order_request fixed bin (35) int static;
+dcl  et_unimplemented_version fixed bin (35) int static;
+
+/* External static */
+
+dcl  error_table_$action_not_performed fixed bin (35) ext static;
+dcl  error_table_$bad_mode fixed bin (35) ext static;
+dcl  error_table_$invalid_state fixed bin (35) ext static;
+dcl  error_table_$noalloc fixed bin (35) ext static;
+dcl  error_table_$undefined_order_request fixed bin (35) ext static;
+dcl  error_table_$unimplemented_version fixed bin (35) ext static;
+dcl  tty_buf$ ext static;
+
+
+/* Builtins */
+
+dcl  (addr, bin, bit, bool, divide, hbound, lbound, length, max, min, mod, null, ptr, rel, string, substr, translate,
+     unspec, verify) builtin;
+
+
+/* Entries */
+
+dcl  pxss$ring_0_wakeup entry (bit (36) aligned, fixed bin (71), fixed bin (71), fixed bin (35));
+dcl  syserr entry options(variable);
+dcl  wire_proc$wire_me entry;
+
+
+/* Constants */
+
+dcl  (
+     ACK char (1) init (""),
+     ADR_MASK bit (9) init ("740"b3),
+     AWAIT_FIRST_RESPONSE fixed bin init (6),
+     COMMON_LRC bit (9) init ("001"b3),
+     DISPLAY bit (9) init ("140"b3),
+     ETB char (1) init (""),
+     ETX char (1) init (""),
+     ETX_XOR_ETB bit (9) init ("024"b3),
+     FF char (1) init (""),
+     NAK char (1) init (""),
+     NL char (1) init ("
+"),
+     NUL char (1) init (""),
+     POLL bit (9) init ("040"b3),
+     PRINTER bit (9) init ("150"b3),
+     PRT char (1) init (""),
+     RESTART_CHARS char (4) init ("@
+"),						/* @ CR LF FF */
+     SELECT bit (9) init ("100"b3),
+     SOH char (1) init (""),
+     STATION_POLL fixed bin init (1),
+     WRITE_ABORT bit (2) init ("10"b),
+     XOR bit (4) init ("0110"b)
+     ) internal static options (constant);
+
+dcl  1 frame_header_template aligned int static options (constant),
+       2 select_msg unal,
+         3 syn (4) char (1) init ((4) (1)""),
+         3 soh char (1) init (""),
+         3 adr char (1),
+         3 sta char (1) init (""),
+         3 fc1 char (1) init (" "),
+         3 fc2 char (1) init (" "),
+         3 stx char (1) init (""),
+         3 etx char (1) init (""),
+         3 lrc char (1),
+       2 text_msg unal,
+         3 syn (4) char (1) init ((4) (1)""),
+         3 soh char (1) init (""),
+         3 adr char (1),
+         3 sta char (1) init (""),
+         3 fc1 char (1) init (" "),
+         3 fc2 char (1) init (" "),
+         3 stx char (1) init (""),
+         3 ff char (1) init (""),
+         3 nul char (1) init ("");
+
+dcl  1 frame_trailer_template aligned int static options (constant),
+       2 text_msg unal,
+         3 etx char (1) init (""),
+         3 lrc char (1),
+       2 poll_msg unal,
+         3 syn (4) char (1) init ((4) (1)""),
+         3 soh char (1) init (""),
+         3 adr char (1),
+         3 sta char (1) init (""),
+         3 fc1 char (1) init (" "),
+         3 fc2 char (1) init (" "),
+         3 stx char (1) init (""),
+         3 etx char (1) init (""),
+         3 lrc char (1),
+       2 end_frame unal,
+         3 syn (4) char (1) init ((4) (1)""),
+         3 eof char (1) init ("");			/* gets converted to EOT */
+
+%include polled_vip_mpx_data;
+
+%include polled_vip_load_info;
+
+%include mcs_interrupt_info;
+
+%include lct;
+
+%include tty_buffer_block;
+
+%include mcs_modes_change_list;
+
+%include channel_manager_dcls;
+
+%include tty_space_man_dcls;
+
+%include polled_vip_mpx_meters;
+
+%include pvip_subchan_meters;
+
+%include get_comm_meters_info;
+
+/* Entry to perform control orders. */
+
+control:
+     entry (pm_pvmdp, pm_subchan, pm_order, pm_infop, pm_code);
+
+	call setup_subchan;
+	order = pm_order;
+	pm_code = 0;
+
+	if order = "listen"				/* listen for subchan to dial up */
+	then do;
+	     pvste.listen = "1"b;
+	     if pvmd.mpx_started & ^pvste.dialed & pvste.slave
+						/* have green light for dialups */
+	     then call signal_dialup;
+	end;
+
+	else if order = "hangup"			/* pull the plug on this subchan */
+	then do;
+	     pvste.listen, pvste.dialed = "0"b;
+	     call free_write_chain;
+	     call channel_manager$interrupt ((pvste.devx), HANGUP, ""b);
+	end;
+
+	else if order = "wru"			/* who are you */
+	then call channel_manager$interrupt ((pvste.devx), WRU_TIMEOUT, ""b);
+						/* no answerback, simulate timeout */
+
+	else if order = "abort"
+	then do;
+	     infop = pm_infop;
+	     if abort_info.resetwrite
+	     then call free_write_chain;
+	end;
+
+	else if order = "write_status"
+	then do;
+	     infop = pm_infop;
+	     if (pvste.write_chain ^= 0) | (pvmd.write_chan = subchan)
+	     then write_status_info.output_pending = "1"b;
+	     else if pvste.printer & pvste.hold_output	/* write data sent, now waiting for line status */
+	     then write_status_info.output_pending = "1"b;/* in effect, we still have write data */
+	     else write_status_info.output_pending = "0"b;/* nope, no write data */
+	end;
+
+	else if order = "copy_meters"
+	then pvste.saved_meters_ptr -> pvip_subchan_meters = pvste.meters;
+
+	else if order = "get_meters"
+	then do;
+	     infop = pm_infop;
+	     if infop -> get_comm_meters_info.version ^= GET_COMM_METERS_INFO_VERSION_1
+	     then pm_code = et_unimplemented_version;
+	     else do;
+		meter_ptr = infop -> get_comm_meters_info.parent_ptr;
+		if meter_ptr ^= null ()
+		then if meter_ptr -> pvip_subchan_meter_struc.version ^= PVIP_SUBCHAN_METERS_VERSION_1
+		     then pm_code = et_unimplemented_version;
+		     else do;
+			meter_ptr -> pvip_subchan_meter_struc.current_meters = pvste.meters;
+			meter_ptr -> pvip_subchan_meter_struc.saved_meters =
+			     pvste.saved_meters_ptr -> pvip_subchan_meters;
+			meter_ptr -> pvip_subchan_meter_struc.printer = pvste.printer;
+		     end;
+	     end;
+	end;
+
+	else pm_code = et_undefined_order_request;
+
+	return;
+
+
+
+/* Entry to validate a proposed mode setting */
+
+check_modes:
+     entry (pm_pvmdp, pm_subchan, pm_mclp, pm_code);
+
+	call setup_subchan;
+
+	mclp = pm_mclp;
+	do i = 1 to mcl.n_entries;
+	     mclep = addr (mcl.entries (i));
+	     mcle.mpx_mode = (mcle.mode_name = "hndlquit");
+	end;
+
+	pm_code = 0;
+	return;
+
+
+
+/* Entry to set modes ON or OFF */
+
+set_modes:
+     entry (pm_pvmdp, pm_subchan, pm_mclp, pm_code);
+
+	call setup_subchan;
+
+	pm_code = 0;
+	mclp = pm_mclp;
+	if mcl.init				/* all modes off */
+	then pvste.hndlquit = "0"b;
+
+	do i = 1 to mcl.n_entries;
+	     mclep = addr (mcl.entries (i));
+	     if mcle.mpx_mode			/* this is a mode we want to set */
+	     then if mcle.mode_name = "hndlquit"
+		then pvste.hndlquit = mcle.mode_switch;
+		else do;				/* should never happen, but ... */
+		     mcle.error = "1"b;
+		     pm_code = et_bad_mode;
+		end;
+	end;
+
+	return;
+
+
+
+/* Entry to obtain multiplexer-specific modes */
+
+get_modes:
+     entry (pm_pvmdp, pm_subchan, pm_modes, pm_code);
+
+	call setup_subchan;
+	pm_modes = "";
+
+	pm_code = 0;
+	return;
+
+
+
+/* Entry to read input from a specified subchannel */
+
+read:
+     entry (pm_pvmdp, pm_subchan, pm_chain_ptr, pm_more_input, pm_code);
+
+	pm_chain_ptr = null;			/* we never hold input */
+	pm_more_input = "0"b;
+	pm_code = 0;
+	return;
+
+
+/* Entry to write output to a specified subchannel */
+
+write:
+     entry (pm_pvmdp, pm_subchan, pm_chain_ptr, pm_code);
+
+	ttybp = addr (tty_buf$);
+	call setup_subchan;
+	chain_ptr = pm_chain_ptr;
+
+	if ^pvste.dialed
+	then do;
+	     call tty_space_man$free_chain ((pvste.devx), OUTPUT, chain_ptr);
+	     pm_chain_ptr = null;
+	     pm_code = 0;
+	     return;
+	end;
+	if (pvste.write_chain ^= 0) | pvste.hold_output | (pvmd.write_chan = subchan)
+						/* can't take any output now */
+	then do;					/* so give it all back */
+	     pm_code = 0;
+	     return;
+	end;
+
+	nchars = 0;
+	blockp = chain_ptr;
+	prev_blockp = null;
+	end_chain = "0"b;				/* see how many chars in this write chain */
+	do while (^end_chain);
+	     nchars = nchars + buffer.tally;
+	     if nchars > pvmd.max_text_len | buffer.next = 0
+	     then end_chain = "1"b;
+	     else do;
+		prev_blockp = blockp;
+		blockp = ptr (ttybp, buffer.next);
+	     end;
+	end;
+
+	if nchars > pvmd.max_text_len			/* more than maximum text length */
+	then do;					/* take only part of the chain */
+	     tailp = prev_blockp;
+	     tailp -> buffer.next = 0;		/* break chain here */
+	     leftover_chain_ptr = blockp;		/* we'll give back the rest */
+	end;
+	else do;
+	     tailp = blockp;
+	     leftover_chain_ptr = null;
+	end;
+
+	eop_sw = tailp -> buffer.end_of_page;		/* get end-of-page indicator */
+	tailp -> buffer.end_of_page = "0"b;		/* turn it off in the buffer */
+
+/* Construct a standard VIP data frame consisting of:
+   (1) select message
+   (2) text message
+   (3) poll message
+   (4) EOT
+
+   The write chain we were given constitutes the body of the text
+   message.  A small buffer will be allocated to hold that part of
+   the frame which precedes the text.  The last text buffer should
+   always contain enoug unused space to accomodate all post-text
+   control data.
+*/
+
+	call tty_space_man$get_buffer ((pvste.devx), 16, OUTPUT, headp);
+	if headp = null
+	then go to noalloc;
+	headp -> buffer.next = bin (rel (chain_ptr), 18); /* thread new buffer on head of chain */
+
+	call get_frame_header (nchars);
+	substr (string (headp -> buffer.chars), 1, nchars) = substr (string (frame_header), 1, nchars);
+						/* put frame header in buffer */
+	headp -> buffer.tally = nchars;
+
+	blockp = chain_ptr;				/* compute lrc for actual text buffers */
+	end_chain = "0"b;
+	do while (^end_chain);
+	     call verify_text;			/* get rid of any illegal chars */
+	     text_lrc = bool (get_buffer_lrc (), text_lrc, XOR);
+	     if buffer.next = 0
+	     then end_chain = "1"b;
+	     else blockp = ptr (ttybp, buffer.next);
+	end;
+
+	nchars = (bin (tailp -> buffer.size_code, 3) + 1) * 16;
+						/* get size of last buffer (words) */
+	nchars = (nchars - 1) * 4;			/* get max number of data chars */
+	i = bin (tailp -> buffer.tally, 9);
+	nchars = nchars - i;			/* get room left in buffer */
+	nchars = min (nchars, length (string (frame_trailer)));
+						/* need only enough room to hold frame trailer */
+	call get_frame_trailer;
+	if pvmd.etb_mode & ^pvste.printer & ^(eop_sw | tailp -> buffer.break)
+	then do;					/* not at end of user msg, use ETB instead of ETX */
+	     frame_trailer.text_msg.etx = ETB;
+	     unspec (frame_trailer.text_msg.lrc) = bool (unspec (frame_trailer.text_msg.lrc), ETX_XOR_ETB, XOR);
+	end;
+
+	if nchars > 0				/* have some room in last buffer, use it */
+	then substr (string (tailp -> buffer.chars), i + 1, nchars) = substr (string (frame_trailer), 1, nchars);
+	tailp -> buffer.tally = i + nchars;		/* update buffer tally for added chars */
+
+	nchars = length (string (frame_trailer)) - nchars;/* get length of uncopied part of frame trailer */
+	if nchars > 0				/* could not fit everything in last buffer */
+	then do;					/* so we need another buffer */
+	     call tty_space_man$get_buffer ((pvste.devx), 16, OUTPUT, blockp);
+	     if blockp = null
+	     then do;
+		tailp -> buffer.tally = i;		/* reset tally of last buffer */
+		go to noalloc;
+	     end;
+
+	     tailp -> buffer.next = bin (rel (blockp), 18);
+						/* thread in new buffer */
+	     tailp = blockp;
+	     tailp -> buffer.next = 0;
+
+	     i = length (string (frame_trailer)) - nchars + 1;
+						/* get index of first uncopied char */
+	     substr (string (tailp -> buffer.chars), 1, nchars) = substr (string (frame_trailer), i, nchars);
+	     tailp -> buffer.tally = nchars;
+	end;
+
+	pvste.eop = "0"b;				/* have put FF in this frame if needed */
+	headp -> buffer.end_of_page = eop_sw;
+	pvste.write_chain = bin (rel (headp), 18);
+	if pvmd.write_chan = 0
+	then call write_frame (code);
+
+	pm_chain_ptr = leftover_chain_ptr;
+	pm_code = 0;
+	return;
+
+noalloc:
+	if headp ^= null
+	then call tty_space_man$free_buffer ((pvste.devx), OUTPUT, headp);
+	if leftover_chain_ptr = null
+	then tailp -> buffer.next = 0;
+	else tailp -> buffer.next = bin (rel (leftover_chain_ptr), 18);
+	tailp -> buffer.end_of_page = eop_sw;
+	pm_code = et_noalloc;
+	return;
+
+
+
+/* Entry to process interrupts */
+
+interrupt:
+     entry (pm_pvmdp, pm_int_type, pm_int_data);
+
+	ttybp = addr (tty_buf$);
+	pvmdp = pm_pvmdp;
+	int_type = pm_int_type;
+	int_data = pm_int_data;
+
+	if int_type < lbound (INTERRUPT, 1) | int_type > hbound (INTERRUPT, 1)
+	then return;
+	go to INTERRUPT (int_type);
+
+
+INTERRUPT (1):					/* DIALUP - major channel has dialed up */
+	pvmd.dialup_info = int_data;
+	pvmd.mpx_loading = "0"b;			/* indicate multiplexer bootload complete */
+	pvmd.mpx_loaded = "1"b;
+	call pxss$ring_0_wakeup (pvmd.load_proc_id, pvmd.load_ev_chan, PV_MPX_UP, code);
+	return;
+
+
+INTERRUPT (2):					/* HANGUP - major channel has hung up */
+	call crash_mpx;				/* it's all over */
+	call pxss$ring_0_wakeup (pvmd.load_proc_id, pvmd.load_ev_chan, PV_MPX_DOWN, code);
+	return;
+
+
+INTERRUPT (3):					/* CRASH - parent multiplexer has died */
+	call crash_mpx;				/* simulate a crash */
+	return;
+
+
+INTERRUPT (4):					/* SEND OUTPUT - it's safe to write next output frame now */
+	if ^pvmd.mpx_loaded
+	then return;
+
+	pvmd.send_output = "1"b;
+	if pvmd.writep ^= null			/* we're in the middle of writing a frame */
+	then do;
+	     call write_bchain (code);
+	     if code = 0
+	     then return;
+	end;
+
+	saved_write_chan = pvmd.write_chan;		/* remember channel for which output just completed */
+	pvmd.write_chan = 0;
+	call send_next_frame (saved_write_chan);	/* write next output frame */
+
+	if saved_write_chan ^= 0			/* we were waiting for output completion */
+	then do;					/* request subchannnel to send more output now */
+	     pvstep = addr (pvmd.subchan_table (saved_write_chan));
+	     if pvste.pgofs > 0			/* bad status on previous write */
+	     then do;
+		pvste.writes = pvste.writes + 1;	/* update frames written */
+		if pvste.writes > pvste.pgofs		/* wrote a frame without bad status */
+		then pvste.pgofs, pvste.writes = 0;	/* assume full recovery */
+	     end;
+
+	     if pvste.dialed & ^pvste.hold_output	/* ready for more output now */
+	     then call channel_manager$interrupt ((pvste.devx), SEND_OUTPUT, ""b);
+	end;
+
+	return;
+
+
+INTERRUPT (5):					/* INPUT AVAILABLE - ignore */
+	return;
+
+
+INTERRUPT (6):					/* ACCEPT INPUT - process an input frame */
+	if ^pvmd.mpx_loaded
+	then return;
+
+	unspec (rtx_info) = int_data;
+	headp = ptr (ttybp, rtx_info.chain_head);
+	input_framep = addr (headp -> buffer.chars);
+
+/* If the first message of the input frame is a poll message, then
+   we can determine the station address from the poll address.
+   Otherwise, the station address must be retrieved from the address
+   field of the text message.  The input frame may contain one or two
+   status messages before the text message.  Status messages are ignored.
+*/
+
+	i = 2;					/* start text search at msg 2 */
+	adr = unspec (input_frame.msg (1).adr);		/* get first message address */
+	if (adr & ADR_MASK) ^= POLL			/* it's not a poll msg */
+	then do;
+	     adr = ""b;				/* don't know station addr yet */
+	     i = 1;				/* start text search at msg 1 */
+	end;
+
+	found_text = "0"b;				/* find the text message */
+	do i = i to 4 while (^found_text);
+	     if input_frame.msg (i).soh ^= SOH		/* no more good messages */
+	     then go to discard_input;
+	     if input_frame.msg (i).sta = NUL		/* this is a text message */
+	     then do;
+		found_text = "1"b;
+		if adr = ""b
+		then adr = unspec (input_frame.msg (i).adr);
+		nmsg = i;				/* remember number of messages */
+	     end;
+	end;
+	if ^found_text
+	then do;
+discard_input:
+	     call tty_space_man$free_chain (pvmd.devx, INPUT, headp);
+	     return;
+	end;
+
+	i = bin (substr (adr, 5, 5), 5);		/* get station address */
+	subchan = pvmd.station_to_subchan (i).display;	/* get display subchan for station */
+	if subchan = 0				/* not configured */
+	then go to discard_input;
+	pvstep = addr (pvmd.subchan_table (subchan));
+	if ^pvste.dialed
+	then do;
+	     if pvmd.mpx_started & pvste.listen & ^pvste.slave
+	     then call signal_dialup;
+	     go to discard_input;
+	end;
+
+	ff_sent = "0"b;
+	output_restarted = "0"b;
+	xflag = (substr (pvste.name, 1, 1) = "x");
+
+/* Check for quit indication */
+
+	if ^xflag & (input_frame.msg (nmsg).fc1 = pvmd.quit)
+	then do;
+quit:
+	     call channel_manager$interrupt ((pvste.devx), QUIT, ""b);
+	     if pvste.hndlquit			/* discard any write data */
+	     then do;
+		if pvste.hold_output
+		then do;
+		     pvste.hold_output = "0"b;	/* unblock output */
+		     pvste.eop = "1"b;		/* clear screen on next output */
+		end;
+		call free_write_chain;
+	     end;
+	     go to discard_input;
+	end;
+
+	if ^xflag & pvmd.gcos_break
+	then do;
+	     bmp = addr (input_frame.msg (nmsg));	/* get break msg ptr */
+	     if headp -> buffer.next = 0		/* whole frame in one buffer */
+	     then if bin (headp -> buffer.tally) = length (string (input_frame)) + 6
+		then if break_msg.text = "$*$BRK"	/* isn't that cute */
+		     then go to quit;
+	end;
+
+/* Check if output should be restarted */
+
+	if pvste.hold_output			/* we've been waiting for this */
+	then do;
+	     pvste.hold_output = "0"b;		/* don't hold back output any longer */
+	     pvste.eop = "1"b;			/* put FF in front of next output */
+	     call channel_manager$interrupt ((pvste.devx), SEND_OUTPUT, ""b);
+	     if pvste.eop				/* still ON if no output happenned */
+	     then call write_ff (ff_sent);		/* so we should echo the formfeed */
+	     output_restarted = "1"b;
+	end;
+
+/* Check for formfeed function code */
+
+	if ^xflag & (input_frame.msg (nmsg).fc1 = pvmd.formfeed)
+	then do;
+	     if output_restarted			/* FF was for this purpose only */
+	     then go to discard_input;
+	     call write_ff (ff_sent);			/* echo the formfeed */
+	     if headp -> buffer.next ^= 0		/* discard all but first buffer */
+	     then call tty_space_man$free_chain (pvmd.devx, INPUT, ptr (ttybp, headp -> buffer.next));
+	     blockp = headp;
+	     buffer.next = 0;
+	     buffer.chars (0) = FF;			/* put formfeed char in buffer */
+	     unspec (buffer.tally) = bit (bin (1, 9), 9);
+	     rtx_info.input_count = 1;
+	     rtx_info.formfeed_present = "1"b;
+	     rtx_info.break_char = "0"b;
+	end;
+
+/* Only actual text from the text message is retained.  The rest of the
+   input frame is discarded.  To accomplish this, the first and last
+   buffers of the input frame are adjusted accordingly.
+*/
+
+	else do;
+	     i = length (string (input_frame)) - 3;	/* get input frame header length */
+	     nchars = bin (headp -> buffer.tally, 9) - i; /* shrink first buffer */
+	     if nchars < 3				/* must be at least ETX, LRC, EOT left */
+	     then go to discard_input;
+	     if nchars = 3
+	     then if output_restarted | pvmd.omit_nl | xflag
+		then go to discard_input;		/* drop empty input msg */
+
+	     substr (string (headp -> buffer.chars), 1, nchars) =
+		substr (string (headp -> buffer.chars), i + 1, nchars);
+	     unspec (headp -> buffer.tally) = bit (bin (nchars, 9), 9);
+
+	     if output_restarted & (headp -> buffer.next = 0)
+	     then do;
+		if verify (substr (string (headp -> buffer.chars), 1, nchars - 3), RESTART_CHARS) = 0
+		then go to discard_input;		/* just wanted to restart output, not really input */
+	     end;
+
+	     prev_blockp = null;
+	     blockp = headp;
+	     end_chain = "0"b;
+	     do while (^end_chain);
+		if buffer.next = 0
+		then end_chain = "1"b;
+		else do;
+		     prev_blockp = blockp;
+		     blockp = ptr (ttybp, buffer.next);
+		end;
+	     end;
+
+	     if pvmd.omit_nl | xflag			/* we can strip last 3 chars (ETX, LRC, EOT) */
+	     then i = 3;
+	     else if buffer.chars (nchars - 3) = ETX	/* end of text msg (not ETB) */
+	     then i = 2;				/* change ETX to NL and toss last 2 chars */
+	     else i = 3;
+	     nchars = buffer.tally;			/* get tally of last buffer */
+	     if nchars <= i				/* we can throw away the whole buffer */
+	     then do;
+		call tty_space_man$free_buffer ((pvste.devx), INPUT, blockp);
+		blockp = prev_blockp;
+		buffer.next = 0;
+		nchars = buffer.tally + nchars;
+	     end;
+	     nchars = nchars - i;			/* strip final 2 or 3 chars (ETX, LRC, EOT) */
+	     unspec (buffer.tally) = bit (bin (nchars, 9), 9);
+	     if i = 2
+	     then buffer.chars (nchars - 1) = NL;	/* change final ETX to NL */
+
+	     rtx_info.break_char = "1"b;
+	     rtx_info.formfeed_present = "0"b;
+	     rtx_info.input_count = rtx_info.input_count + 1 - length (string (input_frame));
+						/* account for control data removal */
+	end;
+
+	rtx_info.output_in_fnp = "0"b;
+	if ff_sent
+	then rtx_info.output_in_ring_0 = "0"b;		/* formfeed echo doesn't count */
+	else rtx_info.output_in_ring_0 = (pvste.write_chain ^= 0) | (pvmd.write_chan = subchan);
+	rtx_info.chain_tail = rel (blockp);
+	call channel_manager$interrupt ((pvste.devx), ACCEPT_INPUT, unspec (rtx_info));
+
+	return;
+
+
+INTERRUPT (7):					/* INPUT REJECTED - ignore */
+	return;
+
+
+INTERRUPT (8):					/* QUIT - ignore */
+	return;
+
+
+INTERRUPT (9):					/* LINE STATUS - process fnp status message */
+	if ^pvmd.mpx_loaded
+	then return;
+	unspec (ls_info) = int_data;
+	if ls_info.type < lbound (LINE_STAT, 1) | ls_info.type > hbound (LINE_STAT, 1)
+	then return;
+	go to LINE_STAT (ls_info.type);
+
+
+LINE_STAT (1):					/* PRINTER STATUS */
+	ls_info.adr = mod (ls_info.adr, 32);		/* turn off poll/select bits in station addr */
+	subchan = pvmd.station_to_subchan (ls_info.adr).printer;
+						/* get printer subchan for station */
+	if subchan = 0
+	then return;
+	pvstep = addr (pvmd.subchan_table (subchan));
+	if ^pvste.dialed
+	then return;
+	if ^pvste.hold_output			/* not expecting any status */
+	then return;
+
+	if ls_info.sta = ACK			/* last output frame successfully printed */
+	then do;
+ack:
+	     pvste.hold_output = "0"b;
+	     pvste.naks = 0;			/* reset counter */
+	     call free_write_chain;			/* last frame was retained until now */
+						/* ready for more output */
+	end;
+
+	else if ls_info.sta = NAK			/* error on last output frame */
+	then do;
+	     if pvste.write_chain = 0
+	     then go to ack;
+	     pvste.naks = pvste.naks + 1;		/* count 'em */
+	     pvste.printer_naks = pvste.printer_naks + 1; /* and meter the count */
+	     if pvste.naks >= 3			/* give up */
+	     then do;
+		pvste.discarded_printer_frame = pvste.discarded_printer_frame + 1;
+		go to ack;
+	     end;
+
+	     pvste.hold_output = "0"b;
+	     if pvmd.write_chan = 0
+	     then call write_frame (code);
+	end;
+
+	else do;					/* punt */
+	     call channel_manager$interrupt ((pvste.devx), QUIT, ""b);
+	     go to ack;
+	end;
+
+	return;
+
+
+LINE_STAT (2):					/* INPUT TIMEOUT */
+	pvmd.input_timeouts = pvmd.input_timeouts + 1;
+
+	if pvmd.controller_poll
+	then do;					/* tell FNP to wait for first poll response */
+	     lc_info.type = AWAIT_FIRST_RESPONSE;
+	     call channel_manager$control (pvmd.devx, "line_control", addr (lc_info), code);
+	end;
+	else do;					/* stop polling the "dead" station */
+	     i = mod (ls_info.adr, 32);		/* mask out poll/select bits */
+	     if i < 0 | i > 31
+	     then return;
+	     if ^pvmd.cur_station_mask (i)
+	     then return;
+
+	     pvmd.cur_station_mask (i) = "0"b;
+	     pvmd.cur_nstation = pvmd.cur_nstation - 1;
+	     if pvmd.cur_nstation = 0			/* no stations left to poll */
+	     then do;				/* assume whole subsystem disabled, but line still up */
+		lc_info.type = AWAIT_FIRST_RESPONSE;	/* wait for subsystem to come back */
+		call channel_manager$control (pvmd.devx, "line_control", addr (lc_info), code);
+		if code ^= 0
+		then return;
+		pvmd.cur_station_mask = pvmd.station_mask;
+		pvmd.cur_nstation = pvmd.nstation;
+	     end;
+
+	     lc_info.type = STATION_POLL;
+	     lc_info.arg1 = pvmd.cur_nstation;
+	     lc_info.station_mask = pvmd.cur_station_mask;
+	     call channel_manager$control (pvmd.devx, "line_control", addr (lc_info), code);
+	end;
+
+	return;
+
+
+LINE_STAT (3):					/* INPUT LOST */
+	pvmd.input_frames_lost = pvmd.input_frames_lost + 1;
+	return;
+
+
+LINE_STAT (4):					/* OUTPUT LOST */
+	pvmd.output_frames_lost = pvmd.output_frames_lost + 1;
+	return;
+
+
+LINE_STAT (5):					/* BAD OUTPUT FRAME */
+	pvmd.bad_output_frames = pvmd.bad_output_frames + 1;
+	return;
+
+
+LINE_STAT (6):					/* OUTPUT TIMEOUT */
+	pvmd.output_timeouts = pvmd.output_timeouts + 1;
+	return;
+
+
+LINE_STAT (7):					/* DISPLAY STATUS */
+	ls_info.adr = mod (ls_info.adr, 32);		/* turn off poll/select bits */
+	subchan = pvmd.station_to_subchan (ls_info.adr).display;
+	if subchan = 0
+	then return;
+	pvstep = addr (pvmd.subchan_table (subchan));
+	if ^pvste.dialed
+	then return;
+
+	pvste.pgofs = pvste.pgofs + 1;		/* page overflow is the only display status */
+	pvste.display_pgofs = pvste.display_pgofs + 1;
+	if pvste.pgofs >= 3				/* better put a stop to this */
+	then do;
+	     pvste.pgofs, pvste.writes = 0;
+	     pvste.pgof_limit_reached = pvste.pgof_limit_reached + 1;
+	     call channel_manager$interrupt ((pvste.devx), QUIT, ""b);
+	     pvste.hold_output = "0"b;
+	     pvste.eop = "1"b;
+	     call free_write_chain;			/* dump any output */
+	end;
+	return;
+
+
+LINE_STAT(8):					/* BUILD MESSAGE FAILURE, fnp will hang up channel */
+	call syserr(0, "Too many errors while trying to build a message, channel ^a will be hung up.", pvmd.name);
+	return;
+
+
+INTERRUPT (10):					/* DIAL STATUS - ignore */
+	return;
+
+
+INTERRUPT (11):					/* WRU TIMEOUT - ignore */
+	return;
+
+
+INTERRUPT (12):					/* SPACE AVAILABLE - some buffer space was freed that we need */
+	if ^pvmd.mpx_loaded
+	then return;
+
+/* We only get this interrupt if we previously failed to write an
+   output frame due to lack of space.  So try again now.
+*/
+
+	if ^pvmd.send_output
+	then return;
+
+	if pvmd.writep ^= null			/* we have a frame waiting to be written */
+	then do;
+	     call write_bchain (code);
+	     if code = 0
+	     then return;
+	end;
+
+	call send_next_frame (min (pvmd.write_chan - 1, 0));
+						/* starting with write_chan, find subchan with frame to write */
+	return;
+
+INTERRUPT (13):
+INTERRUPT (14):
+INTERRUPT (15):
+INTERRUPT (16):					/* various interrupts not used by this multiplexer */
+	return;
+
+INTERRUPT (17):					/* MASKED - treat like HANGUP but use different wakeup message */
+	call crash_mpx;				/* it's all over */
+	call pxss$ring_0_wakeup (pvmd.load_proc_id, pvmd.load_ev_chan, PV_MPX_MASKED, code);
+	return;
+
+
+/* Special entry to handle subchannel dialup (called by priv_polled_vip_mpx) */
+
+dialup:
+     entry (pm_pvmdp, pm_subchan);
+
+	pvmdp = pm_pvmdp;
+	subchan = pm_subchan;
+	pvstep = addr (pvmd.subchan_table (subchan));
+
+	call signal_dialup;
+	return;
+
+
+/* Special entry to crash the multiplexer (called by priv_polled_vip_mpx) */
+
+crash:
+     entry (pm_pvmdp);
+
+	ttybp = addr (tty_buf$);
+	pvmdp = pm_pvmdp;
+
+	call crash_mpx;
+	return;
+
+
+/* Special entry to perform per system (rather than per channel) initialization (called by priv_polled_vip_mpx) */
+
+system_init:
+     entry;
+
+/* copy error codes to wired linkage for reference at interrupt time */
+
+	et_undefined_order_request = error_table_$undefined_order_request;
+	et_noalloc = error_table_$noalloc;
+	et_action_not_performed = error_table_$action_not_performed;
+	et_bad_mode = error_table_$bad_mode;
+	et_invalid_state = error_table_$invalid_state;
+	et_unimplemented_version = error_table_$unimplemented_version;
+
+	call wire_proc$wire_me;			/* eat up some memory */
+
+	return;
+
+
+ERROR_EXIT:
+	return;
+
+/* Subroutine to initialize subchannel data pointer from external entry parameters */
+
+setup_subchan:
+     proc;
+
+	pvmdp = pm_pvmdp;
+	if ^pvmd.mpx_loaded
+	then do;
+	     pm_code = et_action_not_performed;
+	     go to ERROR_EXIT;
+	end;
+
+	subchan = pm_subchan;
+	pvstep = addr (pvmd.subchan_table (subchan));
+	if ^pvmd.cur_station_mask (pvste.station_addr)
+	then do;
+	     pm_code = et_invalid_state;
+	     go to ERROR_EXIT;
+	end;
+
+     end;
+
+
+
+
+
+/* Subroutine to  handle subchannel dialup */
+
+signal_dialup:
+     proc;
+
+	pvste.pgofs, pvste.writes = 0;
+	pvste.hold_output, pvste.hndlquit = "0"b;
+	if pvste.printer
+	then pvste.eop = "0"b;
+	else pvste.eop = "1"b;
+	pvste.dialed = "1"b;
+
+	unspec (dialup_info) = pvmd.dialup_info;
+	dialup_info.buffer_pad = dialup_info.buffer_pad + length (string (frame_trailer));
+	dialup_info.max_buf_size =
+	     min (dialup_info.max_buf_size,
+	     max (16, divide (pvmd.max_text_len + dialup_info.buffer_pad + 4, 64, 17, 0) * 16));
+	if pvste.printer				/* make sure printer delays come out right */
+	then dialup_info.baud_rate = pvste.baud_rate;
+	call channel_manager$interrupt ((pvste.devx), DIALUP, unspec (dialup_info));
+
+	call channel_manager$interrupt ((pvste.devx), SEND_OUTPUT, ""b);
+						/* authorize first output */
+
+     end;
+
+/* Subroutine to "erase" illegal characters from a buffer */
+
+verify_text:
+     proc;
+
+dcl  btally fixed bin;
+dcl  bchars char (btally) based (addr (buffer.chars));
+
+	btally = buffer.tally;
+	bchars = translate (bchars, "", "");	/* SOH, STX, ETX, EOT, SYN, ETB -> NUL */
+
+     end;
+
+
+
+/* Subroutine to find and send the next write frame (if any) */
+
+send_next_frame:
+     proc (pm_last_write_chan);
+
+dcl  pm_last_write_chan fixed bin;			/* chan for which output just completed, else 0 */
+
+dcl  last_write_chan fixed bin;
+dcl  found_chan bit (1);
+dcl  code fixed bin (35);
+
+	last_write_chan = pm_last_write_chan;
+
+retry:
+	found_chan = "0"b;				/* look for a subchan with pending output */
+	do i = last_write_chan + 1 to pvmd.nchan while (^found_chan), 1 to last_write_chan while (^found_chan);
+	     subchan = i;
+	     pvstep = addr (pvmd.subchan_table (subchan));
+	     if pvste.write_chain ^= 0 & ^pvste.hold_output
+	     then found_chan = "1"b;
+	end;
+	if ^found_chan
+	then return;
+
+	call write_frame (code);
+	if code ^= 0				/* write failed, look for another frame */
+	then do;
+	     last_write_chan = subchan;
+	     go to retry;
+	end;
+
+     end;
+
+/* Subroutine to compute the longitudinal redundancy check (LRC) char for the text in a buffer */
+
+get_buffer_lrc:
+     proc returns (bit (9));
+
+dcl  lrc bit (9);
+dcl  (nwords, nchars, btally, i) fixed bin;
+dcl  temp bit (36) aligned;
+dcl  p ptr;
+
+dcl  bwords (nwords) bit (36) aligned based;
+dcl  bchars (nchars) bit (9) unal based;
+dcl  temp_chars (4) bit (9) based (addr (temp));
+
+	btally = buffer.tally;
+	nwords = divide (btally, 4, 17, 0);
+	nchars = mod (btally, 4);
+	lrc = ""b;
+
+	if nwords > 0
+	then do;					/* for whole words, compute lrc word by word */
+	     temp = ""b;
+	     p = addr (buffer.chars);
+	     do i = 1 to nwords;
+		temp = bool (temp, p -> bwords (i), XOR);
+	     end;
+
+	     do i = 1 to 4;				/* collapse temp into single char lrc */
+		lrc = bool (lrc, temp_chars (i), XOR);
+	     end;
+	end;
+
+	if nchars > 0
+	then do;					/* pick up leftover chars */
+	     p = addr (buffer.chars (btally - nchars));
+	     do i = 1 to nchars;
+		lrc = bool (lrc, p -> bchars (i), XOR);
+	     end;
+	end;
+
+	return (lrc);
+     end;
+
+/* Subroutine to write a formfeed */
+
+write_ff:
+     proc (ff_sent);
+
+dcl  ff_sent bit (1);				/* ON if we succeed */
+dcl  p ptr;
+dcl  (hlen, tlen) fixed bin;
+
+	ff_sent = "0"b;
+	pvste.eop = "0"b;
+	if pvmd.omit_ff | (substr (pvste.name, 1, 1) = "x")
+	then return;
+	if (pvste.write_chain ^= 0) | pvmd.write_chan = subchan
+	then return;				/* don't clear screen during output */
+
+	call tty_space_man$get_buffer ((pvste.devx), 16, OUTPUT, p);
+	if p = null				/* did not get buffer, tough luck */
+	then return;
+
+	pvste.eop = "1"b;				/* so frame header will have formfeed */
+	call get_frame_header (hlen);
+	pvste.eop = "0"b;
+	substr (string (p -> buffer.chars), 1, hlen) = substr (string (frame_header), 1, hlen);
+
+	call get_frame_trailer;
+	tlen = length (string (frame_trailer));
+	substr (string (p -> buffer.chars), hlen + 1, tlen) = string (frame_trailer);
+
+	p -> buffer.tally = hlen + tlen;
+	pvste.write_chain = bin (rel (p), 18);
+	if pvmd.write_chan = 0
+	then call write_frame (code);
+
+	ff_sent = "1"b;
+
+     end;
+
+/* Subroutine to build a frame header */
+
+get_frame_header:
+     proc (nchars);
+
+dcl  nchars fixed bin;				/* number of chars in frame header */
+dcl  adr bit (9);
+
+
+	frame_header = frame_header_template;		/* init invariant part of frame header */
+	adr = bit (pvste.station_addr, 9) | SELECT;	/* get select address */
+	unspec (frame_header.select_msg.adr) = adr;
+	unspec (frame_header.select_msg.lrc) = bool (COMMON_LRC, adr, XOR);
+						/* compute LRC */
+
+	if pvste.printer				/* get text message address */
+	then adr = PRINTER;
+	else adr = DISPLAY;
+	unspec (frame_header.text_msg.adr) = adr;
+	text_lrc = bool (COMMON_LRC, adr, XOR);		/* factor adr into text msg lrc */
+
+	if pvste.printer
+	then do;
+	     frame_header.text_msg.sta = PRT;		/* make this a transparent printer message */
+	     text_lrc = bool (text_lrc, unspec (PRT), XOR);
+	end;
+
+	nchars = length (string (frame_header));
+	if pvste.eop & ^pvmd.omit_ff & ^(substr (pvste.name, 1, 1) = "x")
+						/* cursor at end of page, must clear screen */
+	then text_lrc = bool (text_lrc, unspec (FF), XOR);/* account for added FF */
+	else nchars = nchars - 2;			/* remove FF from frame header */
+
+     end;
+
+
+
+/* Subroutine to build a frame trailer */
+
+get_frame_trailer:
+     proc;
+
+dcl  adr bit (9);
+
+
+	frame_trailer = frame_trailer_template;		/* init invariant parts of frame trailer */
+	unspec (frame_trailer.text_msg.lrc) = text_lrc;
+
+	adr = bit (pvste.station_addr, 9) | POLL;	/* get poll address */
+	unspec (frame_trailer.poll_msg.adr) = adr;
+	unspec (frame_trailer.poll_msg.lrc) = bool (COMMON_LRC, adr, XOR);
+						/* compute lrc */
+
+     end;
+
+/* Subroutine to write an output frame for a specified subchannel */
+
+write_frame:
+     proc (code);
+
+dcl  code fixed bin (35);
+
+
+	code = 0;
+	pvmd.write_chan = subchan;
+
+	if pvste.printer
+	then do;
+	     call duplicate_write_chain ();
+	     if pvmd.writep = null			/* couldn't get the space */
+	     then do;
+		call tty_space_man$needs_space (pvmd.devx);
+						/* find out when more space is available */
+		return;
+	     end;
+	     pvste.hold_output = "1"b;		/* no more output until printer sends ACK */
+	end;
+	else do;
+	     pvmd.writep = ptr (ttybp, pvste.write_chain);
+	     pvste.write_chain = 0;
+	     pvste.hold_output = pvmd.writep -> buffer.end_of_page;
+						/* if at EOP, hold output until next input */
+	end;
+
+	pvmd.writep -> buffer.end_of_page = "0"b;
+	call write_bchain (code);
+
+     end;
+
+/* Subroutine to write the current write buffer chain */
+
+write_bchain:
+     proc (code);
+
+dcl  code fixed bin (35);
+
+
+	call channel_manager$write (pvmd.devx, pvmd.writep, code);
+	if code ^= 0
+	then do;
+	     if code = et_noalloc			/* parent multiplexer ran out of space */
+	     then do;
+		code = 0;
+		call tty_space_man$needs_space (pvmd.devx);
+						/* find out when more space is available */
+	     end;
+	     else do;				/* abort current write frame */
+		subchan = pvmd.write_chan;
+		pvstep = addr (pvmd.subchan_table (subchan));
+		pvste.hold_output = "0"b;
+		call free_bchain;
+		call free_write_chain;
+	     end;
+
+	     return;
+	end;
+
+	pvmd.send_output = "0"b;
+     end;
+
+
+
+/* Subroutine to free the current write buffer chain */
+
+free_bchain:
+     proc;
+
+	call channel_manager$control (pvmd.devx, "abort", addr (WRITE_ABORT), 0);
+	call tty_space_man$free_chain (pvmd.devx, OUTPUT, pvmd.writep);
+	pvmd.writep = null;
+	pvmd.write_chan = 0;
+
+     end;
+
+/* Subroutine to duplicate a write buffer chain */
+
+duplicate_write_chain:
+     proc;
+
+dcl  (p, newp, prev_newp, new_headp) ptr;
+dcl  end_chain bit (1);
+dcl  nwords fixed bin;
+dcl  bwords (nwords) fixed bin based;
+
+
+	p = ptr (ttybp, pvste.write_chain);		/* get ptr to head of write chain */
+	prev_newp = null;
+	end_chain = "0"b;
+	do while (^end_chain);
+	     nwords = (bin (p -> buffer.size_code, 3) + 1) * 16;
+						/* get number of words in buffer */
+	     call tty_space_man$get_buffer ((pvste.devx), nwords, OUTPUT, newp);
+	     if newp = null				/* failed to get buffer */
+	     then do;
+		if prev_newp ^= null
+		then do;
+		     prev_newp -> buffer.next = 0;
+		     call tty_space_man$free_chain ((pvste.devx), OUTPUT, prev_newp);
+		end;
+		return;
+	     end;
+
+	     newp -> bwords = p -> bwords;		/* duplicate buffer */
+	     if prev_newp = null			/* this is first buffer of chain */
+	     then new_headp = newp;
+	     else prev_newp -> buffer.next = bin (rel (newp), 18);
+	     prev_newp = newp;			/* thread new buffer onto duplicate chain */
+
+	     if p -> buffer.next = 0
+	     then end_chain = "1"b;
+	     else p = ptr (ttybp, p -> buffer.next);
+	end;
+
+	pvmd.writep = new_headp;
+	return;
+
+     end;
+
+/* Subroutine to free the write chain for a specified subchannel */
+
+free_write_chain:
+     proc;
+
+	if pvste.write_chain ^= 0
+	then do;
+	     call tty_space_man$free_chain ((pvste.devx), OUTPUT, ptr (addr (tty_buf$), pvste.write_chain));
+	     pvste.write_chain = 0;
+	end;
+
+	if pvste.dialed & ^pvste.hold_output & (pvmd.write_chan ^= subchan)
+						/* solicit more output */
+	then call channel_manager$interrupt ((pvste.devx), SEND_OUTPUT, ""b);
+
+     end;
+
+
+
+/* Subroutine to handle a mutliplexer crash */
+
+crash_mpx:
+     proc;
+
+dcl  mpx_loaded bit (1);
+
+	mpx_loaded = pvmd.mpx_loaded;
+	pvmd.mpx_loading, pvmd.mpx_loaded = "0"b;
+
+
+	if mpx_loaded
+	then do;
+	     if pvmd.writep ^= null
+	     then call free_bchain;
+	     do subchan = 1 to pvmd.nchan;		/* clean up all the subchans */
+		pvstep = addr (pvmd.subchan_table (subchan));
+		pvste.dialed = "0"b;
+		call free_write_chain;
+		call channel_manager$interrupt ((pvste.devx), CRASH, ""b);
+	     end;
+	end;
+
+     end;
+
+
+     end;						/* polled_vip_mpx */

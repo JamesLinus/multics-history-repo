@@ -1,0 +1,129 @@
+11/30/89  AG93 (Multics Subroutines and I/O Modules)
+          Errata Information for MR12.3
+
+
+pg 2-123:  for the "copy_" subroutine, under NOTES add the
+     following.
+
+         If copying a non-empty mailbox requires that the
+         max_length characteristic of the source be applied to
+         the target, then the target max_length value will take
+         on the default value that was given to it when created.
+
+
+pg 2-130:  for the "copy_dir_" subroutine, under NOTES add the
+     following.
+
+         If copying a non-empty mailbox requires that the
+         max_length characteristic of the source be applied to
+         the target, then the target max_length value will take
+         on the default value that was given to it when created.
+
+
+pg 2-289 to 2-290:  for the "find_source_file_" subroutine,
+     replace the documentation for USAGE and ARGUMENTS the with
+     the following.
+
+         Usage:
+
+         declare find_source_file_ entry (char(*), char(*),
+              char(*), ptr, fixed bin(24), fixed bin(35));
+
+         call find_source_file_ (pathname, suffix, source_name,
+              source_ptr, bit_count, code);
+
+
+         Arguments:
+
+         pathname
+            is the pathname of the source program.  (Input)
+
+         suffix
+            is the suffix to be added to the pathname (if one
+            does not already exist).  (Input)
+
+         source_name
+            is the name of the source program.  (Output)
+
+
+         source_ptr
+            is a pointer to the base of the source program.  It
+            is null if the source could not be found.  (Output)
+
+         bit_count
+            is the bit count of the source program.  (Output)
+
+         code
+            is a standard system status code.  (Output)
+
+
+pg 2-290 to 2-290.1:  for the "find_source_file_$search_path"
+     entrypoint, replace the documentation for USAGE and
+     ARGUMENTS with the following.
+
+
+         Usage:
+
+         dcl find_source_file_$search_path entry (char(*), char
+              (*), char(*), char(*), ptr, fixed bin(24), fixed
+              bin(35));
+
+         call find_source_file_$search_path (pathname, suffix,
+              search_list_name, source_name, source_ptr,
+              bit_count, code);
+
+
+         Arguments:
+
+         pathname
+            is the pathname of the source program.  (Input)
+
+         suffix
+            is the suffix to be added to the pathname (if one
+            does not already exist).  (Input)
+
+         search_list_name
+            is the search list to be used to locate the source
+            file specified by the pathname and suffix input
+            arguments.  (See "Notes" below.)  (Input)
+
+
+         source_name
+            is the name of the source program.  (Output)
+
+         source_ptr
+            is a pointer to the base of the source program.  It
+            is null if the source could not be found.  (Output)
+
+         bit_count
+            is the bit count of the source program.  (Output)
+
+         code
+            is a standard system status code.  (Output)
+
+
+                    .inl 5
+    pg 2-888.1:  for the
+         "translator_info_$component_get_source_info" entrypoint,
+         remove the following line.
+
+             Although there is an argument called component_name,
+             this entry point does not currently handle archive
+             components.
+
+
+    pg 2-888.1:  for the
+         "translator_info_$component_get_source_info" entrypoint,
+         change the description of the component_name argument
+         from
+
+             component_name
+                 is currently always null.  (Output)
+
+           to
+
+             component_name
+                 is the name of the archive component.  If the
+                 source segment is not a component of an archive,
+                 then this value is null "".  (Output)
+

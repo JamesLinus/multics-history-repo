@@ -1,0 +1,41 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+   *                                                         *
+   *********************************************************** */
+Objectname:	bound_dial_out_;
+Global:		delete;
+
+Addname:		dial_out,
+		connect,
+		dial_out_,
+		dial_out.search;
+
+Order:		dial_out,
+		dial_out_,
+		dial_out_modes_,
+		dial_out_util_,
+		do_requests_,
+		do_request_table_,
+		dial_out_sl_default_;
+
+objectname:	dial_out;
+ retain:		dial_out, connect;
+
+objectname:	dial_out_;
+ retain:		dial_out_;
+
+objectname:	dial_out_modes_;
+
+objectname:	dial_out_util_;
+
+objectname:	do_requests_;
+
+objectname:	do_request_table_;
+
+objectname:	dial_out_sl_default_;
+  synonym:	dial_out.search;
+  retain:		dial_out;
+
+
+

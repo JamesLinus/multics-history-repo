@@ -1,0 +1,37 @@
+/*
+*	Bindfile for bound_tape_label_util_.
+*	Created on 09/22/77 by R.J.C. Kissel.
+*	Modified 04/12/79 by C. D. Tavares.
+*         bcd_to_ascii_ moved to sss wired BIM 9/82.
+*/
+
+Objectname:	bound_tape_label_util_;
+
+Order:		authenticate_,
+		canon_resource_name_,
+		canon_for_volume_label_,
+		ebcdic_to_ascii_,
+		ebcdic8_to_ascii_;
+
+Global:		delete;
+
+objectname:	authenticate_;
+ retain:		authenticate_;
+
+objectname:	canon_for_volume_label_;
+ retain:		canon_for_volume_label_;
+
+objectname:	canon_resource_name_;
+ retain:		tape_vol;
+
+objectname:	ebcdic_to_ascii_;
+ retain:		ebcdic_to_ascii_,
+		ea_table;
+
+objectname:	ebcdic8_to_ascii_;
+ retain:		ebcdic8_to_ascii_;
+
+/* END bound_tape_label_util_.bind */
+
+
+

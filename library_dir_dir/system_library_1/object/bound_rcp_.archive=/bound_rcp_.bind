@@ -1,0 +1,234 @@
+/*	Bindfile for bound_rcp_.
+*	Created on 07/14/75 by Bill Silver.
+*	Modified by R.J.C. Kissel on 09/19/77 to add rcp_authenticate_device_
+*	and rcp_priv_check_labels_.
+*	Modified 04/05/78 by C. D. Tavares to add cv_rcp_attributes_ and
+*		resource_info_.
+*         Modified by R.J.C Kissel on 9/81 to delete rcp_priv_check_labels
+*         Modified 841009 to delete rcp_initializer_... -M. M. Pozzo
+*/
+Objectname:	bound_rcp_;
+
+Global:		delete;
+
+Order:		rcp_rcse_,
+		rcp_lock_,
+		rcp_set_lock_,
+		rcp_access_kernel_,
+		rcp_access_kernel_setup,
+		rcp_compute_raw_mode,
+		rcp_compute_bracket_mode,
+		rcp_compute_aim_mode,
+		rcp_merge_modes,
+		rcp_operation_access,
+		rcp_audit,
+		rcp_setup_event,
+		rcp_assign_device_,
+		rcp_attach_,
+		rcp_control_,
+		rcp_resource_info_,
+		rcp_get_scratch_volume_,
+		rcp_cancel_resource_,
+		rcp_match_,
+		rcp_find_,
+		rcp_check_assign_,
+		rcp_check_attach_,
+		rcp_tape_,
+		rcp_auto_register_,
+		rcp_mount_timer_,
+		rcp_disk_,
+		rcp_ioi_attach_,
+		rcp_comment_,
+		rcp_pointers_,
+		rcp_validate_,
+		rcp_check_attach_lv_,
+		rcp_attach_lv_,
+		rcp_lv_,
+		rcp_detach_lv_,
+		rcp_detach_,
+		rcp_unassign_,
+		rcp_device_info_,
+		rcp_copy_,
+		rcp_promote_,
+		rcp_message_,
+		rcp_force_unassign_,
+		rcp_reconfigure_,
+		rcp_ring1_init_,
+		rcp_tape_survey_,
+		rcp_authenticate_device_,
+		rcp_preload_,
+		rcp_unload_,
+		cv_rcp_attributes_,
+		resource_info_,
+		rcp_pre_claim_,
+		rcp_cancel_id_,
+		rcp_reserve_,
+		rcp_match_user_name_;
+
+objectname:	rcp_assign_device_;
+ retain:		rcp_assign_device_;
+
+objectname:	rcp_access_kernel_;
+ retain:		rcp_access_kernel_;
+
+objectname:	rcp_access_kernel_setup;
+ retain:		rcp_access_kernel_setup;
+
+objectname:	rcp_compute_raw_mode;
+ retain:		rcp_compute_raw_mode;
+
+objectname:	rcp_compute_bracket_mode;
+ retain:		rcp_compute_bracket_mode;
+
+objectname:	rcp_compute_aim_mode;
+ retain:		rcp_compute_aim_mode,
+		permissible_aim;
+
+objectname:	rcp_merge_modes;
+ retain:		rcp_merge_modes;
+
+objectname:	rcp_operation_access;
+ retain:		rcp_operation_access;
+
+objectname:	rcp_audit;
+ retain:		rcp_audit;
+
+objectname:	rcp_attach_;
+ retain:		attach,
+		priv_attach;
+
+objectname:	rcp_attach_lv_;
+ retain:		rcp_attach_lv_;
+
+objectname:	rcp_auto_register_;
+
+objectname:	rcp_cancel_resource_;
+
+objectname:	rcp_check_assign_;
+ retain:		rcp_check_assign_;
+
+objectname:	rcp_check_attach_;
+ retain:		rcp_check_attach_;
+
+objectname:	rcp_check_attach_lv_;
+ retain:		rcp_check_attach_lv_;
+
+objectname:	rcp_comment_;
+
+objectname:	rcp_copy_;
+ retain:		list,
+		meters,
+		data;
+
+objectname:	rcp_detach_;
+ retain:		detach,
+		force_detach;
+
+objectname:	rcp_detach_lv_;
+ retain:		rcp_detach_lv_;
+
+objectname:	rcp_device_info_;
+
+objectname:	rcp_disk_;
+
+objectname:	rcp_find_;
+
+objectname:	rcp_force_unassign_;
+ retain:		unassign_device,
+		unassign_process;
+
+objectname:	rcp_get_scratch_volume_;
+
+objectname:	rcp_control_;
+retain:		ss_io_interchange;
+
+objectname:	rcp_ioi_attach_;
+
+objectname:	rcp_lock_;
+
+objectname:	rcp_lv_;
+
+objectname:	rcp_match_;
+
+objectname:	rcp_message_;
+ retain:		priv,
+		tape;
+
+objectname:	rcp_mount_timer_;
+ retain:		init,
+		check,
+		account_init;
+
+objectname:	rcp_pointers_;
+
+objectname:	rcp_promote_;
+ retain:		rcp_promote_;
+
+objectname:	rcp_rcse_;
+
+objectname:	rcp_resource_info_;
+ retain:		rcp_resource_info_,
+		current_access_class;
+
+objectname:	rcp_ring1_init_;
+ retain:		rcp_ring1_init_;
+
+objectname:	rcp_reconfigure_;
+ retain:		add_device,
+		delete_device;
+
+objectname:	rcp_set_lock_;
+
+objectname:	rcp_tape_;
+
+objectname:	rcp_tape_survey_;
+ retain:		rcp_tape_survey_;
+
+objectname:	rcp_unassign_;
+ retain:		unassign,
+		unassign_device;
+
+objectname:	rcp_validate_;
+
+objectname:	rcp_authenticate_device_;
+ retain:		rcp_authenticate_device_;
+
+objectname:	rcp_preload_;
+ retain:		rcp_preload_;
+
+objectname:	rcp_unload_;
+ retain:		rcp_unload_;
+
+objectname:	cv_rcp_attributes_;
+ retain:		from_string, from_string_rel,
+		modify, modify_rel,
+		to_string, to_string_given_rtde, to_string_rel,
+		test_valid, reduce_implications, protected_change,
+		make_rel,
+		test;	/* debugging entry */
+
+objectname:	resource_info_;
+ retain:		get_type, limits, mates,
+		lock_on_release,
+		default_attributes, defaults,
+		set_arbitrary_attributes,
+		canonicalize_name, get_dtypex, get_vtypex,
+		get_primary_type, get_rtypex,
+		test;	/* debugging entry */
+
+objectname:	rcp_pre_claim_;
+ retain:		rcp_pre_claim_;
+
+objectname:	rcp_cancel_id_;
+ retain:		rcp_cancel_id_,
+		string,
+		sys,
+		sys_string,
+		remove_schedule;
+
+objectname:	rcp_reserve_;
+ retain:		rcp_reserve_,
+		sys,
+		approve_schedule;
+
+/* 	End.  	*/

@@ -1,0 +1,41 @@
+/* Bindfile for bound_volume_dumper_.
+    modified 10 January 1972 by R. Tilden.
+    modified 11/24/81 by GA Texada to remove the indirect statement.
+    modified 3/8/83 to add preattach_dump_volumes.
+    modified 5/4/83 by GA Texada to add trace entries.
+    last modified 3/6/84 by GA Texada to add set_volume_wakeup_interval.
+   */
+
+Objectname:	bound_volume_dumper_;
+Addname:		incremental_volume_dump, consolidated_volume_dump, complete_volume_dump, end_volume_dump,
+		wakeup_volume_dump, preattach_dump_volumes, dmpr_report_, dmpr_unlock_pv,
+		volume_dump_trace_on, volume_dump_trace_off, set_volume_wakeup_interval;
+Order:              dump_volume_,
+ 		dmpr_info_,
+ 		dmpr_report_,
+		dmpr_arg_reader_,
+		dmpr_log_,
+                    dmpr_output_,
+                    dumper,
+                    dmpr_finish_,
+		dmpr_unlock_pv;
+Global:		delete;
+
+objectname:	dmpr_info_;
+objectname:	dmpr_log_;
+objectname:	dmpr_report_;
+ retain:		online_output, error_output;
+objectname:	dump_volume_;
+objectname:	dmpr_finish_;
+objectname:	dmpr_arg_reader_;
+objectname:	dmpr_output_;
+
+objectname:	dumper;
+ synonym:		 incremental_volume_dump, consolidated_volume_dump, complete_volume_dump, end_volume_dump,
+		wakeup_volume_dump, preattach_dump_volumes, volume_dump_trace_on, volume_dump_trace_off, set_volume_wakeup_interval;
+ retain:		consolidated_volume_dump, complete_volume_dump, end_volume_dump, incremental_volume_dump,
+		wakeup_volume_dump, preattach_dump_volumes, volume_dump_trace_on, volume_dump_trace_off, set_volume_wakeup_interval;
+
+objectname:	dmpr_unlock_pv;
+ retain:		dmpr_unlock_pv;
+/* End */

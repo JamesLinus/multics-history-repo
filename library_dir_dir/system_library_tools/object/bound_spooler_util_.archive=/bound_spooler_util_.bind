@@ -1,0 +1,57 @@
+/* Bindfile for bound_spooler_util_ (Multics spooling facility )  */
+/* Created 2/15/75 by Janice B. Phillipps  */
+/* Updated 8/10/75 by J.Phillipps */
+/* Modified 1/78 by J. C. Whitmore to add spool_driver_ and delete spooling_dim_changemode_ */
+
+Objectname:	bound_spooler_util_;
+
+Addname:		spooldim_,
+		spool_driver_,
+		print_spooling_tape;
+
+Order: 		spooldim_,
+		spooling_dim_xtatch_,
+		get_spooling_data_,
+		spooling_dim_order_,
+		file_monitor_,
+		spooling_dim_write_,
+		spool_conv_,
+		spool_driver_,
+		print_spooling_tape,
+		unspool_,
+		spooling_question_handler_,
+		spool_static_;
+
+Global:		delete;
+
+objectname:	spooldim_;
+ retain:		spooldimmodule, spooldim_module;
+
+objectname:	spooling_dim_xtatch_;
+ retain:            debug_on, debug_off;
+
+objectname:	get_spooling_data_;
+
+objectname:	spooling_dim_order_;
+
+objectname:	file_monitor_;
+
+objectname:	spooling_dim_write_;
+
+objectname:	spool_conv_;
+
+objectname:	print_spooling_tape;
+ retain:		print_spooling_tape;
+
+objectname:	unspool_;
+
+objectname:	spool_driver_;
+ retain:		init, request, command, default_handler;
+
+objectname:	spool_static_;
+
+objectname:	spooling_question_handler_;
+
+
+
+/* end */

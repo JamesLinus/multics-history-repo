@@ -1,0 +1,122 @@
+/* Modified by Greenberg 03/12/77 */
+/* Modified for concurrent scheduler, RE Mullen 5/16/77 */
+/* Modified by J. A. Bush 2/1/80 */
+/* PML removed June 1981 by C. Hornig */
+/* Modified by Benson I. Margulies to put pc_abs in. CAH put it in, forgot
+	  to journalize, and I took it out. */
+/* Modified by J. Bongiovanni for record stocks, March 1982 */
+/* Modified by E. N. Kittlitz to move core map, June 1982 */
+/* Modified by J. Bongiovanni for scavenger, July 1982 */
+/* Modified by J. Bongiovanni for hc_dm_util, page_synch, pc_signal, October 1982 */
+/* Modified by K. Loepere for bootload_disk_post, bootload_read/write, June 1983 */
+/* Modified by Chris Jones for disk_control$add_channel, January 1984 */
+/* Modified by Chris Jones for disk_control$tune, July 1984 */
+/* Modified by Keith Loepere to move out pc_recover_sst, March 1985. */
+/* Mofified by R. Michael Tague: Added entries hc_dm_util($get_journal_stamp
+            $get_max_held_per_journal $get_n_journals $validate_bj_uid). */
+
+Objectname:	bound_page_control;
+Global:		delete;
+
+Order:		page_fault,	/* This must be first */
+		page, post_purge, device_control,
+		dctl,
+		page_error, free_store, quotaw,
+		pc, pc_abs, pc_wired, get_ptrs_, disk_control, 
+		disk_error_data, thread, pc_trace, pc_trace_pl1, 
+		evict_page, core_queue_man, 
+		cam_cache, lock_volmap, stock, volmap, volmap_page,
+		pc_deposit, volmap_util, hc_dm_util, page_synch,
+		pc_signal, bootload_disk_post;
+
+objectname:	page;
+ global:		retain;		/* As befits a transfer vector */
+
+objectname:	page_fault;
+ retain:		notify_return, fault, wait_return,
+		cme_offsets, pf_prs, pf_scuinfo, my_lp,
+		ptl_wait_return,
+		trace_signaller, trace_restart_fault, pmut_unlock_ptl;
+
+objectname:	post_purge;
+
+objectname:	device_control;
+ retain:		pwait_return, ptl_waitlock;
+
+objectname:	page_error;
+
+objectname:	free_store;
+
+objectname:	disk_control;
+ retain:		disk_read, disk_write, disk_run, 
+		read_sectors, write_sectors,
+		usurp_channel, cede_channel, add_channel,
+		test_drive, disk_inter, tune,
+		unload_drive, queue_length_given_pvtx;
+
+objectname:	dctl;
+ retain:		disk_read, disk_write, read_sectors, write_sectors,
+		disk_inter, bootload_read, bootload_write;
+
+objectname:	quotaw;
+ retain:		cu, sq, mq, rvq;
+ delete:		quotaw;
+
+objectname:	thread;
+ retain:		cin, lin, out;
+
+objectname:	pc;
+ delete:		pc, symbol_table;
+ global:		retain;		/* Too many entrypoints to remember */
+
+objectname:	pc_abs;
+ retain:		remove_core, remove_core_mod, unwire_abs, wire_abs, wire_abs_contig;
+
+objectname:	pc_wired;
+ retain:		wire_wait, wire, read, unwire, write, write_wait, write_wait_uid,
+		write_wait_uid_list;
+ delete:		pc_wired;
+
+objectname:	get_ptrs_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	pc_trace;
+
+objectname:	pc_trace_pl1;
+
+objectname:	evict_page;
+
+objectname:	core_queue_man;
+ retain:		ptl_notify_return;
+
+objectname:	cam_cache;
+
+objectname:	stock;
+
+objectname:	lock_volmap;
+
+objectname:	volmap;
+
+objectname:	volmap_page;
+
+objectname:	pc_deposit;
+
+objectname:	volmap_util;
+
+objectname:	hc_dm_util;
+ retain:		activate, allocate_journal_index, check_activate,
+	 	deactivate, get_journal_stamp, get_max_held_per_journal,
+		get_n_journals, free_journal_index, set_journal_stamp,
+		validate_bj_uid;
+
+objectname:	page_synch;
+
+objectname:	pc_signal;
+
+objectname:	bootload_disk_post;
+
+/*		END		*/
+
+
+

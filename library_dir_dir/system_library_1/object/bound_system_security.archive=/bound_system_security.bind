@@ -1,0 +1,70 @@
+/*  ***********************************************************
+    *						  *
+    * Copyright, (C) Honeywell Information Systems Inc., 1984 *
+    *						  *
+    ***********************************************************  */
+
+/* 84-11-13 EJ Sharpe - created */
+/* 84-11-20 KP Loepere - moved in file sys related modules */
+/* 84-11-28 EJ Sharpe - added set_sys_audit_thresholds_ */
+/* 85-01-10 EJ Sharpe - added access_audit_log_fault_ and access_audit_util_ */
+/* 85-01-25 EJ Sharpe - deleted protection_audit_ */
+/* 85-04-01 KP Loepere - added access_audit_check_ep_, better ordering. */
+/* 1985-04-08, BIM: added level$set_admin_gate. */
+
+Objectname:	bound_system_security;
+
+Global:		delete;
+
+Order:		level_error,
+		access_audit_util_,
+		access_audit_,
+		level,
+		access_audit_check_ep_,
+		dc_find,
+		access_mode,
+		update_kste_access,
+		fs_modes,
+		access_audit_log_fault_,
+		set_sys_audit_thresholds_;
+
+objectname:	access_audit_;
+ global:		retain;
+ delete:		access_audit_, symbol_table;
+
+objectname:	access_audit_check_ep_;
+ retain:		self, user;
+
+objectname:	access_audit_log_fault_;
+ global:		retain;
+ delete:		access_audit_log_fault_, symbol_table;
+
+objectname:	access_audit_util_;
+ global:		retain;
+ delete:		access_audit_util_, symbol_table;
+
+objectname:	access_mode;
+ delete:		access_mode;
+ retain:		authorization, effective, raw, user, user_effmode;
+
+objectname:	dc_find;
+ global:		retain;
+ delete:		dc_find, symbol_table;
+
+objectname:	fs_modes;
+ retain:		fs_modes, locked;
+
+objectname:	level;
+ retain:		get, set, set_gate, set_admin_gate;
+
+objectname:	level_error;
+
+objectname:	update_kste_access;
+
+objectname:	set_sys_audit_thresholds_;
+ retain:		set_sys_audit_thresholds_;
+
+/* end */
+
+
+

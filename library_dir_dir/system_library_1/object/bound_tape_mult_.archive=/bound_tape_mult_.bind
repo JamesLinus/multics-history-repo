@@ -1,0 +1,56 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*							 */
+/*	Bindfile for Multics Standard Tape I/O Module, tape_mult_.	 */
+/*							 */
+/*	Created on 12/23/74 by Bill Silver.			 */
+/*	Modified 9/16/77 by Noel I. Morris.			 */
+/*	Modified 06/01/80 by P. B. Kelley to delete tape_checksum_	 */
+/*	     (moved to bound_sss_wired_)			 */
+/*	Modified 01/16/82 by J. A. Bush to change the name of	 */
+/*	     tape_mult_attach_ to tape_mult_.			 */
+/*	Modified 11 October 1982 by Chris Jones to remove tdcm_ and	 */
+/*	     add tape_ioi_.					 */
+/*							 */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+Objectname:	bound_tape_mult_;
+
+Global:		delete;
+Addname:		tape_mult_;
+
+Force_Order:	tape_ioi_,
+		tape_ioi_io,
+		tape_ioi_utils,
+		tape_ioi_buffer_man,
+		tape_ioi_wks_man,
+		tape_ioi_activate,
+		tape_ioi_modes,
+		tape_ioi_hardware_status,
+		tape_ioi_error_retry,
+		tape_mult_write_,
+		tape_mult_read_,
+		tape_mult_labeler_,
+		tape_mult_,
+		tape_mult_parse_,
+		tape_mult_open_,
+		tape_mult_close_,
+		tape_mult_detach_,
+		tape_mult_util_,
+		tape_mult_modes_,
+		tape_dim_data_,
+		parse_tape_reel_name_;
+
+objectname:	tape_ioi_;
+ global:		retain;
+
+objectname:	tape_mult_;
+ retain:		tape_mult_attach;
+
+objectname:	tape_dim_data_;
+ retain:		record_data_size,
+		tdcm_buf_size;
+
+objectname:	parse_tape_reel_name_;
+ retain:		parse_tape_reel_name_;
+
+/*	END	*/

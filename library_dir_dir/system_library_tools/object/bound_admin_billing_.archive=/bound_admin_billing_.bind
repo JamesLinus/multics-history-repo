@@ -1,0 +1,31 @@
+/* Bindfile for administrative billing routines.
+   Last modified 22 Nov 1971 by C Garman
+   */
+
+Objectname:	bound_admin_billing_;
+Order:		write_user_usage_report,
+		mailing_page_,
+		write_acct_bill,
+		write_billing_summary,
+		punch_MIT_deck;
+Addname:		write_user_usage_report, write_acct_bill, write_billing_summary,
+		mailing_page_,
+		punch_MIT_deck;
+Global:		delete;
+
+objectname:	write_user_usage_report;
+ retain:		write_user_usage_report;
+
+objectname:	mailing_page_;
+ retain:		mailing_page_;
+
+objectname:	write_acct_bill;
+ retain:		write_acct_bill;
+
+objectname:	write_billing_summary;
+ retain:		write_billing_summary;
+
+objectname:	punch_MIT_deck;
+ retain:		punch_MIT_deck;
+
+/* end */

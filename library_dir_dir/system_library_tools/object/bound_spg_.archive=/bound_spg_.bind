@@ -1,0 +1,21 @@
+/* Created on 10 June 1971 by P. Karger.
+   Last modified 10/13/76 by Noel I. Morris
+   */
+
+Objectname:	bound_spg_;
+Addname:		system_performance_graph, spg;
+Global:		delete;
+
+objectname:	system_performance_graph;
+ synonym: 	spg;
+ retain:		system_performance_graph,
+		spg;
+
+objectname:	spg_util_;
+
+objectname:	spg_ring_0_info_;
+
+objectname:	spg_fs_info_;
+
+
+/* End */

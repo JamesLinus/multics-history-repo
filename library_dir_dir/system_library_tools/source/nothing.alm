@@ -1,0 +1,27 @@
+" ***********************************************************
+" *                                                         *
+" * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+" *                                                         *
+" * Copyright (c) 1972 by Massachusetts Institute of        *
+" * Technology and Honeywell Information Systems, Inc.      *
+" *                                                         *
+" ***********************************************************
+
+"
+"	NOTHING -- command to return, and do nothing.
+"
+"	Re-coded from the pl1, for efficiency, 06/12/80 W. Olin Sibert
+"
+
+	segdef	nothing
+	segdef	nt
+	segdef	main_			" for fortran refname hack
+
+	name	nothing
+
+nothing:
+nt:
+main_:
+	short_return
+
+	end

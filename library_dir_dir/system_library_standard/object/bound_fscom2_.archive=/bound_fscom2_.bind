@@ -1,0 +1,189 @@
+/* **************************************************************
+   *                                                            *
+   * Copyright, (C) Massachusetts Institute of Technology, 1983 *
+   *                                                            *
+   ************************************************************** */
+
+          /*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+          /*                                                                                        */
+          /* N__a_m_e:  bound_fscom2_                                                                   */
+          /*                                                                                        */
+          /*      This bound segment contains various file system commands and subroutines.         */
+          /*                                                                                        */
+          /* S__t_a_t_u_s                                                                                 */
+          /*                                                                                        */
+          /* 1) Modified: Apr  5, 1972 by C. Garman                                                 */
+          /* 2) Modified: May 10, 1972 by R. J. Feiertag - include terminate_process_               */
+          /* 3) Modified: Jul 17, 1973 by C. L. Wong - add adjust_bit_count, adjust_bit_count_,     */
+          /*                                          names, set_quota, truncate.                   */
+          /* 4) Modified: Oct 25, 1973 by G. C. Dixon - add get_equal_name_, replace equal_.        */
+          /* 5) Modified: June 4 1974 by Steve Herbst - add names create_dir, add_name, delete_name,*/
+          /*                                            set_quota, move_quota, get_quota.           */
+          /* 6) Modified: 750418 by P. Green to split terminate_process_ and logout                 */
+          /* 7) Modified: 750630 by J. Whitmore to remove set_quota command                         */
+          /* 8) Modified: 5/12/76 by Steve Herbst to add move_dir_quota and get_dir_quota           */
+          /* 9) Modified: Aug 25, 1977 by S. Webber to add term_signal_handler_                     */
+          /*10) Modified: 6/28/79 by G. Palter - reformat and retain copy_seg_$brief                */
+          /*11) Modified: 2/23/81 by GA Texada to add copy_dir_                                     */
+          /*12) Modified:10/12/82 by E. N. Kittlitz to move logout, terminate_process_.             */
+          /*13) Modified: 2/26/83 by Jay Pattin to add copy_, l_rename          */
+          /* 831002 BIM to take object_type_ back out */
+          /*    and friends, nd_handler_$switches, object_type_, and suffix_(ms mbx)_.              */
+	/* 840323 Keith Loepere to move get_equal_name_ to bound_library_1_			*/
+	/* 840724 Charlie Spitzer. add check_file_system_damage command and subroutine		*/
+          /*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+
+Objectname:         bound_fscom2_;
+Order:                 copy,
+                       copy_,
+                       copy_seg_,
+                       copy_acl_,
+                       copy_names_,
+                       rename,
+                       create,
+                       link,
+                       set_bit_count,
+                       status,
+                       nd_handler_,
+                       equal_,
+                       adjust_bit_count,
+                       adjust_bit_count_,
+                       copy_names,
+                       move_quota,
+                       truncate,
+                       copy_dir,
+                       copy_dir_,
+                       copy_acl,
+                       copy_iacl_,
+		   check_file_system_damage;
+
+   Addname:            add_name, addname, an,
+                       adjust_bit_count, abc,
+                       adjust_bit_count_,
+                       copy, cp,
+                       copy_,
+                       copy_acl_,
+                       copy_names_,
+                       copy_seg_,
+                       create, cr,
+                       create_dir, createdir, cd,
+                       delete_name, deletename, dn,
+                       equal_,
+                       get_quota, getquota, gq,
+                       get_dir_quota,
+                       link, lk,
+                       move, mv,
+                       move_names_,
+                       move_quota, movequota, mq,
+                       move_dir_quota,
+                       copy_names,
+                       move_names,
+                       nd_handler_,
+                       rename, rn,
+                       set_bit_count, sbc,
+                       status, st,
+                       truncate, tc,
+                       copy_dir,cpd,move_dir,mvd,
+                       copy_dir_,
+                       copy_acl, copy_iacl_seg, copy_iacl_dir,
+                    copy_iacl_,
+                       l_rename, lrename, lren,
+                       l_add_name, laddname, lan,
+                       l_delete_name, ldeletename, ldn,
+		   check_file_system_damage, check_file_system_damage_,
+		        cfsd;
+
+   Global:             delete;
+
+
+objectname:         adjust_bit_count;
+   synonym:            abc;
+   retain:             adjust_bit_count,
+                       abc;
+
+objectname:         adjust_bit_count_;
+   retain:             adjust_bit_count_;
+
+objectname:         copy;
+   synonym:            cp, move, mv;
+   retain:             copy, cp, move, mv;
+
+objectname:         copy_;
+   retain:             copy_;
+
+objectname:         copy_seg_;
+   retain:             copy_seg_, no_message, brief;
+
+objectname:         copy_acl_;
+   retain:             copy_acl_;
+
+objectname:         copy_names_;
+   synonym:            move_names_;
+   retain:             copy_names_, move_names_;
+
+objectname:         create;
+   synonym:            cr, create_dir, createdir, cd;
+   retain:             create, create_dir, createdir, cr, cd;
+
+objectname:         equal_;
+   retain:             equal_;
+   global:             no_link;                   /* Allow user to use his own equal convention */
+
+objectname:         link;
+   synonym:            lk;
+   retain:             link, lk;
+
+objectname:         copy_names;
+   synonym:            move_names;
+   retain:             copy_names, move_names;
+
+objectname:         nd_handler_;
+   retain:             nd_handler_, del, force, del_force, switches;
+
+objectname:         rename;
+   synonym:            rn, delete_name, deletename, dn, add_name, addname, an,
+                       l_rename, lrename, lren, l_add_name, laddname, lan, l_delete_name, ldeletename, ldn;
+   retain:             rename, rn, delete_name, deletename, dn, add_name, addname, an,
+                       l_rename, lrename, lren, l_add_name, laddname, lan, l_delete_name, ldeletename, ldn;
+
+objectname:         set_bit_count;
+   synonym:            sbc;
+   retain:             set_bit_count, sbc;
+
+objectname:         move_quota;
+   synonym:            move_quota, movequota, mq, move_dir_quota,
+                       get_quota, getquota, gq, get_dir_quota;
+   retain:             move_quota, movequota, mq, move_dir_quota,
+                       get_quota, getquota, gq, get_dir_quota;
+
+objectname:         status;
+    synonym:           st;
+    retain:            status, st;
+
+objectname:         truncate;
+   synonym:            tc;
+   retain:             truncate, tc;
+
+objectname:         copy_dir;
+   synonym:            cpd, move_dir, mvd;
+   retain:             copy_dir, cpd, move_dir, mvd;
+
+objectname:         copy_dir_;
+   retain:             copy_dir_;
+
+objectname:         copy_acl;
+   synonym:            copy_iacl_seg, copy_iacl_dir;
+   retain:             copy_acl, copy_iacl_seg, copy_iacl_dir;
+
+objectname:         copy_iacl_;
+   retain:             copy_iacl_, seg, dir;
+
+objectname:	check_file_system_damage;
+   retain:	check_file_system_damage,
+		check_file_system_damage_,
+		cfsd;
+
+/* end; */
+
+
+

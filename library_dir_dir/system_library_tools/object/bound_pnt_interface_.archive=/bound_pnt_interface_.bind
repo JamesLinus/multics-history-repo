@@ -1,0 +1,50 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1984 *
+   *                                                         *
+   *********************************************************** */
+/* Bindfile for: bound_pnt_interface_ */
+
+/* Created 1984-08-17 by E. Swenson */
+/* Modified 1985-01-26 by E. Swenson for pnt_notify_as_. */
+
+Objectname:	bound_pnt_interface_;
+Global:	          retain;
+
+Addname:		pnt_manager_,
+		pnt_fs_interface_,
+		pnt_db_interface_,
+		pnt_fs_util_,
+		pnt_db_util_,    
+		suffix_pnt_,
+		convert_v2_pnt_;
+
+Order:		pnt_manager_,
+		pnt_db_interface_,
+		pnt_db_util_,
+		suffix_pnt_,
+		pnt_fs_interface_,
+		pnt_fs_util_,
+		pnt_notify_as_,
+		convert_v2_pnt_;
+
+objectname:	pnt_manager_;
+
+objectname:	pnt_db_interface_;
+
+objectname:	pnt_db_util_;
+
+objectname:	pnt_fs_interface_;
+
+objectname:	pnt_fs_util_;
+
+objectname:	suffix_pnt_;
+
+objectname:	convert_v2_pnt_;	
+
+objectname:	pnt_notify_as_;
+
+/* end; */
+
+
+

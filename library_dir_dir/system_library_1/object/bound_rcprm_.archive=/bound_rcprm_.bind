@@ -1,0 +1,72 @@
+/* Bindfile for bound_rcprm_ */
+/* 09/18/78 by C. D. Tavares */
+
+Objectname:	bound_rcprm_;
+
+Order:		rcprm_find_resource_,
+                    rcprm_find_op,
+		rcprm_registry_util_,
+		rcprm_journalize_,
+		rcprm_list_resource_,
+		rcprm_registry_mgr_,
+		rcprm_verify_registries_,
+		rcprm_journal_file_,
+		commit,
+		rollback,
+		write_record,
+		delete_record,
+		add_key,
+		delete_key,
+		record_status,
+		print_data;
+
+/*
+Addname:		rcprm_find_resource_,
+		rcprm_list_resource_,
+		rcprm_registry_mgr_,
+		rcprm_journalize_,
+		rcprm_verify_registries_,
+		rcprm_journal_file_;
+*/
+
+Global:		delete;
+
+objectname:	rcprm_find_resource_;
+ retain:		register,	auto_register, deregister,
+		release, priv_release,
+		acquire, priv_acquire,
+		reserve, priv_reserve, reserve_proxy,
+		cancel, priv_cancel,
+		set, priv_set,
+		status, priv_status,
+		clear;
+
+objectname:	rcprm_find_op;
+ global:		retain;
+
+objectname:	rcprm_registry_util_;
+ global:            retain;
+
+
+objectname:	rcprm_journalize_;
+ global:		retain;
+
+objectname:	rcprm_list_resource_;
+ retain:		rcprm_list_resource_,
+		priv,
+		awaiting_clear,
+		test;			/* debug entry */
+
+objectname:	rcprm_registry_mgr_;
+ retain:		create_registry,
+		delete_registry,
+		remove_registry,
+		copy_registry,
+		update_registry_header;
+
+objectname:	rcprm_verify_registries_;
+ retain:		rcprm_verify_registries_;
+
+objectname:	rcprm_journal_file_;
+ synonym:		rcprm_journal_file_attach;
+ retain:		rcprm_journal_file_attach;

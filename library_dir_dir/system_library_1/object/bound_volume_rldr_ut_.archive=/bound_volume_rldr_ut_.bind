@@ -1,0 +1,11 @@
+/* bind file for bound_volume_rldr_ut_ */
+/* by D R Vinograd 7/76 */
+Objectname:	bound_volume_rldr_ut_;
+Global:		delete;
+objectname:	rdisk_;
+retain:		rdisk_attach, rdisk_open, rdisk_seek, rdisk_position, rdisk_read, rdisk_rewrite, 
+		rdisk_write, rdisk_control, rdisk_modes, rdisk_close, rdisk_detach;
+objectname:	recover_volume_log;
+retain:		recover_volume_log;
+objectname:	display_volume_log;
+retain:		display_volume_log;

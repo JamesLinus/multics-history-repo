@@ -1,0 +1,105 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+   *                                                         *
+   *********************************************************** */
+/* *	BOUND_HC_DISPLAY_
+   *
+   *	This segment contains commands and subroutines to display various hardcore
+   *	databases and message formats in interpreted form. Many of these functions
+   *	also operate on FDUMP images, as well as the running system.
+   *
+   *	This is part of the familiy of metering/analysis bound segments:
+   *	   bound_metering_cmds_	bound_meter_util_
+   *	   bound_comm_meters_	bound_tuning_
+   *	   bound_system_test_	bound_hc_display_
+   *	   bound_hardcore_db_
+   *
+   *	Reorganized to be this way, 04/11/81, W. Olin Sibert
+   *	Modified November 1981 by J. Bongiovanni for display_label, display_pvte
+   *	Modified March 1982 by J. Bongiovanni for list_vols
+   *	Modified November 1982 by E. N. Kittlitz to retain/addname process_id.
+   *	Modified August 1984 by Allen Ball to change display_label to display_disk_label and to add the subroutine display_disk_label_
+   *	Moved March 1985, Keith Loepere display_disk_label_ into hardcore.
+   */
+
+Objectname:	bound_hc_display_;
+
+Order:		pvname_to_pvtx_,		/* Subroutines first, then commands */
+		vpn_cv_uid_path_,
+		display_aste,
+		disk_queue,
+		display_branch,
+		display_ioi_data,
+		display_kst_entry,
+		display_disk_label,
+		display_vtoce,
+		get_astep,
+		list_vols,
+		print_apt_entry,
+		traffic_control_queue,
+		vtoc_pathname;
+
+Addname:		pvname_to_pvtx_,
+		vpn_cv_uid_path_,
+		display_aste,
+		disk_queue, dq,
+		display_branch,
+		display_ioi_data,
+		display_kst_entry,
+		display_disk_label, ddl,
+		display_pvte,
+		display_vtoce,
+		list_vols,
+		print_apt_entry, pae, process_id,
+		traffic_control_queue, tcq,
+		vtoc_pathname;
+
+Global:		delete;
+
+objectname:	pvname_to_pvtx_;
+ retain:		pvname_to_pvtx_, pvid;
+
+objectname:	vpn_cv_uid_path_;
+ retain:		vpn_cv_uid_path_, ent;
+
+objectname:	disk_queue;
+ synonym: 	dq;
+ retain:		disk_queue, dq;
+
+objectname:	display_aste;
+ retain:		display_aste;
+
+objectname:	display_branch;
+ retain:		display_branch;
+
+objectname:	display_ioi_data;
+ retain:		display_ioi_data;
+
+objectname:	display_kst_entry;
+ retain:		display_kst_entry;
+
+objectname:	display_disk_label;
+ synonym:		display_pvte, ddl;
+ retain:		display_disk_label, display_pvte, ddl;
+
+objectname:	display_vtoce;
+ retain:		display_vtoce;
+
+objectname:	get_astep;
+
+objectname:	print_apt_entry;
+ synonym: 	pae;
+ retain:		print_apt_entry, pae, process_id;
+
+objectname:	traffic_control_queue;
+ synonym: 	tcq;
+ retain:		traffic_control_queue, tcq;
+
+objectname:	vtoc_pathname;
+ retain:		vtoc_pathname;
+
+objectname:	list_vols;
+ retain:		list_vols;
+
+/*		END		*/

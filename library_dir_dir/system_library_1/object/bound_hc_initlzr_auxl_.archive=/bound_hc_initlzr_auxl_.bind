@@ -1,0 +1,24 @@
+/*  Bindfile for bound_hc_initlzr_auxl_     Bernard Greenberg Nov 4 1976 */
+/*  Modified August 1977 by T. Casey to add hc_device_acct_ and hc_initlzr_auxl_init_ */
+
+Objectname:	bound_hc_initlzr_auxl_;
+
+Global:		delete;
+
+Order:		hc_initlzr_auxl_init_,
+		hc_device_acct_,
+		rcp_mount_timer_poll_,
+		lv_request_;
+
+objectname:	hc_initlzr_auxl_init_;
+ retain:		init;
+
+objectname:	hc_device_acct_;
+
+objectname:	lv_request_;
+ retain:		attach_list,
+		cleanup_process,
+		dhv,
+		mhv_complete;
+
+objectname:	rcp_mount_timer_poll_;

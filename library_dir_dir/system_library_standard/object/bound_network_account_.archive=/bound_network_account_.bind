@@ -1,0 +1,32 @@
+
+/* HISTORY COMMENTS:
+  1) change(86-02-20,Herbst), approve(87-07-23,MCR7694),
+     audit(87-07-23,Martinson), install(87-08-04,MR12.1-1055):
+     Added dump_network_account_table command.
+  2) change(86-02-24,Herbst), approve(87-07-23,MCR7694),
+     audit(87-07-23,Martinson), install(87-08-04,MR12.1-1055):
+     Removed short name dnat from dump_network_account_table.
+  3) change(87-04-08,Brunelle), approve(87-07-23,MCR7694),
+     audit(87-07-23,Martinson), install(87-08-04,MR12.1-1055):
+     Replaced module dump_network_account_table with display_net_acct_table
+                                                   END HISTORY COMMENTS */
+
+/* Bindfile for bound_network_account_ */
+/* Created 11/22/85 by Steve Herbst */
+
+
+Objectname:	bound_network_account_;
+
+Addname:		display_net_acct_table,
+		network_accounting_;
+
+Order:		network_accounting_,
+		display_net_acct_table;
+		
+Global:		delete;
+
+objectname:	display_net_acct_table;
+   global:	retain;
+
+objectname:	network_accounting_;
+    global:	retain;

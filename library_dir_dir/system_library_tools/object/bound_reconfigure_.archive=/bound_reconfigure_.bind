@@ -1,0 +1,40 @@
+/* Bind file for bound_reconfigure_, created 4/73 */
+/* Modified 6/25/76 by N. I. Morris */
+/* Modified 83-12-14 by Benson Margulies for add_fnp and delete_fnp */
+/* Modified May 1984 by Chris Jones to add new reconfigure command. */
+/* Modified December 1984 by Chris Jones to add sc_reconfigure_request */
+
+Objectname:	bound_reconfigure_;
+
+Addname:		reconfigure, addmem, addcpu, delmem, delcpu, add_fnp,
+		add_device, delete_fnp, delete_device, addmain, delmain,
+		reconfigure_rcp, obs_reconfigure;
+
+Order:		reconfigure, rc_messages, add_fnp, delete_fnp,
+		reconfigure_rcp, obs_reconfigure;
+
+Global:		delete;
+
+objectname:	obs_reconfigure;
+ retain:		addmem, addcpu, delmem, delcpu, addmain, delmain;
+
+objectname:	rc_messages;
+
+objectname:	reconfigure_rcp;
+ synonym:		add_device, del_device;
+ retain:		add_device, del_device;
+
+objectname:	add_fnp;
+ retain:		add_fnp;
+
+objectname:	delete_fnp;
+ retain:		delete_fnp;
+
+objectname:	reconfigure;
+ synonym:		rcf;
+ retain:		reconfigure, rcf, force_unlock, sc_reconfigure_request;
+
+/* END */
+
+
+

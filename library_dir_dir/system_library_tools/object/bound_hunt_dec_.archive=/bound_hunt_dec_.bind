@@ -1,0 +1,13 @@
+Objectname:	bound_hunt_dec_;
+Global:		delete;
+
+Addname:		hunt_dec;
+
+objectname:	hunt_dec;
+retain:		hunt_dec;
+
+objectname:	sweep_disk_dec_;
+
+
+
+

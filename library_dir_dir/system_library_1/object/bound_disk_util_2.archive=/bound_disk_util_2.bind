@@ -1,0 +1,37 @@
+/*	BINDFILE FOR bound_disk_util_2	*/
+/* Split from bound_disk_util, 85-01-22, Keith Loepere. */
+Objectname:	bound_disk_util_2;
+
+Order:		accept_fs_disk,
+		demount_pv,
+		fsout_vol,
+		get_pvtx,
+		init_volmap_seg,
+		logical_volume_manager,
+		map_free_count,
+		partition_io;
+
+objectname:	accept_fs_disk;
+ retain:		accept_fs_disk, ss_io_reconfigure;
+
+objectname:	demount_pv;
+ retain:		demount_pv;
+
+objectname:	fsout_vol;
+ retain:		fsout_vol;
+
+objectname:	get_pvtx;
+ retain:		get_pvtx, cleanup, drain_pvtx, hold_pvtx, release_pvtx, 
+		ret_pvhtp, reset;
+
+objectname:	init_volmap_seg;
+
+objectname:	logical_volume_manager;
+ retain:		add, lvtep, delete, add_pv;
+
+objectname:	map_free_count;
+
+objectname:	partition_io;
+ retain:		priv_read, priv_write, read_label;
+
+/*		END		*/

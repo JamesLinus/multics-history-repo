@@ -1,0 +1,57 @@
+/*	BINDFILE for bound_memo_			*/
+/*	Recreated 11/11/79 W. Olin Sibert		*/
+
+Objectname:	bound_memo_;
+
+Addname:		memo;
+
+Global:		delete;
+
+Perprocess_Static;
+
+Order:		memo,
+		memo_util_,
+		memo_delete_,
+		memo_get_,
+		memo_list_,
+		memo_process_memos_,
+		memo_repeat_,
+		memo_set_,
+		memo_timer_set_,
+		memo_upgrade_memo_segment_;
+
+
+objectname:	memo;
+  retain: 	memo,
+		alarm_entry;
+
+objectname:	memo_util_;
+  retain: 	from_gmt,
+		to_gmt,
+		end_of_time,
+		end_of_memo_time;
+
+objectname:	memo_delete_;
+  retain: 	memo_delete_;
+
+objectname:	memo_get_;
+  retain: 	memo_get_;
+
+objectname:	memo_list_;
+  retain: 	format_time;
+
+objectname:	memo_process_memos_;
+
+objectname:	memo_repeat_;
+
+objectname:	memo_set_;
+  retain: 	memo_set_;
+
+objectname:	memo_timer_set_;
+
+objectname:	memo_upgrade_memo_segment_;
+
+/*		END		*/
+
+
+

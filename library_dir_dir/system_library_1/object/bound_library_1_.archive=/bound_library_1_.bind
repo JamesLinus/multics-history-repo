@@ -1,0 +1,270 @@
+/* Bindfile for bound_library_1_, containing much of what used to be */
+/* bound_sss_wired_. BIM 12/82 */
+/* Added all sorts of user ring stuff, KPL '83 */
+/* Added cv_integer_string_ and =check_, CLJ May 1984 */
+/* Added time_info_ JAF Aug '84 and date_time_ stuff */
+/* 1984-08-09 Added picture_info_ unpack_picture_
+		adjust_float_ and assign_ (for date_time_) - BIM */
+/* Modified 84-09-06 GJohnson to delete config_, moved to
+	bound_library_wired_ */
+/* Modified 84-10-10 by Allen Ball to move display_access_class_ from 
+	bound_library_2_ to bound_library_1_ */
+/* Modified 85-01-23 by Keith Loepere to get the date/time stuff out of
+	wired memory. */
+/* Added 85-03-08, Keith Loepere, bootload_fs_. */
+
+
+/* HISTORY COMMENTS:
+  1) change(86-08-16,JSLove), approve(86-08-16,MCR7518),
+     audit(86-08-21,Parisek), install(86-10-02,MR12.0-1174):
+     Added check_star_name_ entrypoint.
+  2) change(86-12-15,GDixon), approve(86-12-17,MECR0004),
+     audit(86-12-15,Farley), install(86-12-17,MR12.0-1250):
+     Retain ascii_to_bcd_ entrypoint of bcd_to_ascii_.
+  3) change(86-12-18,GDixon), approve(86-12-18,MCR7599),
+     audit(87-01-05,Farley), install(87-01-06,MR12.0-1260):
+     Approval for MECR0004, in history comment 2.
+                                                   END HISTORY COMMENTS */
+
+
+
+Objectname:	bound_library_1_;
+Global:		delete;
+Perprocess_Static;
+
+Order:		init_vol_header_,
+		tape_checksum_,
+                    cv_integer_string_,
+		cv_dec_, 
+		cv_bin_, 
+		cv_float_,
+		unwinder_,
+		unwind_stack_,
+		nonlocal_goto_,
+		pl1_signal_,
+		pl1_signal_conversion_,
+		ondata_,
+		condition_,
+		signal_,
+		sct_manager_,
+		define_area_,
+	          cv_config_card_,
+		oc_trans_input_,
+		hash_index_,
+		bcd_to_ascii_,
+	          cu_,
+		requote_string_,
+		bce_command_processor_,
+		bootload_fs_,
+		com_err_,
+		active_fnc_err_,
+		sub_err_,
+		decode_descriptor_,
+		stack_header_util_,
+		fill_vol_extents_,
+		cv_fsdisk_error_,
+		assign_,
+		unpack_picture_,
+		adjust_float_,
+		picture_info_,
+		config_data_,
+		get_defptr_,
+		filemap_checksum_,
+		match_star_name_,
+		get_equal_name_,
+		get_temp_segments_,
+		display_access_class_;
+
+objectname:	assign_;
+ synonym:		assign_round_,
+		arith_to_arith_,
+		arith_to_bit_,
+		arith_to_char_,
+		assign_truncate_,
+		bit_to_arith_,
+		bit_to_char_,
+		char_to_arith_,
+		char_to_bit_,
+		char_to_numeric_,
+		computational_;
+retain:		assign_,
+		assign_round_,
+		arith_to_arith_,
+		arith_to_bit_,
+		arith_to_char_,
+		assign_truncate_,
+		bit_to_arith_,
+		bit_to_char_,
+		char_to_arith_,
+		char_to_bit_,
+		char_to_numeric_,
+		computational_;
+
+objectname:	adjust_float_; /* no need to retain */ 
+
+objectname:	init_vol_header_;
+ retain:		init_vol_header_;
+
+objectname:	tape_checksum_;
+ retain:		tape_checksum_;
+
+objectname:         cv_integer_string_;
+ synonym:           cv_integer_string_check_;
+ retain:            cv_integer_string_, cv_integer_string_check_;
+
+objectname:	cv_bin_;
+ retain:		oct, dec, cv_bin_;
+
+objectname:	cv_dec_;
+ synonym:		cv_oct_, cv_hex_,
+		cv_dec_check_, cv_oct_check_, cv_hex_check_,
+		cv_binary_, cv_binary_check_;
+ retain:		cv_dec_,
+		cv_oct_, cv_hex_,
+		cv_dec_check_, cv_oct_check_, cv_hex_check_,
+		cv_binary_, cv_binary_check_;
+
+objectname:	cv_float_;
+ synonym:		cv_float_double_;
+ retain:		cv_float_, cv_float_double_;	
+
+objectname:	cv_config_card_;
+  retain:		cv_config_card_;	
+
+objectname:	config_data_;
+  global:		retain;
+  delete:		symbol_table;
+
+objectname:	bce_command_processor_;
+  retain:		bce_command_processor_;
+
+objectname:	bootload_fs_;
+  global:		retain;
+  delete:		symbol_table;
+
+objectname:	requote_string_;
+ retain:		requote_string_, quote_string;
+
+objectname:	get_defptr_;
+ retain:		get_defptr_;
+
+objectname:	bcd_to_ascii_;
+ synonym:		ascii_to_bcd_, gcos_cv_gebcd_ascii_;
+ retain:		ascii_to_bcd_, bcd_to_ascii_, gcos_cv_gebcd_ascii_;
+
+objectname:	condition_;
+ synonym:		reversion_, default_handler_,
+		establish_cleanup_proc_, revert_cleanup_proc_;
+ retain:		condition_, establish_cleanup_proc_,
+		reversion_, revert, revert_cleanup_proc_,
+		set;
+
+objectname:	cu_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	com_err_;
+  synonym: 	  check_fs_errcode_, unpack_system_code_,
+		    convert_status_code_;
+  retain:		  com_err_, check_fs_errcode_, unpack_system_code_,
+		    convert_status_code_, suppress_name;
+
+objectname:	active_fnc_err_;
+  retain:		  active_fnc_err_, af_suppress_name, suppress_name;
+
+objectname:	sub_err_;
+  retain:		  sub_err_;
+
+objectname:	decode_descriptor_;
+ retain:		decode_descriptor_;
+
+objectname:	stack_header_util_;
+ synonym:		get_system_free_area_, set_system_free_area_,
+		get_user_free_area_, set_user_free_area_;
+ retain:		get_system_free_area_, set_system_free_area_,
+		get_user_free_area_, set_user_free_area_;
+
+objectname:	cv_fsdisk_error_;
+ retain:		cv_fsdisk_error_;
+
+objectname:	define_area_;
+ synonym:		release_area_, get_next_area_ptr_;
+ retain:		define_area_, release_area_, get_next_area_ptr_;
+
+objectname:	fill_vol_extents_;
+ retain:		fill_vol_extents_, cold_rpv;
+
+objectname:	hash_index_;
+ retain:		hash_index_, hash_id;
+
+objectname:	nonlocal_goto_;
+ retain:		same_ring,
+		different_ring;
+
+objectname:	oc_trans_input_;
+ retain:		oc_trans_input_;		
+
+objectname:	picture_info_;
+ retain:		picture_info_;
+
+objectname:	pl1_signal_;
+ synonym:		help_plio2_signal_, math_error_, pl1_signal_from_ops_;
+ retain:		help_plio2_signal_, math_error_,
+		pl1_signal_, pl1_signal_from_ops_;
+
+objectname:	pl1_signal_conversion_;
+ retain:		pl1_signal_conversion_;
+
+objectname:	ondata_;
+ retain:		condition_name, datafield, fileptr,
+		oncharindex, oncode, ondatalength, onfile, onkey,
+		onloc, onsource, scratchfileptr;
+
+objectname:	signal_;
+ retain:		signal_, io_signal;
+
+objectname:	sct_manager_;
+ retain:		set, get, call_handler;
+
+objectname:	unwinder_;
+ retain:		unwinder_;
+
+objectname:	unwind_stack_;
+ retain:		unwind_stack_;
+
+objectname:	unpack_picture_;
+ synonym:		pack_picture_, pl1_valid_picture_, validate_picture_;
+ retain:		pack_picture_, pl1_valid_picture_, validate_picture_,
+		unpack_picture_;
+
+objectname:	filemap_checksum_;
+ retain:		filemap_checksum_;
+
+objectname:	match_star_name_;
+ synonym:		check_star_name_;
+ retain:		match_star_name_, check_star_name_, path, entry;
+
+objectname:	get_equal_name_;
+ retain:		get_equal_name_, component, check_equal_name_;
+ global:            no_link;		/* Allow user to use his own equal convention */
+
+objectname:	get_temp_segments_;
+ synonym:		release_temp_segments_,
+		get_temp_segment_,
+		release_temp_segment_,
+		list_temp_segments;
+ retain:		get_temp_segments_,
+		release_temp_segments_,
+		get_temp_segment_,
+		release_temp_segment_,
+		list_temp_segments,
+		list_segnos;
+
+objectname:	display_access_class_;
+ synonym:		display_authorization_,
+		convert_aim_attributes_; /* obsolete */
+ retain:	          range, display_access_class_,
+		display_authorization_,
+		convert_aim_attributes_;
+
+/* END */

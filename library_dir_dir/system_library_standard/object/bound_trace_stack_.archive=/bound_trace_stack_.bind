@@ -1,0 +1,82 @@
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+	/* 									*/
+	/* Name:  bound_trace_stack_							*/
+	/* 									*/
+	/* This bound segment contains the trace_stack (ts) command and its support routines.  It */
+	/* also contains the display_entry_point_dcl (depd) command, and its support routines.	*/
+	/* 									*/
+	/* Status									*/
+	/* 									*/
+	/* 1) Modified  1979-06-25 by Gary Dixon - add get_entry_arg_descs_$info & $text_info     */
+	/* 2) Modified  1980-02-07 by Gary Dixon - add display_entry_point_dcl		*/
+	/* 3) Modified  1985-03-07 by E. Swenson to add trace_stack_$hregs.
+	/*									*/
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+
+	
+Objectname:	bound_trace_stack_;
+Global:		delete;
+Order:		trace_stack,
+		trace_stack_,
+		interpret_ptr_,
+		list_frame_args_,
+		get_entry_arg_descs_,
+		list_onunits_,
+		print_source_line_,
+		find_source_line_,
+		dump_machine_cond_,
+		prtscu_,
+		display_entry_point_dcl,
+		get_entry_point_dcl_,
+		get_pl1_parm_desc_string_;
+
+Addname:		display_entry_point_dcl, depd,
+		dump_machine_cond_,
+		get_entry_arg_descs_,
+		get_entry_point_dcl_,
+		interpret_ptr_,
+		print_source_line_,
+		prtscu_,
+		trace_stack, ts,
+		trace_stack_;
+		
+objectname:	trace_stack;
+ synonym:		ts;
+ retain:		trace_stack, ts;
+
+objectname:	trace_stack_;
+ retain:		trace_stack_,
+		hregs;
+
+objectname:	interpret_ptr_;
+ retain:		interpret_ptr_;
+
+objectname:	print_source_line_;
+ retain:		print_source_line_;
+
+objectname:	dump_machine_cond_;
+ retain:		dump_machine_cond_,
+ 		mc_only;
+
+objectname:	get_entry_arg_descs_;
+ retain:		get_entry_arg_descs_,
+		info,
+		text_only,
+		text_only_info;
+
+objectname:	prtscu_;
+ retain:		on_line,
+		dump;
+
+objectname:	display_entry_point_dcl;
+ synonym:		depd;
+ retain:		display_entry_point_dcl, depd;
+		
+objectname:	get_entry_point_dcl_;
+ retain:		get_entry_point_dcl_,
+		emacs;
+
+/* end */
+
+
+

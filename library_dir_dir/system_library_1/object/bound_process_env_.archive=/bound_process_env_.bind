@@ -1,0 +1,123 @@
+Objectname:	bound_process_env_;
+Global:		delete;
+Perprocess_Static;
+
+/* Written by C. Hornig, June 1982 */
+/* Added pathname_, J. Bongiovanni, December 1982 */
+/* Modified 2/83 By S. Krupp for changes to iox_. */
+/* Modified '83 to move out ioa_, cu_ to collection 1 */
+/* Modified 84-04-26 BIM for new get_process_id_ synonyms. */
+/* Modified 84-08-20 by Jim Lippard to retain iocb_version_sentinel */
+
+Order:		command_query_,
+		convert_access_class_,
+		convert_binary_integer_,
+		get_process_id_,
+		iox_,
+		iox_attach_name,
+		iox_open_file,
+		iox_close_file,
+		iox_detach,
+		iox_measure_options,
+		iox_get_options,
+		iox_find_iocb,
+		iox_propagate,
+		syn_,
+		iox_signal_,
+		iox_init_,
+		pathname_;
+
+objectname:	command_query_;
+ synonym:		repeat_query, rq;
+ retain:		command_query_, yes_no, set_cp_escape_enable,
+		repeat_query, rq;
+
+objectname:	convert_access_class_;
+  synonym:	convert_authorization_; /* obsolete */
+ global:		retain;
+ delete:		test_cva,
+		symbol_table,
+		convert_access_class_;
+
+objectname:	convert_binary_integer_;
+ retain:		decimal_string, long_decimal_string,
+		octal_string, long_octal_string;
+
+objectname:	get_process_id_;
+ synonym:		get_authorization_,
+		get_group_id_,
+		get_initial_ring_,
+		get_lock_id_,
+		get_max_authorization_,
+		get_pdir_,
+		get_privileges_,
+		get_process_access_class_,
+		get_process_authorization_,
+		get_process_max_authorization_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	iox_signal_;
+ retain:		iox_signal_;
+
+objectname:	iox_;
+ retain:		detach_iocb,
+		open,
+		close,
+		get_line,
+		get_chars,
+		put_chars,
+		modes,
+		control,
+		position,
+		read_record,
+		write_record,
+		rewrite_record,
+		delete_record,
+		seek_key,
+		read_key,
+		read_length,
+		ios_call,
+		ios_call_attach,
+		err_no_iocb,
+		err_no_operation,
+		err_not_attached,
+		err_not_closed,
+		err_not_open,
+		err_old_dim,
+		user_io,
+		user_input,
+		user_output,
+		error_output,
+		find_iocb,
+		find_iocb_n,
+		look_iocb,
+		move_attach,
+		destroy_iocb,
+		propagate,
+		attach_name,
+		attach_ptr,
+		attach_iocb,
+		attach_ioname,
+		init_standard_iocbs,
+		iocb_version_sentinel,
+		n_standard_iocbs,
+		standard_iocb_ptrs,
+		open_file,
+		close_file,
+		detach,
+		attach_loud;
+
+objectname:	iox_find_iocb;
+
+objectname:	iox_propagate;
+
+objectname:	syn_;
+ retain:		syn_attach;
+
+objectname:	iox_attach_name;
+
+objectname:	iox_init_;
+
+objectname:	pathname_;
+ retain:		pathname_, component, component_check;

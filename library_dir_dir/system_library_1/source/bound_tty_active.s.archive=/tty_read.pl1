@@ -1,0 +1,1798 @@
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) Honeywell Bull Inc., 1987                *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(88-06-20,Berno), approve(88-07-13,MCR7928),
+     audit(88-06-20,Parisek), install(88-07-19,MR12.2-1061):
+     Removed reference to wtcb.prompt_len and "enter_receive" order call as
+     part of the UNCP multiplexer (DSA gateway) implementation.
+                                                   END HISTORY COMMENTS */
+
+
+/* format: style4,delnl,insnl,^ifthendo */
+tty_read:
+     proc (twx, a_readp, a_offset, a_nelem, a_nelemt, state, ercode);
+						/* to convert from read chain */
+
+/* Read portion of the ring 0 ttydim
+   Rewritten by Robert S. Coren, 2/12/76
+   Modified 04/22/77 by J. Stern to introduce TCBs and WTCBs
+   Modified 12/29/77 by Robert Coren to use tty_space_man
+   Modified 05/05/78 by Robert Coren to add get_line entry
+   Modified August 78 by J. Nicholls to use channel_manager$ to get data to process for multiplexer implementation
+   Modified June 29 1979 by B. Greenberg for Multiplexer-Echo Negotiation.
+   Modified 18 September 1980 by G. Palter to fix MCS bug #203
+   Modified: 11 November 1980 by G. Palter to support can_type mode
+   Modified February 1981 by Robert Coren to add read_with_mark entry
+   Modified May 1981 by J. Bongiovanni for response time metering
+   Modified May 1981 by Robert Coren to make sure fblock and lblock always consistent
+   Modified 19 March 1982 by W. York to add tty_read_echoed entry as replacement
+   for echo_negotiate_get_chars, and fix bug in mark handling in
+   procedure get_more_data.
+   Modified November 1982 by Robert Coren to return wtcb.error_code.
+   Report on June 83 - modifications for the Datanet 7100.fd
+   Date of the last modification 04/17/84 */
+
+/* PARAMETERS */
+
+dcl  twx fixed bin;					/* device index */
+dcl  a_readp ptr;					/* pointer to caller's buffer */
+dcl  a_offset fixed bin (24);				/* offset in buffer to start at */
+dcl  a_buffer char (*);				/* caller's buffer (used by read_with_mark entry) */
+dcl  a_nelem fixed bin (24);				/* maximum number of chars to return */
+dcl  a_nelemt fixed bin (24);				/* actual number of characters returned */
+						/* (OUTPUT) */
+dcl  a_screen_left fixed bin;				/* Space left on line, negotiate entry */
+dcl  a_echoed fixed bin (24);				/* Chars echoed by interrupt side */
+						/* (OUTPUT) */
+dcl  nl_found bit (1);				/* whether get_line found newline (OUTPUT) */
+dcl  a_mark_index fixed bin (21);			/* index in returned string of "mark" (OUTPUT) */
+dcl  state fixed bin;				/* current state of channel (OUTPUT) */
+dcl  ercode fixed bin (35);				/* status code (OUTPUT) */
+
+
+/* AUTOMATIC */
+
+dcl  devx fixed bin;				/* local copy of twx */
+dcl  output_ptr ptr;				/*  "      "   " readp */
+dcl  offset fixed bin (24);				/*  "      "   " a_offset */
+dcl  nelem fixed bin (24);				/*  "      "   " a_nelem */
+dcl  nelemt fixed bin (24);				/*  "      "   " a_nelemt */
+dcl  echoed fixed bin (24);				/*  "      "   " a_echoed */
+dcl  screen_left fixed bin;				/*  "      "   " a_screen_left */
+
+dcl  ttytp ptr;					/* pointer to tty_tables segment */
+dcl  special_ptr ptr;
+dcl  mvtp ptr;
+dcl  tctp ptr;
+dcl  get_line_entry bit (1);				/* "1"b if get_line entry called, otherwise "0"b */
+dcl  negotiate_entry bit (1);				/* "1"b if negotiate entry called, otherwise "0"b */
+dcl  obsolete_negotiate_entry bit (1);			/* "1"b if echo_negotaite_get_chars, otherwise tty_read_echoed */
+dcl  mark_entry bit (1);				/* "1"b if read_with_mark entry called, otherwise "0"b */
+dcl  break_found bit (1);
+dcl  convert bit (1);				/* used to indicate copying from converted buffers */
+dcl  throw_away bit (1);				/* indicates last char was hardware esc */
+dcl  have_more_data bit (1) aligned;			/* lower level mux has another buffer chain he didnt give us this time */
+dcl  unconverted_break bit (1);
+dcl  no_break_anywhere bit (1);			/* no break anywhere in current input chain */
+dcl  orig_output_ptr ptr;				/* first set value of output_ptr */
+dcl  source_ptr ptr;
+dcl  target_ptr ptr;
+dcl  old_sourcep ptr;
+dcl  old_targetp ptr;
+dcl  source_len fixed bin;
+dcl  target_len fixed bin;
+
+dcl  new_blockp ptr;
+dcl  data_ptr ptr;
+dcl  new_block fixed bin (18);
+dcl  room_left fixed bin;
+dcl  first_char fixed bin;
+dcl  old_fblock fixed bin (18);
+dcl  last_block fixed bin (18);
+dcl  new_tally fixed bin;
+dcl  temp_buf char (60) aligned;			/* automatic copy of data from tty buffer */
+dcl  orig_fchar fixed bin;
+dcl  mark_index fixed bin;
+dcl  pmark_index fixed bin;				/* mark index used for preconverted input */
+
+dcl  time_spent fixed bin (71);
+dcl  start_time fixed bin (71);			/* clock time at entry */
+dcl  max_len fixed bin;
+dcl  break char (1);				/* break character from device_defaults */
+dcl  chars_in_buf fixed bin;
+dcl  next_break fixed bin;
+
+dcl  xr fixed bin;					/* used for result of index builtin */
+dcl  can_called bit (1);				/* indicates whether canon_procedure called */
+dcl  canon_procedure variable
+	entry (pointer, fixed binary, fixed binary, character (1) aligned, character (1) aligned, fixed binary (35));
+dcl  code fixed bin (35);
+
+dcl  tempp ptr;
+
+dcl  kill_char char (1) aligned;
+dcl  erase_char char (1) aligned;
+dcl  bx fixed bin;					/* used in verify of white space */
+dcl  i fixed bin;					/* temporary work variable */
+dcl  next_char char (1) aligned;
+dcl  uncp_flag bit (1);				/* designate UNCP mpx */
+
+dcl  1 octal aligned,
+       2 pad bit (27) unal,
+       2 result fixed bin (8) unal;			/* so arithmetic value can be easily addressed as char */
+
+dcl  1 echo_start_data aligned,
+       2 ctr fixed bin (35),
+       2 screenleft fixed bin (35);
+
+dcl  digit fixed bin;
+dcl  rawcnt fixed bin;
+dcl  old_rawcnt fixed bin;
+dcl  raw_mode bit (1);
+
+dcl  1 util aligned,				/* structure passed to tty_util_$tct */
+						/* first 3 items in this structure are */
+						/* also used as general automatic variables */
+       2 stringp ptr,
+       2 stringl fixed bin,
+       2 ctally fixed bin,
+       2 tablep ptr,
+       2 indicator fixed bin,
+       2 pad (3) fixed bin;				/* workspace for tty_util_ */
+
+dcl  buffer_1 char (720) aligned;
+dcl  buffer_2 char (720) aligned;
+
+/* INTERNAL STATIC CONSTANTS */
+
+dcl  crash fixed bin int static options (constant) init (1);/* for crashing system with syserr */
+dcl  BSIZE fixed bin int static options (constant) init (16);
+						/* word size for preconverted buffers */
+dcl  BREAK_CHAR fixed bin int static options (constant) init (1);
+dcl  ESCAPE_CHAR fixed bin int static options (constant) init (2);
+dcl  THROW_AWAY fixed bin int static options (constant) init (3);
+dcl  FORM_FEED fixed bin int static options (constant) init (4);
+dcl  HARDWARE_CONTROL fixed bin int static options (constant) init (5);
+dcl  DIALED_UP fixed bin int static options (constant) init (5);
+
+/* various strange-looking character strings */
+
+dcl  left_motion char (2) aligned int static options (constant) init ("");
+						/* BS, CR */
+
+dcl  right_motion char (2) aligned int static options (constant) init ("	 ");
+						/* HT, SP */
+
+dcl  vertical_motion char (2) aligned int static options (constant) init
+						/* FF, VT */
+	("");
+
+dcl  all_white char (6) aligned int static options (constant) init
+						/* NUL, BS, HT, NL, CR, SP */
+	("	
+ ");
+
+dcl  nl char (1) aligned int static options (constant) init ("
+");						/* NL */
+
+dcl  bs char (1) aligned int static options (constant) init ("");
+						/* BS */
+
+dcl  nul_char char (1) aligned int static options (constant) init ("");
+						/* NUL */
+
+dcl  no_control_input (16) bit (1) int static options (constant) init ("0"b, (2) (1)"1"b, (13) (1)"0"b);
+
+dcl  nocontrol (128) bit (9) int static options (constant)
+	init ("000"b3, "000"b3, "000"b3, "000"b3, "000"b3, "000"b3, "000"b3, "000"b3, "010"b3, "011"b3, "012"b3,
+	"013"b3, "014"b3, "015"b3, "000"b3, "000"b3, "000"b3, "000"b3, "000"b3, "000"b3, "000"b3, "000"b3, "000"b3,
+	"000"b3, "000"b3, "000"b3, "000"b3, "033"b3, "000"b3, "000"b3, "000"b3, "000"b3, "040"b3, "041"b3, "042"b3,
+	"043"b3, "044"b3, "045"b3, "046"b3, "047"b3, "050"b3, "051"b3, "052"b3, "053"b3, "054"b3, "055"b3, "056"b3,
+	"057"b3, "060"b3, "061"b3, "062"b3, "063"b3, "064"b3, "065"b3, "066"b3, "067"b3, "070"b3, "071"b3, "072"b3,
+	"073"b3, "074"b3, "075"b3, "076"b3, "077"b3, "100"b3, "101"b3, "102"b3, "103"b3, "104"b3, "105"b3, "106"b3,
+	"107"b3, "110"b3, "111"b3, "112"b3, "113"b3, "114"b3, "115"b3, "116"b3, "117"b3, "120"b3, "121"b3, "122"b3,
+	"123"b3, "124"b3, "125"b3, "126"b3, "127"b3, "130"b3, "131"b3, "132"b3, "133"b3, "134"b3, "135"b3, "136"b3,
+	"137"b3, "140"b3, "141"b3, "142"b3, "143"b3, "144"b3, "145"b3, "146"b3, "147"b3, "150"b3, "151"b3, "152"b3,
+	"153"b3, "154"b3, "155"b3, "156"b3, "157"b3, "160"b3, "161"b3, "162"b3, "163"b3, "164"b3, "165"b3, "166"b3,
+	"167"b3, "170"b3, "171"b3, "172"b3, "173"b3, "174"b3, "175"b3, "176"b3, "000"b3);
+
+
+/* ENTRIES */
+
+dcl  meter_response_time entry (bit (36) aligned, fixed bin),
+     syserr ext entry options (variable),
+     tty_lock$lock_channel entry (fixed bin, fixed bin (35)),
+     tty_lock$unlock_channel entry (fixed bin);
+
+dcl  tty_index$initialize_tcb entry (ptr, ptr);
+dcl  tty_util_$mvt entry (ptr);
+dcl  tty_util_$tct entry (ptr);
+dcl  tty_overstrike_canon
+	entry (pointer, fixed binary, fixed binary, character (1) aligned, character (1) aligned, fixed binary (35));
+dcl  tty_replace_canon
+	entry (pointer, fixed binary, fixed binary, character (1) aligned, character (1) aligned, fixed binary (35));
+dcl  tty_write$locked entry (fixed bin, ptr, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin (35));
+
+
+/* EXTERNAL STATIC */
+
+dcl  tty_tables$ ext static;
+dcl  error_table_$invalid_write ext static fixed bin (35);
+dcl  error_table_$badcall ext static fixed bin (35);
+dcl  error_table_$improper_data_format ext static fixed bin (35);
+dcl  error_table_$io_no_permission ext static fixed bin (35);
+dcl  error_table_$invalid_device ext static fixed bin (35);
+dcl  error_table_$line_status_pending ext static fixed bin (35);
+dcl  error_table_$echnego_awaiting_stop_sync ext static fixed bin (35);
+dcl  error_table_$no_table ext static fixed bin (35);
+dcl  pds$processid ext static bit (36) aligned;
+
+
+/* BASED */
+
+dcl  based_buf char (60) based;
+dcl  based_chars (0:10) char (1) unal based;
+dcl  based_one_char char (1) unal based;
+dcl  based_string char (stringl) based (stringp);
+dcl  based_source char (source_len) based (old_sourcep);
+dcl  based_target char (target_len) based (old_targetp);
+dcl  table (0:127) fixed bin (8) unaligned based;
+
+
+dcl  1 mvt_args aligned based (addr (util)),		/* overlay of util structure for tty_util_$mvt */
+       2 stringptr ptr,
+       2 stringlen fixed bin,
+       2 pad fixed bin,
+       2 tablep ptr,
+       2 targetp ptr;
+
+/* BUILTINS */
+
+dcl  (addr, bin, clock, divide, fixed, index, length, min, null, ptr, rank, rel, reverse, search, substr, verify) builtin;
+
+dcl  cleanup condition;				/*						*/
+%include tty_convert;
+/**/
+%include tty_buf;
+
+%include tty_buffer_block;
+
+%include wtcb;
+
+%include tcb;
+
+%include tty_can_types;
+
+%include lct;
+
+%include tty_space_man_dcls;
+
+%include channel_manager_dcls;
+
+%include mcs_echo_neg_sys;
+
+%include response_transitions;
+
+%include multiplexer_types;
+/**/
+	get_line_entry = "0"b;			/* regular entry */
+	negotiate_entry = "0"b;
+	go to join;
+
+
+tty_get_line:
+     entry (twx, a_readp, a_offset, a_nelem, a_nelemt, nl_found, state, ercode);
+
+	get_line_entry = "1"b;
+	negotiate_entry = "0"b;
+	go to join;
+
+tty_read_with_mark:
+     entry (twx, a_buffer, a_nelemt, a_mark_index, state, ercode);
+
+	negotiate_entry, get_line_entry = "0"b;
+	output_ptr = addr (a_buffer);
+	nelem = length (a_buffer);
+	mark_entry = "1"b;
+	mark_index = 0;
+	go to mark_join;
+
+
+/* new entrpoint to return proper code in awaiting_stop_sync case */
+tty_read_echoed:
+     entry (twx, a_readp, a_offset, a_nelem, a_nelemt, a_echoed, a_screen_left, state, ercode);
+
+	get_line_entry = "0"b;
+	negotiate_entry = "1"b;
+	obsolete_negotiate_entry = "0"b;
+	screen_left = a_screen_left;
+	echoed = 0;
+	goto join;
+
+/* obsolete entry left in to allow time for switchover */
+echo_negotiate_get_chars:
+     entry (twx, a_readp, a_offset, a_nelem, a_nelemt, a_echoed, a_screen_left, state, ercode);
+
+	get_line_entry = "0"b;
+	negotiate_entry = "1"b;
+	obsolete_negotiate_entry = "1"b;
+	screen_left = a_screen_left;
+	echoed = 0;
+	goto join;
+
+join:
+	mark_entry = "0"b;
+	output_ptr = a_readp;
+	nelem = a_nelem;
+mark_join:
+	start_time = clock ();
+	ttybp = addr (tty_buf$);			/* get ptrs to tty_buf, tty_data */
+	call meter_response_time (pds$processid, CALL_RING_0_TTY);
+
+	devx = twx;				/* copy device index */
+	lctp = tty_buf.lct_ptr;			/* init pointer to lct */
+	if devx < 1 | devx > lct.max_no_lctes
+	then do;
+	     ercode = error_table_$invalid_device;
+	     call clean_up;
+	     return;
+	end;
+
+	uncp_flag = is_parent_mpx (UNCP_MPX);
+
+	call tty_lock$lock_channel (devx, ercode);	/* lock the channel lock */
+	if ercode ^= 0
+	then do;
+	     call clean_up;
+	     return;
+	end;
+
+	on cleanup call tty_lock$unlock_channel (devx);
+	lctep = addr (lct.lcte_array (devx));		/* get pointer to lcte of interest */
+	if lcte.channel_type ^= 0			/* don't talk to strangers */
+	then go to no_permission;
+	wtcbp = lcte.data_base_ptr;			/* get pointers to control blocks */
+	if ^wtcb.flags.dialed			/* if not dialed up */
+	then do;
+no_permission:
+	     call tty_lock$unlock_channel (devx);	/* unlock channel lock */
+	     ercode = error_table_$io_no_permission;
+	     call clean_up;
+	     return;
+	end;
+	state = DIALED_UP;
+
+	tcbp = wtcb.tcb_ptr;
+	if ^wtcb.tcb_initialized
+	then call tty_index$initialize_tcb (wtcbp, tcbp);
+
+	if wtcb.hproc ^= pds$processid		/* if not boss */
+	then if (wtcb.uproc ^= pds$processid) | ^tcb.uproc_attached
+						/* if not user */
+	     then do;
+		call tty_lock$unlock_channel (devx);	/* unlock channel lock */
+		call clean_up;
+		ercode = error_table_$io_no_permission;
+		return;
+	     end;
+
+	if wtcb.flags.line_status_present
+	then do;
+	     call clean_up;
+	     ercode = error_table_$line_status_pending;
+	     call tty_lock$unlock_channel (devx);
+	     return;
+	end;
+
+	if wtcb.error_code ^= 0
+	then do;
+	     ercode = wtcb.error_code;
+	     wtcb.error_code = 0;
+	     call tty_lock$unlock_channel (devx);
+	     return;
+	end;
+
+
+/**/
+	tcb.cumulative_meters.read_calls = tcb.cumulative_meters.read_calls + 1;
+	tty_buf.read_calls = tty_buf.read_calls + 1;
+	nelemt = 0;
+	if negotiate_entry
+	then do;
+	     if wtcb.echdp = "000000"b3
+	     then do;				/* Can't negotiate with no table! */
+		ercode = error_table_$no_table;
+		go to all_done;
+	     end;
+	     echo_datap = ptr (ttybp, wtcb.echdp);
+	     if screen_left = 0			/* Force stop echo magic */
+		& (wtcb.negotiating_echo | echo_data.awaiting_start_sync)
+	     then do;
+
+		echo_data.echo_start_pending_sndopt = "0"b;
+		if ^echo_data.awaiting_stop_sync
+		then do;
+		     call channel_manager$control (devx, "stop_negotiated_echo", null (), code);
+		     if code = 0
+		     then echo_data.awaiting_stop_sync = "1"b;
+		     else wtcb.negotiating_echo = "0"b;
+		end;
+		if echo_data.awaiting_stop_sync
+		then do;
+		     call tty_lock$unlock_channel (devx);
+		     call clean_up;
+		     a_echoed = 0;
+		     ercode = error_table_$echnego_awaiting_stop_sync;
+
+/* echo_negotiate_get_chars returns the wrong error code in this case
+   and must continue to do so for compatability for at least one release,
+   at which point the entry and this code can be flushed and everyone
+   will have switched to using tty_read_echoed */
+		     if obsolete_negotiate_entry
+		     then ercode = error_table_$line_status_pending;
+
+		     return;
+		end;
+	     end;
+	end;
+	if nelem = 0
+	then do;
+	     if ^negotiate_entry
+	     then wtcb.negotiating_echo = "0"b;
+
+/* Magic kludge to turn off echoing on ring-4 detected break conditions */
+/* This is "clean" because all non-negotiating calls are supposed to turn it off. */
+
+	     ercode = 0;
+	     go to all_done;
+	end;
+
+	if ^mark_entry
+	then offset = a_offset;
+	else offset = 0;
+	target_len = 0;
+	rawcnt = 0;
+	have_more_data = "0"b;
+	if offset ^= 0
+	then output_ptr = addr (output_ptr -> based_chars (offset));
+	orig_output_ptr = output_ptr;			/* in case we need this later */
+
+	if ^tcb.rawim
+	then do;
+	     if mark_entry				/* only supposed to be called in rawi */
+	     then do;
+		ercode = error_table_$badcall;
+		go to all_done;
+	     end;
+
+	     ttytp = addr (tty_tables$);
+	     if tcb.input_mvtrp = ""b
+	     then mvtp = null;
+	     else mvtp = ptr (ttytp, tcb.input_mvtrp);
+	     if tcb.input_tctrp = ""b
+	     then tctp = null;
+	     else tctp = ptr (ttytp, tcb.input_tctrp);
+	     if tcb.specialrp = ""b
+	     then special_ptr = null;
+	     else special_ptr = ptr (ttytp, tcb.specialrp);
+	end;
+
+	if wtcb.fblock = 0
+	then do;					/* go get some data to process */
+	     call get_more_data (blockp);		/* find more input_data */
+	     if ercode ^= 0
+	     then go to all_done;			/* if problem get out */
+	end;
+	else blockp = ptr (ttybp, wtcb.fblock);		/* get pointer to buffer left from last time */
+						/*						*/
+	if wtcb.fblock ^= 0
+	then do;					/* yes, process it */
+	     target_ptr = output_ptr;
+
+	     if tcb.rawim				/* raw input mode */
+	     then do;				/* just copy data */
+		break_found = "0"b;			/* we'll need this if get_line called */
+		do while (wtcb.fblock ^= 0 & nelemt < nelem & ^break_found);
+
+		     source_ptr = addr (buffer.chars (wtcb.fchar));
+		     ctally = min (buffer.tally - wtcb.fchar, nelem - nelemt);
+		     if get_line_entry		/* want to stop at NL */
+		     then do;
+			next_break = index (substr (source_ptr -> based_buf, 1, ctally), wtcb.line_delimiter);
+			if next_break ^= 0		/* there is one in this buffer */
+			then do;
+			     ctally = next_break;	/* stop at it */
+			     break_found = "1"b;	/* and don't go around again */
+			end;
+		     end;
+
+		     if mark_entry
+		     then if buffer.mark
+			then mark_index = target_len + 1;
+
+		     call copy_chars;
+
+		     nelemt = target_len;
+
+		     if ctally < buffer.tally - wtcb.fchar
+						/* if this is last buffer we're copying */
+		     then do;
+			wtcb.fchar = wtcb.fchar + ctally;
+			buffer.mark = "0"b;		/* we've picked up the mark */
+		     end;
+
+		     else do;
+			wtcb.fchar = 0;		/* not in the middle of a buffer now */
+			new_block = buffer.next;
+
+			call tty_space_man$free_buffer (devx, INPUT, blockp);
+						/* free buffer just copied from */
+
+			wtcb.fblock = new_block;	/* next buffer (if any) is now head of chain */
+			blockp = ptr (ttybp, new_block);
+			if (new_block = 0 & wtcb.input_available)
+			then do;			/* see if more to do, finished with this chain */
+			     call get_more_data (blockp);
+						/* go try to get a buffer */
+			     if ercode ^= 0
+			     then go to all_done;	/* if problem get out */
+			end;
+		     end;
+		end;
+
+		rawcnt = nelemt;			/* that's how many we really picked up */
+	     end;					/*						*/
+	     else do;				/* not raw input */
+		if tcb.erklm
+		then do;				/* make local copies of erase and kill characters */
+		     erase_char = tcb.erase;
+		     kill_char = tcb.kill;
+		end;
+		else erase_char, kill_char = " ";	/* so canon_procedure won't see erases & kills */
+
+		if (tcb.can_type = CAN_TYPE_OVERSTRIKE)
+		then canon_procedure = tty_overstrike_canon;
+		else if (tcb.can_type = CAN_TYPE_REPLACE)
+		then canon_procedure = tty_replace_canon;
+		else canon_procedure = tty_overstrike_canon;
+						/* can't happen, but just in case */
+
+		call pickup_preconverted;
+
+		nelemt = target_len;		/* total returned so far */
+		throw_away = "0"b;
+
+/* CONVERSION STARTS HERE */
+/* if there's any to do */
+
+		if wtcb.fblock = 0
+		then do;				/* finished with preconvertedand no none converted pending */
+		     call get_more_data (blockp);	/* try to get a buffer */
+		     if ercode ^= 0
+		     then go to all_done;		/* if error get out */
+		end;
+		max_len = 1;			/* init so loop starts */
+		do while ((^break_found | ^get_line_entry) & nelemt < nelem & wtcb.fblock ^= 0 & max_len > 0);
+		     old_rawcnt = rawcnt;		/* in case we have to do retry */
+		     break = wtcb.line_delimiter;	/* this is untranslated break, which we will search for */
+		     output_ptr = target_ptr;		/* allows for possible already-converted chars */
+		     max_len = length (buffer_1);
+		     orig_fchar = wtcb.fchar;		/* so we can restore this */
+
+/* come here if canon_procedure overflows */
+retry:
+		     if max_len > 0
+		     then do;			/* only continue if we have something to do it into */
+			target_ptr = addr (buffer_1);
+			room_left = max_len;
+			target_len = 0;
+			last_block = 0;
+			wtcb.fchar = orig_fchar;	/* in case we started over */
+			call copy_loop;
+			if ^break_found & get_line_entry & room_left > 0
+			then do;			/* there's no break anywhere in chain */
+			     no_break_anywhere = "1"b;
+			     wtcb.fchar = orig_fchar; /* copy_loop might have changed this */
+			     go to no_line;		/* get out of conversion loop */
+			end;
+
+			no_break_anywhere = "0"b;
+			call translation;
+
+/* ** CANONICALIZATION ** */
+
+			can_called = "0"b;
+			if tcb.canm
+			then do;
+			     call canonicalization;
+			     if code ^= 0		/* overflowed the space */
+			     then do;		/* have to start again */
+				max_len = divide (2 * max_len, 3, 17, 0);
+				if max_len > 0
+				then do;
+				     blockp = ptr (ttybp, wtcb.fblock);
+				     rawcnt = old_rawcnt;
+				     break_found = "0"b;
+						/* start clean */
+				     tty_buf.input_restart = tty_buf.input_restart + 1;
+				     go to retry;
+				end;
+			     end;
+			end;
+		     end;
+
+/* ** FREE BUFFERS NOW ** */
+
+		     if last_block ^= 0		/* if there are any to free */
+		     then do;			/* this was the first chance we had to release some buffer space in the buffer */
+			tempp = ptr (ttybp, last_block);
+						/* point to last one */
+			tempp -> buffer.next = 0;	/* cut off chain here */
+			call tty_space_man$free_chain (devx, INPUT, ptr (ttybp, wtcb.fblock));
+			wtcb.fblock = fixed (rel (blockp), 17);
+		     end;
+
+		     if (wtcb.fblock = 0 & wtcb.input_available)
+		     then do;			/* see if more to do, finished with this chain */
+			call get_more_data (blockp);	/* get the buffer of interest */
+			if ercode ^= 0
+			then go to all_done;
+			wtcb.fchar = 0;		/* we can update this now too */
+		     end;				/* we'll get back to this buffer after we finish the rest of the present buffer we have */
+
+/* set up for rest of conversion */
+
+		     source_len = stringl;
+		     stringp = source_ptr;
+		     target_len = 0;
+
+/* if tty_canon wasn't called, we have to eliminate NULs by hand */
+
+		     if ^can_called & (^tcb.control | no_control_input (wtcb.line_type))
+		     then call strip_nulls;
+
+/* ** ERASE/KILL PROCESSING ** */
+
+		     if tcb.erklm
+		     then call process_erase_kill;
+
+/* ** ESCAPE AND BREAK PROCESSING ** */
+
+		     if tctp ^= null		/* can't do this without input conversion table */
+		     then call process_escape_break;
+
+		     if target_len ^= 0
+		     then do;
+			source_ptr = old_targetp;
+			source_len = target_len;
+		     end;
+
+		     target_len = nelemt;		/* number of characters in caller's buffer so far */
+		     target_ptr = output_ptr;		/* place to put the rest */
+		     ctally = min (nelem - nelemt, source_len);
+						/* copy as many more as we can hold */
+		     if ctally > 0
+		     then call copy_chars;
+
+		     nelemt = nelemt + source_len;
+
+/* if we have to convert any more, we will now go back to top and copy some more */
+
+		end;
+
+/* we've converted all we're going to convert. Do we have any */
+/* that wouldn't fit in caller's buffer? */
+
+		if nelemt > nelem
+		then do;				/* yes */
+
+		     source_len = nelemt - nelem;
+		     if mark_entry
+		     then if mark_index > nelem	/* we didn't get up to the mark */
+			then pmark_index = mark_index - nelem;
+			else pmark_index = 0;
+		     call copy_to_preconverted;
+		end;
+
+		else if (get_line_entry & ^break_found) /* don't have a complete line */
+		then do;
+no_line:
+		     if target_len > 0		/* if there's anything at all */
+		     then do;			/* search through buffers to see if he'll get a break sooner or later */
+			if wtcb.fblock = 0 | no_break_anywhere
+			then unconverted_break = "0"b;/* we know there aren't any breaks */
+			else if tcb.break_char_pending
+			then unconverted_break = "1"b;/* we dont have to search */
+
+			else do;			/* scan buffer to see what we can find */
+			     blockp = ptr (ttybp, wtcb.fblock);
+			     next_break = 0;	/* init the "while" variable */
+
+			     break = wtcb.line_delimiter;
+						/* make sure it is set, may have fallen through to here */
+			     do while (next_break = 0);
+				source_ptr = addr (buffer.chars (wtcb.fchar));
+				next_break =
+				     index (substr (source_ptr -> based_buf, 1, buffer.tally - wtcb.fchar), break)
+				     ;		/* look for break in next buffers */
+				if next_break ^= 0
+				then unconverted_break = "1"b;
+						/* we found one */
+				else if buffer.next = 0
+				then do;		/* nothing else to look at so give up */
+				     unconverted_break = "0"b;
+				     next_break = 1;/* to break out of loop */
+				end;
+
+				else blockp = ptr (ttybp, buffer.next);
+			     end;
+			end;
+
+			if /* tree */ unconverted_break
+			then tcb.break_char_pending = "1"b;
+
+			else if ^no_break_anywhere
+			     then do;
+				source_ptr = orig_output_ptr;
+						/* we will save everything the caller would have gotten */
+				source_len = target_len;
+						/* this is the total in the caller's buffer */
+				call copy_to_preconverted;
+				nelemt = 0;	/* he will get nothing till we know for sure */
+			     end;
+		     end;
+		end;
+	     end;					/* whether rawi or not */
+	end;					/* whether a read chain or not */
+
+/* we always end up here */
+/* if no read chain or no space we will ask for wakeup since
+   nelemt will be 0 */
+
+	nelemt = min (nelemt, nelem);
+	if nelemt = 0
+	then do;
+	     if negotiate_entry
+	     then do;				/* OK, flip on echoing. */
+		echo_data.horiz_room_left = screen_left;/* Indicate room left. */
+		echo_data.chars_echoed = 0;		/* Didn't echo anything */
+		if screen_left = 0
+		then wtcb.negotiating_echo = "0"b;
+		else if tty_buf.echo_neg_mux_inhibit
+		then wtcb.negotiating_echo = "1"b;
+		else if wtcb.write_first ^= 0
+		then do;
+		     wtcb.negotiating_echo = "1"b;
+		     if echo_data.synchronized
+		     then echo_data.echo_start_pending_sndopt = "1"b;
+		end;				/* If output sits in ring 0, only ring 0 can append logically to it, not mux. */
+		else if echo_data.synchronized
+		then do;				/* mux _d_o_e_s echnego */
+		     wtcb.negotiating_echo = "1"b;	/* Tell tty_interrupt to echo. */
+		     echo_start_data.ctr = echo_data.sync_ctr;
+						/* Tell MUX to echo, */
+						/* Sending counters as part of protocol game. */
+		     echo_start_data.screenleft = echo_data.horiz_room_left;
+		     call channel_manager$control (devx, "start_negotiated_echo", addr (echo_start_data), code);
+		     if code = 0
+		     then ;
+		     else if code = error_table_$invalid_write
+		     then echo_data.echo_start_pending_sndopt = "1"b;
+
+/* This little bit of obscurity means that the mux had output queued in r0, */
+/* and tty_interrupt is to try sending this again when a SEND_OUTPUT */
+/* indicates that this is no longer the case. */
+		end;
+		else do;				/* Not synchronized */
+		     call channel_manager$control (devx, "init_echo_negotiation", null (), code);
+		     if code = 0
+		     then do;
+			echo_data.awaiting_start_sync = "1"b;
+			echo_data.mux_will_echnego = "1"b;
+		     end;
+		     else wtcb.negotiating_echo = "1"b; /* Ring zero will do it */
+		end;
+		if wtcb.negotiating_echo
+		then tty_buf.echo_neg_entries = tty_buf.echo_neg_entries + 1;
+	     end;
+	     else do;				/* Regular call turns off */
+		if wtcb.negotiating_echo
+		then do;
+		     wtcb.negotiating_echo = "0"b;	/* This really really should not happen -- should we cm$control (echoff) here */
+		end;
+	     end;
+
+	     if (uncp_flag & ^wtcb.flags.rflag) |
+		(^uncp_flag & ^wtcb.flags.rflag & wtcb.prompt_len > 0)
+
+	     then do;
+		raw_mode = tcb.rawom;
+		tcb.rawom = "1"b;			/* write prompt in rawo mode */
+		call tty_write$locked (devx, addr (wtcb.prompt), 0, (wtcb.prompt_len), 0, 0, code);
+		tcb.rawom = raw_mode;
+	     end;
+
+	     wtcb.flags.rflag = "1"b;			/* we want a wakeup */
+	     tty_buf.readblocked = tty_buf.readblocked + 1;
+						/* blocked again */
+	     if ^uncp_flag then do;
+		if ^wtcb.flags.wru			/* if not reading answerback */
+		     then if wtcb.receive_mode_device	/* must we tell multiplexer to turn line around? */
+		     then call channel_manager$control (devx, "enter_receive", null, ercode);
+						/* yes, do it */
+		else ;
+
+		else wtcb.flags.wru = "0"b;		/* won't be reading answerback again */
+	     end;
+	end;
+
+	else do;
+	     wtcb.flags.rflag, wtcb.flags.wru = "0"b;
+	     wtcb.negotiating_echo = "0"b;
+	     if negotiate_entry
+	     then do;				/* Return echoed count. */
+		echoed = min (nelem, echo_data.chars_echoed);
+		echo_data.chars_echoed = echo_data.chars_echoed - echoed;
+	     end;
+	     tcb.cumulative_meters.read_chars = tcb.cumulative_meters.read_chars + nelemt;
+	     tty_buf.ninchars = tty_buf.ninchars + nelemt;/* count input chars */
+	     tty_buf.nrawread = tty_buf.nrawread + rawcnt;/* count raw chars input */
+
+	     if (tcb.modes.scroll & (tcb.linemax > 0))
+	     then wtcb.actline = 0;			/* scroll by resetting the line count */
+						/* that is if we care about the line count in the first place */
+
+	end;
+
+	ercode = 0;
+	if get_line_entry
+	then nl_found = break_found;			/* report this to caller */
+all_done:
+	if wtcb.fblock = 0
+	then do;
+	     wtcb.lblock = 0;
+	     wtcb.flags.allow_wakeup = "0"b;
+	end;
+
+	if ercode ^= 0
+	then do;
+	     call clean_up;				/* don't give him anything extra */
+	     wtcb.negotiating_echo = "0"b;
+	end;
+	time_spent = clock () - start_time;
+	tcb.cumulative_meters.read_time = tcb.cumulative_meters.read_time + time_spent;
+	tty_buf.read_time = tty_buf.read_time + time_spent;
+	call tty_lock$unlock_channel (devx);		/* unlock channel lock */
+	a_nelemt = nelemt;
+	if nelemt > 0
+	then call meter_response_time (pds$processid, RETURN_RING_0_TTY);
+	if negotiate_entry
+	then a_echoed = echoed;
+	if mark_entry
+	then if mark_index <= nelemt
+	     then a_mark_index = mark_index;
+	     else a_mark_index = 0;
+	return;					/*						*/
+
+/* ** INTERNAL PROCEDURES ** */
+
+copy_chars:
+     proc;
+
+/* this procedure copies ctally characters from source_ptr to target_ptr. It updates both pointers */
+/* and increments target_len by ctally */
+
+dcl  tally_chars char (ctally) based;
+
+	target_ptr -> tally_chars = source_ptr -> tally_chars;
+
+	source_ptr = addr (source_ptr -> based_chars (ctally));
+	target_ptr = addr (target_ptr -> based_chars (ctally));
+	target_len = target_len + ctally;
+
+	return;
+
+     end /* copy_chars */;
+
+clean_up:
+     proc;
+
+/*
+   This procedure is to insure that the user does not get returned
+   any values that might convey any information to hime that he should not have
+*/
+
+	nelemt, a_nelemt = 0;
+	nl_found = "0"b;
+	state = 0;
+	return;
+
+     end clean_up;
+
+
+get_more_data:
+     proc (new_blockp);
+
+/* this proc calls channel_manager$read to get more buffers of data and set the buffer pointer (blockp)
+   and the the first block (wtcb.fblock) if it si not already set.  Both are set to null values if no data is pending */
+
+dcl  new_blockp ptr;
+dcl  prev_blockp ptr;
+dcl  orig_blockp ptr;
+
+	if wtcb.input_available
+	then do;					/* If there is input, go get it. */
+	     call channel_manager$read (devx, blockp, have_more_data, ercode);
+						/* get the buffer of interest */
+	     if ercode ^= 0
+	     then nelemt = 0;			/* reset to zero */
+	     wtcb.input_available = have_more_data;
+	end;
+	else blockp = null;				/* else nothing there or physical channel and he puts everything he has into fblock on interrupt */
+
+	if blockp ^= null
+	then do;
+	     if wtcb.fblock = 0			/* if there's not a pending chain */
+	     then wtcb.fblock = fixed (rel (blockp), 17, 0);
+						/* break pointer back into an offset */
+	     else do;				/* attach new stuff to existing chain */
+		prev_blockp = ptr (ttybp, wtcb.lblock);
+		prev_blockp -> buffer.next = fixed (rel (blockp), 17, 0);
+	     end;
+
+	     orig_blockp = blockp;
+
+	     do while (buffer.next ^= 0);		/* find end of chain to set wtcb.lblock */
+		blockp = ptr (blockp, buffer.next);
+	     end;
+
+	     wtcb.lblock = bin (rel (blockp), 17);
+	     blockp = orig_blockp;
+
+	     if wtcb.mark_set
+	     then do;
+		buffer.mark = "1"b;			/* set mark in first block */
+		wtcb.mark_set = "0"b;
+	     end;
+	end;
+	new_blockp = blockp;
+	return;
+     end;						/* get_more_data */
+
+/**/
+insert_char:
+     proc (i_char);
+
+/* this procedure inserts one character at target_ptr, and increments target_ptr and target_len by one character */
+
+dcl  i_char char (1) aligned;
+
+	target_ptr -> based_one_char = i_char;
+	target_ptr = addr (target_ptr -> based_chars (1));
+	target_len = target_len + 1;
+	return;
+
+     end /* insert_char */;				/*						*/
+skip:
+     proc (to_skip);
+
+/* this procedure discards a specified number of characters from stringp */
+
+dcl  to_skip fixed bin;
+
+	stringp = addr (stringp -> based_chars (to_skip));/* skip over character */
+	if source_len = stringl			/* if it's first character in the string */
+	then source_len = source_len - to_skip;		/* then make sure it doesn't get picked up */
+	stringl = stringl - to_skip;
+
+	return;
+
+     end /* skip */;
+
+escaped:
+     proc returns (bit (1) aligned);
+
+/* this procedure returns "1"b if the character at index xr in the string based on stringp */
+/* is preceded by a non-overstruck escape character; otherwise it returns "0"b */
+
+	if ^tcb.escm
+	then return ("0"b);
+
+	if xr <= 1				/* no preceding character */
+	then return ("0"b);
+
+	if tctp = null				/* no conversion table so no escapes */
+	then return ("0"b);
+
+	if tctp -> table (rank (substr (based_string, xr - 1, 1))) ^= 2
+						/* not preceded by an escape */
+	then return ("0"b);
+
+	if xr = 2					/* escape can't be overstruck, it's first char */
+	then return ("1"b);
+
+	if substr (based_string, xr - 2, 1) = bs	/* escape is overstruck */
+	then return ("0"b);
+
+	else return ("1"b);
+
+     end /* escaped */;				/*						*/
+char_value:
+     proc (a_char) returns (fixed bin);
+
+/* this procedure returns the numeric equivalent of an ASCII character if the character is 0 to 7; */
+/* otherwise it returns -1 */
+
+dcl  a_char char (1) aligned;
+dcl  numeric fixed bin;
+
+	numeric = rank (a_char);
+	if numeric >= 48				/* i.e., "0" */
+	     & numeric <= 55			/* i.e., "7" */
+	then return (numeric - 48);
+
+	else return (-1);
+
+     end /* char_value */;
+
+copy_to_preconverted:
+     proc;
+
+/* This procedure copies source_len characters from source_ptr to buffers marked "preconverted" */
+
+dcl  mark_next_buffer bit (1);
+
+	tty_buf.preconverted = tty_buf.preconverted + source_len;
+
+	old_fblock = wtcb.fblock;
+
+/* we will copy extra ones into tty_buf "converted" buffers */
+
+	call tty_space_man$get_buffer (devx, BSIZE, INPUT, new_blockp);
+	if new_blockp = null
+	then go to no_space;
+
+	wtcb.fblock = bin (bin (rel (new_blockp), 18), 17);
+
+	target_len = 0;
+	mark_next_buffer = "0"b;
+
+	do while (source_len > 0);
+	     blockp = new_blockp;
+	     buffer.converted = "1"b;
+
+	     ctally = min (source_len, bsizec);
+	     if mark_entry
+	     then do;
+		if /* tree */ mark_next_buffer	/* we broke previous buffer at mark */
+		then do;
+		     buffer.mark = "1"b;
+		     mark_next_buffer = "0"b;
+		end;
+
+		else if pmark_index > 0
+		     then if pmark_index = target_len + 1
+						/* it's exactly here */
+			then do;
+			     buffer.mark = "1"b;
+			     pmark_index = 0;	/* we've done it now */
+			end;
+			else if pmark_index <= target_len + ctally
+						/* it's due to be in this buffer */
+			     then do;
+				ctally = pmark_index - target_len - 1;
+						/* break so mark will be at start of next buffer */
+				mark_next_buffer = "1"b;
+						/* and remember to do it */
+				pmark_index = 0;	/* taken care of now */
+			     end;
+	     end;
+
+	     buffer.tally = ctally;
+	     target_ptr = addr (buffer.chars (0));
+	     call copy_chars;
+
+	     source_len = source_len - ctally;
+	     if source_len > 0			/* more to do? */
+	     then do;
+
+/* get another buffer */
+
+		call tty_space_man$get_buffer (devx, BSIZE, INPUT, new_blockp);
+		if new_blockp = null
+		then do;
+no_space:
+		     call syserr (crash, "tty_read: No buffers available for preconverted input.");
+		     return;
+		end;
+
+		buffer.next = bin (bin (rel (new_blockp), 18), 17);
+						/* set forward pointer in previous block */
+	     end;
+	end;
+
+/* done filling "converted" buffers */
+
+	buffer.next = old_fblock;			/* set forward pointer in last one */
+	if break_found
+	then buffer.break, tcb.flags.break_char_pending = "1"b;
+						/* had we found a break earlier? */
+	break_found = "0"b;				/* we're not sending the NL to the caller or else we wouldn't be here */
+
+	if old_fblock = 0
+	then wtcb.lblock = fixed (rel (blockp), 17);
+
+	return;
+
+     end /* copy_to_preconverted */;
+
+pickup_preconverted:
+     proc;
+
+/* check for already-converted input left over from last call and use it up first */
+
+	break_found = "0"b;
+	convert = buffer.converted;
+
+	do while (wtcb.fblock ^= 0 & convert);		/* scan chain of converted buffers */
+	     data_ptr, source_ptr = addr (buffer.chars (0));
+	     ctally = min (buffer.tally, nelem - target_len);
+	     call copy_chars;
+
+	     if ctally < buffer.tally			/* didn't take whole buffer, no room left for the rest */
+	     then do;
+		new_tally = buffer.tally - ctally;
+		buffer.tally = new_tally;
+
+/* copy remaining characters to beginning of buffer */
+
+		substr (temp_buf, 1, new_tally) = substr (data_ptr -> based_buf, ctally + 1, new_tally);
+		substr (data_ptr -> based_buf, 1, new_tally) = substr (temp_buf, 1, new_tally);
+
+		convert = "0"b;			/* so we'll stop copying */
+		tcb.flags.break_char_pending = "0"b;	/* if end clear any pending flag will reset later if called for */
+	     end;
+
+	     else do;				/* copied whole buffer */
+		break_found = buffer.break;
+		new_block = buffer.next;
+
+		call tty_space_man$free_buffer (devx, INPUT, blockp);
+						/* free the buffer just copied from */
+		wtcb.fblock = new_block;
+
+		if wtcb.fblock ^= 0			/* there's more */
+		then do;
+		     blockp = ptr (ttybp, wtcb.fblock);
+		     if break_found | target_len >= nelem
+						/* have we got enough? */
+		     then convert = "0"b;		/* yes, no more copying */
+		     else convert = buffer.converted;
+		end;
+		else wtcb.lblock = 0;		/* just to be safe */
+
+		if break_found
+		then tcb.flags.break_char_pending = "0"b;
+						/* assume this is the one we flaged */
+	     end;
+	end;					/* end of copy-converted loop */
+
+	return;
+
+     end pickup_preconverted;
+
+copy_loop:
+     proc;
+
+/*
+   This procedure copies data from the available input buffer and places
+   it into an internal working buffer
+*/
+
+dcl  new_blockp ptr;
+dcl  orig_blockp ptr;
+
+	first_char = wtcb.fchar;			/* keep in automatic for convenience */
+	if ^get_line_entry
+	then break_found = "0"b;			/* so we're not fooled by preconverted break */
+	do while (^break_found & rel (blockp) ^= "0"b & room_left > 0);
+	     chars_in_buf = buffer.tally - first_char;
+	     source_ptr = addr (buffer.chars (first_char));
+
+	     ctally = index (substr (source_ptr -> based_buf, 1, chars_in_buf), break);
+	     if ctally = 0
+	     then ctally = chars_in_buf;
+	     else break_found = "1"b;
+
+	     if ctally > room_left			/* there has to be room internally */
+	     then ctally = room_left;
+
+	     call copy_chars;			/* get the data */
+
+	     room_left = room_left - ctally;
+	     rawcnt = rawcnt + ctally;
+
+	     if ctally < chars_in_buf			/* we reached some limit */
+	     then first_char = first_char + ctally;	/* this buffer will be around later */
+	     else do;
+		last_block = fixed (rel (blockp), 17);
+		first_char = 0;			/* next buffer begins at beginning */
+		blockp = ptr (ttybp, buffer.next);
+	     end;
+
+	     if rel (blockp) = "0"b			/* if we reached end */
+	     then if ^break_found			/* without finding break */
+		then if wtcb.input_available		/* but lower level has more data */
+		     then do;			/* get it now */
+			orig_blockp = blockp;
+			call get_more_data (new_blockp);
+			if ercode ^= 0
+			then go to all_done;
+			if new_blockp ^= null	/* if there really was some */
+			then blockp = new_blockp;
+			else blockp = orig_blockp;	/* get_more_data probably changed it */
+		     end;
+	end;
+
+	wtcb.fchar = first_char;			/* update this now */
+
+	return;
+
+     end copy_loop;					/*						*/
+translation:
+     proc;
+
+/*
+   This procedure sets up the necessary variables and then calls the move and translate
+   operation
+*/
+
+	source_ptr = addr (buffer_1);
+	target_ptr = addr (buffer_2);
+
+	if throw_away
+	then do;					/* remove first character */
+	     source_ptr = addr (source_ptr -> based_chars (1));
+	     target_len = target_len - 1;
+	     throw_away = "0"b;
+	end;
+
+	stringl = target_len;			/* the number of chars in buffer_1 now */
+	stringp = source_ptr;
+
+	if mvtp ^= null
+	then do;
+	     mvt_args.tablep = mvtp;
+	     mvt_args.targetp = target_ptr;
+
+	     call tty_util_$mvt (addr (util));		/* this does the translation */
+
+	     source_ptr = addr (buffer_2);
+	     target_ptr = addr (buffer_1);
+	     stringp = source_ptr;
+	end;
+
+	if ^tcb.control				/* get rid of invisible characters if appropriate */
+	then if ^no_control_input (wtcb.line_type)	/* and necessary */
+	     then do;
+		mvt_args.tablep = addr (nocontrol);
+		mvt_args.targetp = target_ptr;
+
+		call tty_util_$mvt (addr (util));
+
+		stringp = target_ptr;		/* switch buffers back */
+		target_ptr = source_ptr;
+		source_ptr = stringp;
+	     end;
+
+	return;
+
+     end translation;
+
+canonicalization:
+     proc;
+
+/*
+   This procedure sets up the necessary variables then calls the cannonicalizer
+*/
+/* search for cr and bs */
+
+	code = 0;
+	xr = 1;					/* to make sure we do loop at least once */
+	do while (xr = 1);
+
+	     xr = search (based_string, left_motion);
+
+	     if xr = 1				/* at left margin, skip over it */
+	     then do;
+		stringp = addr (stringp -> based_chars (1));
+		stringl = stringl - 1;
+	     end;
+
+	     else if search (based_string, vertical_motion) ^= 0
+	     then go to MUST_CALL_CANONICALIZE;		/* FF or HT in string: must call canonicalize routine to
+						   insure that whitespace before the HT or FF is stripped */
+
+	     else if xr ^= 0			/* we found one somewhere else */
+	     then do;				/* find out if at end */
+
+		if (tcb.can_type ^= CAN_TYPE_REPLACE) & (verify (substr (based_string, xr), all_white) = 0)
+						/* rest of string white: not significant unless
+						   can_type=replace where trailing whitespace can replace
+						   prior characters on the line */
+		then do;
+		     if substr (based_string, stringl, 1) = nl
+		     then do;			/* copy newline if any */
+			substr (based_string, xr, 1) = nl;
+			stringl = xr;
+		     end;
+
+		     else stringl = xr - 1;
+
+		     source_ptr = stringp;		/* so we won't get leading bs/cr back */
+		end;
+
+		else do;				/* left motion in middle, must call tty_canon */
+MUST_CALL_CANONICALIZE:
+		     if stringp ^= source_ptr		/* did we skip over leading bs/cr? */
+		     then do;			/* copy so tty_canon can use whole buffer */
+			target_ptr -> based_string = stringp -> based_string;
+			data_ptr = target_ptr;
+			target_ptr = source_ptr;
+			source_ptr = data_ptr;
+		     end;
+
+		     can_called = "1"b;
+		     call canon_procedure (source_ptr, stringl, length (buffer_1), erase_char, kill_char, code);
+		end;
+	     end;
+
+	     else source_ptr = stringp;		/* update for possible skipped leading left motion */
+	end;
+
+	return;
+
+     end canonicalization;				/* end of canonicalization */
+
+strip_nulls:
+     proc;
+
+/*
+   This procedure eliminates nulls from an input buffer.  It is used if tty_cannon
+   was not called earlier for some reason or another
+*/
+	old_sourcep = source_ptr;
+	old_targetp = target_ptr;
+
+	xr = index (based_string, nul_char);
+
+	do while (xr ^= 0 & stringl > 0);
+	     if xr = 1				/* NUL at beginning of string */
+	     then do;
+		stringl = stringl - 1;
+		source_len = source_len - 1;
+	     end;
+
+	     else do;
+		ctally = xr - 1;			/* copy characters from before NUL */
+		call copy_chars;
+		stringl = stringl - xr;
+	     end;
+
+	     if stringl > 0
+	     then do;				/* search remainder for further nulls */
+		source_ptr, stringp = addr (stringp -> based_chars (xr));
+		xr = index (based_string, nul_char);
+	     end;
+
+	end;
+
+	if target_len > 0				/* if we moved any at all */
+	then do;
+	     if stringl > 0				/* any more that we didn't move? */
+	     then do;
+		ctally = stringl;
+		call copy_chars;			/* move 'em */
+	     end;
+	     source_len = target_len;			/* source for next pass */
+	     source_ptr = old_targetp;		/* switch buffers */
+	     target_ptr = old_sourcep;
+	end;
+
+	stringp = source_ptr;
+
+	return;
+
+     end strip_nulls;
+
+process_erase_kill:
+     proc;
+
+/*
+   This procedure does the erase and kill processing by killing all characters
+   to the left of the kill character, and erasing the character (or specified
+   number of characters) to the left of the erase character.
+*/
+	old_sourcep = source_ptr;
+	old_targetp = target_ptr;
+	stringl = source_len;
+
+/* kill first */
+
+	xr = 0;
+
+	do while (xr < stringl);
+
+/* search from the right, only last kill is interesting */
+
+	     xr = stringl - index (reverse (based_string), kill_char);
+
+	     if xr < stringl			/* found one */
+	     then do;
+		xr = xr + 1;			/* makes xr actual index of kill */
+
+		if ^escaped ()			/* it's a real kill */
+		then do;
+		     source_ptr, stringp = addr (stringp -> based_chars (xr));
+						/* point to char after kill */
+		     source_len = source_len - xr;
+		     xr = stringl;			/* so as not to index again */
+		end;
+
+		else do;				/* it was escaped, we must scan rest of string */
+		     stringl = xr - 2;
+		     xr = 0;
+		end;
+	     end;
+	end;					/* finished with kills */
+
+
+/**/
+/* now erase */
+
+	stringl = source_len;
+	target_len = 0;
+	xr = 1;
+
+	do while (xr ^= 0 & stringl > 0);
+	     xr = index (based_string, erase_char);	/* look for first erase */
+
+	     if xr = 1				/* first char */
+	     then do;
+		if target_len ^= 0			/* if not first char in whole string */
+		then do;				/* we have to erase some already copied chars */
+		     bx = verify (reverse (based_target), right_motion);
+						/* skip white space */
+		     if bx = 0			/* all white */
+		     then do;
+			target_ptr = old_targetp;	/* wipe it all out */
+			target_len = 0;
+		     end;
+
+		     else do;
+			if bx ^= 1		/* there's some white space */
+			then ctally = bx - 1;	/* we'll erase it all */
+						/* no white, check for overstrikes */
+			else do ctally = 1 to target_len - 2 by 2
+				while (substr (based_target, target_len - ctally, 1) = bs);
+			end;
+
+			target_len = target_len - ctally;
+			target_ptr = addr (old_targetp -> based_chars (target_len));
+		     end;
+		end;
+
+		if target_len <= 0			/* we erased whole target string */
+		then source_len = stringl - 1;
+	     end;
+
+/* not first char, see if it's escaped */
+
+	     else if xr ^= 0
+	     then do;
+		if escaped ()
+		then ctally = xr;			/* copy everything */
+
+		else do;
+		     bx = verify (reverse (substr (based_string, 1, xr - 1)), right_motion);
+
+		     if bx = 0			/* all white */
+		     then ctally = 0;		/* copy nothing */
+
+		     else if bx ^= 1		/* some white */
+		     then ctally = xr - bx;		/* which will not be copied */
+		     else do ctally = xr - 2 to 2 by -2 while (substr (based_string, ctally, 1) = bs);
+		     end;
+
+		end;
+		if ctally > 0
+		then call copy_chars;
+		else source_len = source_len - xr;
+	     end;
+
+	     if xr > 0				/* if we're going around again */
+	     then do;
+		source_ptr, stringp = addr (stringp -> based_chars (xr));
+						/* point past erase */
+		stringl = stringl - xr;
+	     end;
+	end;					/* end of erase search */
+
+	if target_len > 0				/* if we moved any */
+	then do;
+	     if stringl > 0				/* if there are any more */
+	     then do;
+		ctally = stringl;
+		call copy_chars;
+	     end;
+
+	     source_len = target_len;
+	     source_ptr = old_targetp;
+	     target_ptr = old_sourcep;		/* switch buffers */
+	end;
+
+	return;
+
+     end process_erase_kill;				/* end of erase-kill phase */
+
+process_escape_break:
+     proc;
+
+/*
+   This procedure processes a break character if it was proceded by an escape character
+   in which case, it is not counted as a real break character
+*/
+	old_targetp = target_ptr;
+	target_len = 0;
+	break_found = "0"b;
+	stringp = source_ptr;
+	stringl = source_len;
+	util.tablep = tctp;
+
+	do while (stringl > 0);
+
+/* scan for interesting char */
+
+	     call tty_util_$tct (addr (util));
+
+	     if util.indicator = 0 & stringl = 0 & target_len = 0
+						/* never no nothing */
+	     then ;
+
+	     else do;				/* there's work to do */
+		if ctally > 0			/* copy uninteresting characters */
+		then do;
+		     old_sourcep = source_ptr;
+		     call copy_chars;
+		end;
+
+		if indicator = BREAK_CHAR		/* break char */
+		then call process_break_char;
+
+		else if indicator = ESCAPE_CHAR	/* escape char */
+		then do;
+		     if ^tcb.escm			/* we're not escaping */
+			| stringl <= 1		/* there's nothing after it */
+		     then call insert_and_update;
+		     else call process_escape_char;
+		end;
+
+
+		else if indicator = THROW_AWAY	/* throw away */
+		then call skip (1);
+
+		else if indicator = FORM_FEED		/* form feed */
+		then do;
+		     if tcb.linemax > 0		/* using page length */
+		     then call skip (1);		/* so throw form feed away */
+
+		     else call insert_and_update;
+		end;
+
+		else if indicator = HARDWARE_CONTROL	/* hardware control sequence */
+		then if ^tcb.modes.control		/* no control chars wanted */
+		     then do;
+			call skip (2);		/* skip this and following char */
+			if stringl < 0		/* there wasn't another one */
+			then throw_away = "1"b;	/* we'll throw away first if we go around again */
+		     end;
+		     else call insert_and_update;
+
+		else if indicator ^= 0		/* what else could it be? */
+		then do;
+		     nelemt = 0;			/* nothing for you, chief */
+		     ercode = error_table_$improper_data_format;
+		     go to all_done;
+		end;
+
+		source_ptr = stringp;
+	     end;
+	end;
+
+	return;
+
+     end process_escape_break;			/* of tct loop */
+
+process_break_char:
+     proc;
+
+/*
+   This procedure processes the actual break character and manipulates the white space as necessary
+*/
+	break_found = "1"b;				/* it can't be escaped or we'd have found the escape */
+
+	if tcb.canm
+	then if ctally > 0				/* scan back for preceding white space */
+	     then do;
+		bx = verify (reverse (substr (based_source, 1, ctally)), right_motion) - 1;
+
+		if bx < 0				/* all white */
+		then bx = ctally;
+
+		if bx > 0				/* any white */
+		then do;
+		     target_len = target_len - bx;
+		     target_ptr = addr (old_targetp -> based_chars (target_len));
+		end;
+	     end;
+
+/* target_ptr shows where to put nl now in any case */
+
+	call insert_and_update;
+
+	return;
+
+     end process_break_char;
+
+process_escape_char:
+     proc;
+
+/* This procedure does the processing of a character if it is proceded by
+   an escape character
+*/
+	if ctally > 0				/* check for overstruck escape */
+	then do;
+	     i = -1;				/* necessary to make compiler accept next statement */
+	     if stringp -> based_chars (i) = bs
+	     then do;
+		call insert_and_update;
+		return;
+	     end;
+	end;
+
+	next_char = stringp -> based_chars (1);
+	if next_char = bs
+	then do;
+	     call insert_and_update;
+	     return;
+	end;
+
+	if stringl > 2				/* check for following character overstruck */
+	then if stringp -> based_chars (2) = bs
+	     then do;
+		call insert_and_update;
+		return;
+	     end;
+
+	if tctp -> table (rank (next_char)) = 2 |	/* next char is escape */
+	     next_char = tcb.erase | next_char = tcb.kill
+	then do;
+
+	     stringp = addr (stringp -> based_chars (1)); /* skip over escape */
+	     stringl = stringl - 1;
+	     call insert_and_update;			/* put in following char as is */
+	     return;
+	end;
+
+/**/
+/* check for octal escape */
+
+	digit = char_value (next_char);
+	if digit >= 0
+	then do;					/* we have octal digit(s) */
+
+	     octal.result = 0;
+	     stringp = addr (stringp -> based_chars (1)); /* look at next */
+
+	     do i = 1 to 3 while (digit >= 0);
+		octal.result = 8 * octal.result + digit;
+
+		if stringl > i & i < 3
+		then do;
+		     digit = char_value ((stringp -> based_chars (i)));
+		     if digit >= 0			/* next char is digit, see if it's overstruck */
+		     then if stringl > i + 1
+			then if stringp -> based_chars (i + 1) = bs
+			     then digit = -1;
+		end;
+
+		else digit = -1;			/* no more chars, or we already have 3 */
+	     end;
+
+	     call insert_char ((addr (octal.result) -> based_one_char));
+	     stringp = addr (stringp -> based_chars (i - 1));
+						/* skip over octal digits */
+	     stringl = stringl - i;
+	end;
+
+/**/
+/* see if it's escaped newline (with possible intervening white space) */
+
+	else if verify (substr (based_string, 2, stringl - 2), right_motion) = 0
+		& substr (based_string, stringl, 1) = nl
+	then do;
+	     if stringl = source_len			/* first thing in the string? */
+	     then source_len = 0;			/* then nothing */
+	     stringl = 0;				/* we've reached end */
+	end;
+
+	else do;					/* look up next_char in input escape table */
+	     if special_ptr = null			/* no table means no escapes */
+	     then call insert_and_update;
+	     else if special_ptr -> special_chars.input_escapes.len = 0
+	     then call insert_and_update;
+
+	     else do;
+		xr = index (special_ptr -> special_chars.input_escapes.str, next_char);
+		if xr ^= 0			/* it's there */
+		then do;
+		     call insert_char ((substr (special_ptr -> special_chars.input_results.str, xr, 1)));
+		     stringp = addr (stringp -> based_chars (2));
+						/* point past escape sequence */
+		     stringl = stringl - 2;
+		end;
+
+		else call insert_and_update;
+	     end;
+	end;
+
+	return;
+
+     end process_escape_char;				/* of escape character */
+
+insert_and_update:
+     proc;
+
+/*
+   This procdure passes insert_char a character pointed to by stringp
+   to be inserted, then it updates the string pointer and the
+   string length
+*/
+
+	call insert_char ((stringp -> based_one_char));
+	stringp = addr (stringp -> based_chars (1));
+	stringl = stringl - 1;
+
+	return;
+
+     end insert_and_update;
+
+
+is_parent_mpx:					/* Check match of channel's parent mpx type against input mpx type */
+     proc (parent_mpx_type) returns (bit (1));
+
+dcl parent_mpx_type fixed bin;
+dcl temp_lctep ptr;
+     
+	lctep = addr (lct.lcte_array (devx));
+	if lcte.major_channel_devx ^= 0 then do;
+	     temp_lctep = addr (lct.lcte_array (lcte.major_channel_devx));
+	     if temp_lctep->lcte.channel_type = parent_mpx_type then return ("1"b);
+	end;
+	else if lcte.channel_type = parent_mpx_type then return ("1"b);
+	return ("0"b);
+     end is_parent_mpx;
+
+     end /* tty_read */;

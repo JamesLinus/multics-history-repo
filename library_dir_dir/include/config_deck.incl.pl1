@@ -1,0 +1,36 @@
+/* BEGIN INCLUDE FILE ... config_deck.incl.pl1 ... 11/13/80, W. Olin Sibert */
+
+dcl (configp, cardp) pointer;
+dcl  config_n_cards fixed bin;			/* Number of cards used in config */
+dcl  config_max_cards fixed bin;			/* Max number of cards in config */
+
+dcl  config_deck$ fixed bin external static;
+
+dcl 1 config_deck aligned based (configp),
+    2 cards (config_n_cards) aligned like config_card,
+    2 pad_cards (config_max_cards - config_n_cards) aligned like config_card;
+
+dcl 1 config_card aligned based (cardp),
+    2 word char (4) aligned,
+    2 data_field (14) bit (36) aligned,
+    2 type_word aligned like config_card_type_word;
+
+dcl 1 config_card_type_word aligned based,
+    2 field_type (14) bit (2) unaligned,
+    2 pad1 bit (4) unaligned,
+    2 n_fields fixed bin (4) unsigned unaligned;
+
+dcl (CONFIG_DECIMAL_TYPE	init ("11"b),
+     CONFIG_OCTAL_TYPE	init ("00"b),
+     CONFIG_SINGLE_CHAR_TYPE	init ("01"b),
+     CONFIG_STRING_TYPE	init ("10"b)) bit (2) aligned static options (constant);
+
+dcl  ZERO_CARD_WORD char (4) aligned internal static options (constant) init ("");
+dcl  FREE_CARD_WORD char (4) aligned internal static options (constant) init ("");
+
+dcl  VALID_CARD_WORD_CHARACTERS char (38) internal static options (constant) init
+    ("abcdefghijklmnopqrstuvwxyz0123456789_.");		/* lowercase letters, digits, period and underscore */
+
+dcl  EMPTY_FIELD bit (36) aligned internal static options (constant) init ("777777777777"b3);
+
+/* END INCLUDE FILE config_deck.incl.pl1 */

@@ -1,0 +1,35 @@
+Objectname:	bound_priv_mpx;
+Global:		delete;
+
+Order:		sty_mpx,
+		priv_ibm3270_mpx,
+		priv_x25_mpx,
+		priv_hasp_mpx,
+		priv_polled_vip_mpx;
+
+objectname:	priv_ibm3270_mpx;
+ retain:		init_multiplexer, terminate_multiplexer, start, stop,
+		shutdown, priv_control, hpriv_control;
+
+objectname:	priv_x25_mpx;
+ retain:		init_multiplexer, terminate_multiplexer,
+		priv_control, hpriv_control,
+		start, stop, shutdown;
+
+objectname:	priv_hasp_mpx;
+ retain:		init_multiplexer, terminate_multiplexer,
+		start, stop, shutdown, priv_control, hpriv_control;
+
+objectname:	priv_polled_vip_mpx;
+ retain:		init_multiplexer, terminate_multiplexer,
+		start, stop, shutdown, priv_control, hpriv_control;
+
+objectname:	sty_mpx;
+ retain:		init_multiplexer, terminate_multiplexer,
+		start, stop, shutdown,
+		control, read, write, check_modes, set_modes, get_modes;
+
+/* End */
+
+
+

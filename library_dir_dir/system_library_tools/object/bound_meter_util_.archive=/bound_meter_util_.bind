@@ -1,0 +1,55 @@
+/* *	BOUND_METER_UTIL_
+   *
+   *	This segment contains subroutines to be used by metering commands.
+   *
+   *	This is part of the familiy of metering/analysis bound segments:
+   *	   bound_metering_cmds_	bound_meter_util_
+   *	   bound_comm_meters_	bound_tuning_
+   *	   bound_system_test_	bound_hc_display_
+   *	   bound_hardcore_db_
+   *
+   *	Reorganized to be this way, 04/11/81, W. Olin Sibert
+
+
+   *	06/12/84 by T. Oke, added get_vol_list_ to utilities.
+   */
+
+Objectname:         bound_meter_util_;
+
+Addname:            copy_erf_seg_,
+                    get_gate_data_,
+		get_vol_list_,
+                    meter_util_,
+                    metering_util_;
+
+Order:              copy_erf_seg_,
+                    get_gate_data_,
+		get_vol_list_,
+                    meter_util_,
+                    metering_util_;
+
+Global:             delete;
+
+
+objectname:         copy_erf_seg_;
+ retain:            copy_erf_seg_,
+                    name;
+
+objectname:         get_gate_data_;
+ retain:            get_gate_data_;
+
+objectname:	get_vol_list_;
+ retain:		get_vol_list_;
+
+objectname:         meter_util_;
+ retain:            get_buffers,
+                    fill_buffers,
+                    time,
+                    reset;
+
+objectname:         metering_util_;
+ retain:            define_regions,
+                    fill_buffers,
+                    reset;
+
+/*                  END                 */

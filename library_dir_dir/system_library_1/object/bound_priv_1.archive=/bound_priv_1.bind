@@ -1,0 +1,61 @@
+/* Bind file for bound_priv_1 */
+/* Modified 7/15/74 by B. Greenberg */
+/* Modified 7/15/78 by B. Greenberg */
+/* Modified by J. A. Bush 7/28/78 */
+/* Modified by J. A. Bush 02/21/81 */
+/* Modified 10/28/81 by J. Bongiovanni to add scr_util */
+/* Modified 06/23/83 by E. N. Kittlitz to add load_mode_reg entry */
+/* Modified 8/83 by K. Loepere for bce entries in pmut. */
+/* Modified 3/85 by Keith Loepere to break out privileged routine set. */
+/* Modified 85-04-24 by E. Swenson to add back syserr which needs to run
+   privileged. */
+
+
+/* HISTORY COMMENTS:
+  1) change(88-07-27,Farley), approve(88-10-05,MCR7968),
+     audit(88-10-10,Beattie), install(88-10-14,MR12.2-1166):
+     Added check_for_mem_overlap entry to privileged_mode_ut.
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:	bound_priv_1;
+Global:		delete;
+
+Order:		privileged_mode_ut,
+		absadr,
+		parity_check,
+		syserr,
+		syserr_real,
+		wire_stack;
+
+objectname:	privileged_mode_ut;
+ synonym:		pmut, trace_rsw;
+ retain:		bce, bce_and_return, cam, cam_both, cam_cache, camp,
+		check_for_mem_overlap, check_parity_for_add,
+		check_parity_for_use, cioc, clear_cache, ldbr, ldt,
+		load_mode_reg, lock_ptl, lrar, read_id_prom, read_mask,
+		rscr, rsw, set_mask, smcm, smic, smic_port, 
+		special_bce_return, sscr, swap_sdw, trace_rsw, 
+		unlock_ptl, unwire_unmask, wire_and_mask;
+
+objectname:	absadr;
+ retain:		absadr;
+
+objectname:	parity_check;
+ synonym: 	set_parity_mask, reset_parity_mask;
+ retain:		parity_check, set_parity_mask, reset_parity_mask;
+
+objectname:	wire_stack;
+ retain:		wire_stack, return;
+
+objectname:	syserr;
+ retain:		syserr, binary, error_code, multiple_binary;
+
+objectname:	syserr_real;
+ retain:		syserr_real, syserr_reset, panic, ring1,
+		ring1_error_code, ring1_binary, ring1_multiple_binary;
+
+/* End */
+
+
+

@@ -1,0 +1,240 @@
+/*
+   Bindfile for bound_cpu_tests_
+   Created by R. A. Fawcett Sept 84
+
+
+*/						
+
+Objectname:	bound_cpu_tests_;
+
+
+/*  NOTE, The order up to and including sreg_no_write MUST be maintained
+    so that those test cases that require specific instruction/label offsets
+    will be maintained they are bound!!! Any new tests that are added, that
+    require specific offsets should be placed BEFORE the tmlr object.
+*/
+
+
+/* NOTE, There is not an object segment for cpu_tests it exists in name only
+   so that only one and name be on this segment with many entry points. If this
+   were a NORMAL bound segment there would be a transfer vector segment with
+   this name. The name cpu_tests is used as a common name for test cases when
+   MC_trace command is used with test_cpu 
+
+   This segment is intended to be called only by test_cpu and serves no other
+   useful purpose.
+*/
+
+Order:		ci_mod_case_2,
+		tct,
+		sreg,
+		test_ci,
+		rpd_test,
+		test_cmpc_fill,
+		cmpc7,
+		test_sc2,
+		csl_onc,
+		tnz,
+		sreg_no_write,
+/*  tests after this need no special offset */
+		tmlr,
+		mlrstern,
+		csl_oob,
+		mvn,
+		mvn_ofl,
+		mlr_tst,
+		csl_test,
+		cmpc,
+		bad_fill,
+		mpy_ofl,
+		test_xed,
+		extra_fill,
+		acv_restart,
+		scm_tally,
+		mvt_tst,
+		acv_restart_csl,
+		cmpn_tst,
+		itp_mod,
+		mvnoosb,
+		cmpb_with_sixbit_offset,
+		cmpb_with_rotate,
+		cmpc_pgbnd,
+		csl_pgflt,
+		scm_pgflt,
+		scd_con_flt,
+		translate_strings_,
+		cmpc_adj_len,
+		xed_dirflt_odd,
+		xed_dirflt_even,
+		cmpc_zero_ind,
+		cmpbtest_alm,
+		scm_tro,
+		rpt_test_evn,
+		rpt_test_odd,
+		scd_oob_tst,
+		cmpb_onc,
+		cmpc_b,
+		cmpc_a;
+
+Addname:		cpu_tests_;
+
+
+Global:		delete;
+
+objectname:	mlrstern;
+retain:		mlrstern;
+
+objectname:	tmlr;
+retain:		tmlr,tmlr_data;
+
+objectname:	csl_oob;
+retain:		csl_oob;
+
+objectname:	mvn;
+retain:		mvn;
+
+objectname:	mvn_ofl;
+retain:		mvn_ofl;
+
+objectname:	tct;
+retain:		tct;
+
+objectname:	sreg;
+retain:		sreg;
+
+objectname:	csl_onc;
+retain:		csl_onc;
+
+objectname:	test_sc2;
+retain:		test_sc2;
+
+objectname:	test_ci;
+retain:		test_ci;
+
+objectname:	rpd_test;
+retain:		rpd_test;
+
+objectname:	mlr_tst;
+retain:		mlr_tst;
+
+objectname:	csl_test;
+retain:		csl_test;
+
+objectname:	cmpc;
+retain:		cmpc;
+
+objectname:	bad_fill;
+retain:		bad_fill;
+
+objectname:	mpy_ofl;
+retain:		mpy_ofl;
+
+objectname:	test_xed;
+retain:		test_xed;
+
+objectname:	cmpc7;
+retain:		cmpc7;
+
+objectname:	extra_fill;
+retain:		extra_fill;
+
+objectname:	test_cmpc_fill;
+retain:		test_cmpc_fill;
+
+objectname:	acv_restart;
+retain:		acv_restart;
+
+objectname:	scm_tally;
+retain:		scm_tally;
+
+objectname:	mvt_tst;
+retain:		mvt_tst,
+		mvt_tst_ascii_to_bcd,
+		mvt_tst_bcd_to_ascii,
+		mvt_tst_ebcdic_to_ascii,
+		mvt_tst_nine_to_four,
+		mvt_tst_four_to_nine,
+		mvt_tst_ascii_to_ebcdic,
+		mvt_tst_release_t_segs;
+
+objectname:	ci_mod_case_2;
+retain:		ci_mod_case_2;
+
+objectname:	acv_restart_csl;
+retain:		acv_restart_csl;
+
+objectname:	cmpn_tst;
+retain:		cmpn_tst;
+
+objectname:	itp_mod;
+retain:		itp_mod;
+
+objectname:	mvnoosb;
+retain:		mvnoosb;
+
+objectname:	cmpb_with_sixbit_offset;
+retain:		cmpb_with_sixbit_offset;
+
+objectname:	cmpb_with_rotate;
+retain:		cmpb_with_rotate;
+
+objectname:	cmpc_pgbnd;
+retain:		cmpc_pgbnd;
+
+objectname:	csl_pgflt;
+retain:		csl_pgflt;
+
+objectname:	scm_pgflt;
+retain:		scm_pgflt;
+
+
+objectname:	scd_con_flt;
+retain:		scd_con_flt;
+
+objectname:	translate_strings_;
+retain:		nine_to_four_, four_to_nine_, nine_to_six, six_to_nine, nine_to_nine;
+
+objectname:	cmpc_adj_len;
+retain:		cmpc_adj_len;
+
+objectname:	cmpbtest_alm;
+retain:		cmpbtest_alm;
+
+objectname:		xed_dirflt_odd;
+retain:			xed_dirflt_odd;
+
+objectname:		xed_dirflt_even;
+retain:			xed_dirflt_even;
+
+objectname:		cmpc_zero_ind;
+retain:			cmpc_zero_ind;
+
+objectname:		scm_tro;
+retain:			scm_tro;
+
+objectname:		rpt_test_evn;
+retain:			rpt_test_evn;
+
+objectname:		rpt_test_odd;
+retain:			rpt_test_odd;
+
+objectname:		scd_oob_tst;
+retain:			scd_oob_tst;
+
+objectname:		cmpb_onc;
+retain:			cmpb_onc;
+
+objectname:		cmpc_a;
+retain:			cmpc_a;
+
+objectname:		cmpc_b;
+retain:			cmpc_b;
+
+objectname:		tnz;
+retain:			tnz;
+
+objectname:		sreg_no_write;
+retain:			sreg_no_write;
+
+/*END*/
+

@@ -1,0 +1,3953 @@
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) Honeywell Bull Inc., 1987                *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+/* HASP multiplexer:  This multiplexer processes most of the HASP RJE protocol in either host or workstation mode.
+   This multiplexer expects data from the user ring to be already compressed and converted to EBCDIC.
+   This procedure implements the non-privileged entries of the multiplexer; it may be invoked at interrupt time
+   and must be wired.
+   */
+
+/* Created:  October 1979 by G. Palter */
+/* Modified: 15 October 1980 by G. Palter to correct bug which can cause null pointer reference at interrupt time, to
+	      always accept input for configured devices, and to re-enable tracing code */
+/* Modified: 25 November 1980 by G. Palter to use channel_manager$interrupt_later */
+/* Modified: December 1980 by G. Palter to fix the "loopback bug" */
+/* Modified: 9 January 1981 by G. Palter to correct bug which causes a system crash when a block received out of sequence
+	     is to be ignored */
+/* Modified: 11 January 1981 by G. Palter to correct bug where detecting a partial output record would take precedence
+	      over detecting an output record which exceeds the maximum block size for the multiplexer */
+/* Modified: 30 March 1981 by G. Palter to trap duplicate loopback blocks (possibly permanently) */
+/* Modified: 2 April 1981 by G. Palter to properly handle space restrictions during input and loopback processing, to
+	      transmit a status block if necessary after a resetread, and to correct problems with the interface to
+	      tty_space_man$needs_space */
+/* Modified: 16 April 1981 by G. Palter to support rts_mode, to not set off the beeper when calling syserr, and to add
+	        message documentation */
+/* Modified: July 1981 by G. Palter to complete SIGNON record processing and implement multiplexer metering */
+/* Modified: 25 August 1981 by G. Palter to correct bugs in wraparound processing (formerlly called loopback) */
+/* Modified: 5 February 1982 by G. Palter to always acknowledge requests to send input to a configured device */
+/* Modified: 11 August 1982 by G. Palter to correct the bug in classify_record that would cause it to reference beyond the
+	      end of a buffer when called from move_record_to_output_block to classify the record just added when the
+	      previous record in the block completely filled a buffer */
+/* Modified: August 1982 by Robert Coren to handle "MASKED" interrupt */
+/* Modified: February 1984 by G. Palter as part of the correct implementation of the system wait-a-bit */
+/* Modified: August 1984 by G. Palter to fix HASP error #0013 -- hasp_mpx frees the individual buffers of a record when
+      the buffer's data is copied into the output block under construction.  If there isn't sufficient space in tty_buf to
+      grow the output block, hasp_mpx will abort writing the record and return to its caller (channel_manager$write) while
+      indicating that the record in question has not yet been written.  However, some of the buffers which comprised the
+      record may have been freed.  As a result, when space in tty_buf is available and the write operation is retried,
+      hasp_mpx will be asked to process the original buffers of the record which are now either on the free chain or in
+      use by another channel.  In either case, the system will eventually crash with the message
+	 tty_space_man:  Attempt to free space already freed */
+/* Modified: December 1984 by G. Palter to fix HASP error #0015 -- If the first buffer of an input block from the FNP
+      contains only a single character, hasp_mpx will either take a fault while on the PRDS or move 262143 characters of
+      tty_buf one halfword to the "left".  In either case, the system will crash */
+
+
+/* Missing features and further design issues to be resolved:
+
+   o Change input block processing to allow (1) blocks to be split across ACCEPT INPUT interrupts or calls to
+     channel_manager$read, and (2) multiple blocks to be returned by a single interrupt or read call.
+
+   o Timeout mechanism to wait for acknowldegement of RTS records?
+   */
+
+
+hasp_mpx:
+     procedure ();
+
+	return;					/* not an entrypoint */
+
+
+/* Parameters */
+
+dcl  P_hmd_ptr pointer parameter;			/* -> multiplexer data for this channel */
+dcl  P_subchannel_idx fixed binary parameter;		/* index of specific sub-channel referenced by this call */
+dcl  P_code fixed binary (35) parameter;		/* status code */
+
+dcl  P_chain_ptr pointer parameter;			/* read, write:  chain of buffers */
+
+dcl  P_more_input bit (1) aligned parameter;		/* read:  set ON => more input for sub-channel is available */
+
+dcl  P_interrupt_type fixed binary parameter;		/* interrupt:  type of interrupt encountered */
+dcl  P_interrupt_data bit (72) aligned parameter;		/* interrupt:  data associated with this interrupt (if any) */
+
+dcl  P_order character (*) parameter;			/* control:  order to be executed */
+dcl  P_info_ptr pointer parameter;			/* control:  -> additional data for this control order */
+
+dcl  P_mclp pointer parameter;			/* check_modes, set_modes:  -> modes to check/set */
+
+dcl  P_modes character (*) parameter;			/* get_modes:  set to modes in effect for sub-channel */
+
+
+/* Local copies of parameters (not in include files) */
+
+dcl  subchannel_idx fixed binary;
+dcl  code fixed binary (35);
+
+dcl  chain_ptr pointer;
+
+dcl  interrupt_type fixed binary;
+dcl  interrupt_data bit (72) aligned;
+
+dcl  order character (32);
+dcl  info_ptr pointer;
+
+
+/* Remaining declarations */
+
+dcl  ttybp pointer;					/* -> tty_buf$ */
+
+dcl 1 based_block_header unaligned based like TEMPLATE_HASP_BLOCK_HEADER;
+dcl 1 based_block_trailer unaligned based like TEMPLATE_HASP_BLOCK_TRAILER;
+
+dcl 1 based_signon_block unaligned based like TEMPLATE_HASP_SIGNON_BLOCK;
+
+dcl 1 based_bad_bcb_block unaligned based like TEMPLATE_HASP_BAD_BCB_BLOCK;
+dcl 1 based_bad_bcb_record unaligned based like TEMPLATE_HASP_BAD_BCB_RECORD;
+
+dcl 1 based_sync_block unaligned based like TEMPLATE_HASP_SYNC_BLOCK;
+
+dcl 1 based_rts_record unaligned based like TEMPLATE_HASP_RTS_RECORD;
+dcl 1 based_rts_ack_record unaligned based like TEMPLATE_HASP_RTS_ACK_RECORD;
+
+dcl  needs_space bit (1) aligned;			/* ON => some processing required more space than available */
+
+dcl  partial_record bit (1) aligned;			/* ON => output processing terminated when an incomplete
+						   record was found in output chain; wakeup must be sent
+						   to user ring */
+
+dcl  long_record bit (1) aligned;			/* ON => output processing terminated when a record was found
+						   which is simply too large to ever fit into output block */
+
+dcl  previously_scanned_bufferp pointer;		/* used by scan_input_records:  -> buffer before last buffer 
+						   of a record */
+dcl  last_bufferp pointer;
+
+dcl 1 abort_info aligned based (info_ptr),		/* data structure for "abort" control order */
+    2 resetwrite bit (1) unaligned,
+    2 resetread bit (1) unaligned;
+
+dcl 1 write_status_info aligned based (info_ptr),		/* data structure for "write_status" control order */
+    2 event_channel fixed binary (71),
+    2 output_pending bit (1);
+
+dcl  get_device_type_info fixed binary based (info_ptr);	/* device type returned by "get_device_type" control order */
+
+dcl 1 sri aligned based (info_ptr) like signon_record_info;	/* data structure for "signon_record" order */
+
+dcl  idx fixed binary;
+
+dcl  NUL character (1) static options (constant) initial ("");   /* EBCDIC NUL character ("000"b3) */
+dcl  DLE character (1) static options (constant) initial ("");   /* EBCDIC DLE character ("020"b3) */
+
+dcl (LOG_AND_PRINT	initial (0),			/* log message and print it on console */
+     LOG_ONLY	initial (5))			/* log message or throw it away */
+	fixed binary static options (constant);
+
+dcl (et_action_not_performed, et_bad_mode, et_incorrect_device_type, et_invalid_read, et_invalid_state, et_invalid_write,
+     et_long_record, et_noalloc, et_null_info_ptr, et_out_of_sequence, et_undefined_order_request,
+     et_unimplemented_version)
+	fixed binary (35) static;			/* local copies so no page faults during interrupts, etc. */
+
+dcl  pds$process_id bit (36) aligned external;
+
+dcl  tty_buf$ bit (36) aligned external;		/* MCS data buffer segment */
+
+dcl (error_table_$action_not_performed, error_table_$bad_mode, error_table_$incorrect_device_type,
+     error_table_$invalid_read, error_table_$invalid_state, error_table_$invalid_write, error_table_$long_record,
+     error_table_$noalloc, error_table_$null_info_ptr, error_table_$out_of_sequence, error_table_$undefined_order_request,
+     error_table_$unimplemented_version)
+	fixed binary (35) external;
+
+dcl  mcs_trace entry () options (variable);
+dcl  mcs_trace$buffer_chain entry (fixed binary, pointer);
+dcl  pxss$ring_0_wakeup entry (bit (36) aligned, fixed binary (71), fixed binary (71), fixed binary (35));
+dcl  syserr entry () options (variable);
+dcl  wire_proc$wire_me entry ();
+
+dcl (addr, binary, clock, copy, currentsize, divide, hbound, index, lbound, length, min, mod, null, pointer, rel, size,
+     string, substr, unspec)
+	builtin;
+%page;
+/* Once per bootload initialization:  called from priv_hasp_mpx */
+
+system_initialize:
+     entry ();
+
+	et_action_not_performed = error_table_$action_not_performed;
+	et_bad_mode = error_table_$bad_mode;
+	et_incorrect_device_type = error_table_$incorrect_device_type;
+	et_invalid_read = error_table_$invalid_read;
+	et_invalid_state = error_table_$invalid_state;
+	et_invalid_write = error_table_$invalid_write;
+	et_long_record = error_table_$long_record;
+	et_noalloc = error_table_$noalloc;
+	et_null_info_ptr = error_table_$null_info_ptr;
+	et_out_of_sequence = error_table_$out_of_sequence;
+	et_undefined_order_request = error_table_$undefined_order_request;
+	et_unimplemented_version = error_table_$unimplemented_version;
+
+	call wire_proc$wire_me ();			/* Doctor Memory */
+
+	return;
+
+
+
+/* Dialup a sub-channel:  called from priv_hasp_mpx */
+
+dialup:
+     entry (P_hmd_ptr, P_subchannel_idx);
+
+	hmd_ptr = P_hmd_ptr;
+	subchannel_idx = P_subchannel_idx;
+	hste_ptr = addr (hmd.subchannels (subchannel_idx));
+
+	call signal_dialup ();
+
+	return;
+
+
+
+/* Crash the multiplexer:  called from priv_hasp_mpx */
+
+crash:
+     entry (P_hmd_ptr);
+
+	ttybp = addr (tty_buf$);
+	hmd_ptr = P_hmd_ptr;
+
+	call crash_mpx ();
+
+	return;
+
+
+ERROR_RETURN:
+	P_code = code;
+	return;
+%page;
+/* Read input from a specified sub-channel:  return one complete HASP record if available */
+
+read:
+     entry (P_hmd_ptr, P_subchannel_idx, P_chain_ptr, P_more_input, P_code);
+
+	ttybp = addr (tty_buf$);
+	call setup_subchannel ();
+	P_chain_ptr = null ();			/* setup for error returns */
+	P_more_input = "0"b;
+	P_code = 0;				/* assume success */
+
+	if hste.state ^= HSTE_DIALED then		/* not if channel isn't dialed up */
+	     return;
+
+	if hste.direction = HSTE_OUTPUT_ONLY then do;	/* can't read from this device */
+	     P_code = et_invalid_read;
+	     return;
+	end;
+
+
+/* Check for available input */
+
+	if hmd.flags.input_available then		/* something is waiting for us */
+	     call process_available_input_blocks ();
+
+	if (hmd.input.first_bufferp ^= null ()) then	/* some records are waiting to be processed */
+	     call process_input_records ();
+
+	if hste.input.first_bufferp = null () then do;	/* still no input for this sub-channel */
+	     hste.requested_input = "1"b;		/* request an interrupt when something is available */
+	     go to RETURN_FROM_READ_CALL;
+	end;
+
+
+/* Input exits:  return the first record and permit more input if the number of records being held is small enough */
+
+	P_chain_ptr = hste.input.first_bufferp;
+
+	last_bufferp = null ();			/* until the last buffer of the record is found */
+	do blockp = hste.input.first_bufferp repeat (pointer (ttybp, buffer.next)) while (last_bufferp = null ());
+	     if (buffer.next = 0) | buffer.break then	/* last buffer or end-of-record */
+		last_bufferp = blockp;
+	end;
+
+	if (last_bufferp -> buffer.next = 0) then	/* no more input records after this one */
+	     hste.input.first_bufferp, hste.input.last_bufferp = null ();
+	else do;
+	     hste.input.first_bufferp = pointer (ttybp, last_bufferp -> buffer.next);
+	     last_bufferp -> buffer.next = 0;		/* break the chain */
+	end;
+
+	hste.input.n_records = hste.input.n_records - 1;
+
+	if hste.input.n_records < hmd.max_device_input_records then
+	     hmd.input_wabs (hste.device_wab_idx) = "1"b; /* OK to send more from foreign side now */
+
+
+/* Post-processing:  interrupt other channels waiting for input and also (if possible) send an output block if any local
+   state changes have occured */
+
+RETURN_FROM_READ_CALL:
+	call interrupt_subchannels_with_input ();
+
+	if (hmd.minor_state = HMD_REPROCESS) then
+	     call process_loopback_records ();		/* still have some untouched loopbacked records */
+	else call process_output_block ();
+
+	return;
+%page;
+/* Write output to the specified sub-channel:  accept only completed HASP records */
+
+write:
+     entry (P_hmd_ptr, P_subchannel_idx, P_chain_ptr, P_code);
+
+	ttybp = addr (tty_buf$);			/* for addressing buffers */
+	call setup_subchannel ();
+	chain_ptr = P_chain_ptr;
+
+	if hste.state ^= HSTE_DIALED then do;		/* this line not in use */
+	     call tty_space_man$free_chain (hste.devx, OUTPUT, chain_ptr);
+	     P_chain_ptr = null ();
+	     P_code = 0;
+	     return;
+	end;
+
+	if hste.direction = HSTE_INPUT_ONLY then do;	/* can't write to this subchannel */
+	     call tty_space_man$free_chain (hste.devx, OUTPUT, chain_ptr);
+	     P_chain_ptr = null ();			/* we threw the output away already */
+	     P_code = et_invalid_write;
+	     return;
+	end;
+
+	P_code = 0;				/* if this far, the call is guarenteed to "work" */
+
+
+/* Add this sub-channel to the output queue for a later SEND OUTPUT; it may be removed later */
+
+	call enqueue_subchannel_for_output ();
+
+
+/* Determine if output is acceptable at this time from this sub-channel */
+
+	if (hmd.minor_state ^= HMD_NORMAL) |		/* multiplexer isn't accepting output at the moment */
+	   hmd.suspend_all_output |			/* foreign side has requested to stop all output */
+	   ^hmd.output_wabs (hste.device_wab_idx) |	/* this device temporarily shut down */
+	   (hste.loopback.first_bufferp ^= null ()) then	/* some loopbacked output is waiting to be sent */
+	     go to RETURN_FROM_WRITE_CALL;		/* see if there's anything to send anyway and then return */
+
+
+/* Splice any previously saved output to the beginning of this chain */
+
+	if hste.output.first_bufferp ^= null () then do;
+	     hste.output.last_bufferp -> buffer.next = binary (rel (chain_ptr), 18, 0);
+	     P_chain_ptr,
+		chain_ptr = hste.output.first_bufferp;
+	     hste.output.first_bufferp, hste.output.last_bufferp = null ();
+	end;
+
+
+/* Process the actual output */
+
+	partial_record = "0"b;			/* set by process_output_records if incomplete record found */
+	long_record = "0"b;				/* set by process_output_records if record is found which can
+						   never be placed into an output block */
+
+	if (hste.minor_state = HSTE_NORMAL) |
+	   (hste.device_type = HASP_CONSOLE) |
+	   ^hmd.rts_mode
+	then do;
+
+/* Transfer records:  if the multiplexer is so configured, it never requests permission to transmit a file; if the
+   sub-channel is the console, it never requests permission regardless of the setting of rts_mode; if the sub-channel
+   has already been given permission to transmit the file, continue transmission until an end-of-file record is
+   encountered */
+
+	     call process_output_records ();
+	     if needs_space then go to CANT_FINISH_WRITE_CALL;
+	end;
+
+
+	else if (hste.minor_state = HSTE_SEND_RTS) then
+
+/* Request permission:  the sub-channel has never transmitted any data or has previously transmitted an end-of-file
+   record, ask the foreign side for permission to transfer the next file */
+
+	     hmd.send_rts (hste.device_wab_idx) = "1"b;	/* when there's a free output block */
+
+
+	else if (hste.minor_state = HSTE_WAIT_RTS_ACK) then
+	     if hmd.input.first_bufferp ^= null ()
+	     then do;
+
+/* Sub-channel is waiting for permission:  if some input records are available, process them in order to check for a
+   possible acknowledgement record; if an acknowledgement is present, begin transmitting data */
+
+		call process_input_records ();	/* process as many input records as possible */
+		call interrupt_subchannels_with_input ();    /* inform any waiting sub-channels while we're at it */
+
+		if hste.minor_state = HSTE_NORMAL
+		then do;				/* processing the input records found the ACK record */
+		     call process_output_records ();
+		     if needs_space then go to CANT_FINISH_WRITE_CALL;
+		end;
+	     end;
+
+
+/* Post-processing:  if processing of output records terminated because a record was found which is too large to fit into
+   a block, return an error indication to tty_write.  Otherwise, if an incomplete record was found in the output chain, a
+   wakeup must be sent to the user ring to request more output; to do this, the multiplexer must hold the partial record
+   to prevent tty_write from deciding to not send the wakeup.  For the partial record case or if the entire output chain
+   is processed, a SEND OUTPUT interrupt will be sent; otherwise, the SEND OUTPUT interrupt will be queued to be sent at a
+   later time */
+
+	if long_record then				/* supplied record will not fit into a block */
+	     P_code = et_long_record;
+
+	else if partial_record & (chain_ptr ^= null ())
+	then do;					/* partial record terminated processing */
+
+	     hste.output.first_bufferp = chain_ptr;
+
+   	     do last_bufferp = hste.output.first_bufferp repeat (pointer (ttybp, last_bufferp -> buffer.next))
+		     while (rel (last_bufferp) ^= ""b);
+		if (last_bufferp -> buffer.next) = 0 then hste.output.last_bufferp = last_bufferp;
+	     end;
+
+	     chain_ptr = null ();			/* have now taken entire output chain */
+	end;
+
+	P_chain_ptr = chain_ptr;			/* reflect what was processed to the caller */
+
+	if chain_ptr = null () then do;		/* took all output one way or another:  ask for more now */
+	     call dequeue_subchannel_for_output ();
+	     call channel_manager$interrupt (hste.devx, SEND_OUTPUT, ""b);
+	end;
+
+
+RETURN_FROM_WRITE_CALL:
+	if (hmd.minor_state = HMD_REPROCESS) then
+	     call process_loopback_records ();		/* still have untouched loopback records */
+	else call process_output_block ();			/* complete and send the block if OK */
+
+	return;
+
+
+/* When not enough space is available to process the entire output chain, control is transfered here */
+
+CANT_FINISH_WRITE_CALL:
+	P_chain_ptr = chain_ptr;			/* only return still unprocessed output */
+
+	call tty_space_man$needs_space (hmd.devx);
+
+	return;
+%page;
+/* Process an interrupt */
+
+interrupt:
+     entry (P_hmd_ptr, P_interrupt_type, P_interrupt_data);
+
+	ttybp = addr (tty_buf$);
+	hmd_ptr = P_hmd_ptr;
+	hste_ptr = null ();				/* avoid referencing unitialized values */
+	interrupt_type = P_interrupt_type;
+	interrupt_data = P_interrupt_data;
+
+	if (interrupt_type < lbound (INTERRUPT, 1)) | (interrupt_type > hbound (INTERRUPT, 1)) then
+	     return;				/* don't handle this kind */
+
+	go to INTERRUPT (interrupt_type);		/* process it */
+
+
+INTERRUPT (1):					/* DIALUP -- major channel has dialed up */
+	if hmd.state ^= HMD_LOADING then return;
+	unspec (hmd.dialup_info) = interrupt_data;	/* will need to dialup individual channels */
+	call do_line_control (SET_HASP_MODE, 0, 0, 0);	/* switch line to HASP mode */
+	call do_line_control (CONFIGURE, 3, 0, 0);	/* transparent EBCDIC */
+	call do_line_control (SET_MASTER_SLAVE_MODE,	/* indicate if workstation or host */
+			  binary ((hmd.type = HASP_WORKSTATION), 17, 0), 0, 0);
+	call do_line_control (SET_HASP_TIMERS, hmd.ic_timeout, hmd.receive_timeout, hmd.transmit_timeout);
+	call do_line_control (SET_NAK_LIMIT, hmd.max_naks, 0, 0);	/* maximum # of continous NAKs before line dies */
+	call do_line_control (ACCEPT_BID, 0, 0, 0);	/* start waiting for connection */
+	call channel_manager$control (hmd.devx, "set_input_message_size", addr (hmd.max_block_size), code);
+						/* set maximum block size allowed on input */
+	return;					/* still loading */
+
+LOADING_FAILS:					/* line control fails--crash or hangup to follow */
+	return;
+
+
+INTERRUPT (2):					/* HANGUP -- major channel has hungup */
+	call crash_mpx ();				/* death and destruction reigns */
+	call pxss$ring_0_wakeup (hmd.loader_process_id, hmd.loader_event_channel, HASP_MPX_DOWN, code);
+	return;
+
+
+INTERRUPT (3):					/* CRASH -- parent multiplexer has crashed */
+	call crash_mpx ();
+	return;
+
+
+INTERRUPT (4):					/* SEND OUTPUT -- parent wants output */
+	hmd.send_output = "1"b;			/* have permission to send some output */
+	if (hmd.state < HMD_LOADED)
+	     then;				/* nothing to send yet */
+	else if (hmd.minor_state = HMD_REPROCESS) then
+	     call process_loopback_records ();		/* try to retransmit loopback'ed records if possible */
+	else call process_output_block ();		/* either finish last block or start transmitting a new one */
+	return;
+
+
+INTERRUPT (5):					/* INPUT AVAILABLE -- parent has input */
+	hmd.flags.input_available = "1"b;		/* remember that input is waiting */
+	if (hmd.state < HMD_LOADED)
+	     then;				/* no sub-channels are up yet */
+	else call interrupt_subchannels_requesting_input ();
+	return;					/* inform all sub-channels which have already 
+						   requested input */
+
+
+INTERRUPT (6):					/* ACCEPT INPUT -- parent has input */
+	hmd.flags.input_available = "0"b;		/* just to be safe -- parent shouldn't use both mechanisms */
+	if (hmd.state < HMD_LOADED)
+	     then;				/* can't take the input yet */
+	else do;
+	     unspec (rtx_info) = interrupt_data;
+	     chain_ptr = pointer (ttybp, rtx_info.chain_head);
+	     if hmd.trace_mode then		/* requested trace of all I/O with the FNP */
+		call trace_block (chain_ptr, INPUT);
+	     call process_input_block (chain_ptr);	/* interpret the BCB and FCS */
+	     if (hmd.input.first_bufferp ^= null ()) & ^hmd.retry_process_input then
+		call process_input_records ();	/* have something to process and space OK */
+	     call interrupt_subchannels_with_input ();	/* inform the sub-channels that now have input */
+	     if (hmd.minor_state = HMD_REPROCESS) then
+		call process_loopback_records ();
+	     else call process_output_block ();		/* an output block might have to be sent because of above
+						   processing */
+	end;
+	return;
+
+
+INTERRUPT (7):					/* INPUT REJECTED -- some input rejected by FNP; ignore */
+	return;
+
+
+INTERRUPT (8):					/* QUIT -- break signal; ignore */
+	return;
+
+
+INTERRUPT (9):					/* LINE STATUS -- line status from FNP; process */
+	unspec (line_stat) = interrupt_data;
+	call process_line_status ();
+	return;
+
+
+INTERRUPT (10):					/* DIAL STATUS -- autocall status; ignore */
+	return;
+
+
+INTERRUPT (11):					/* WRU TIMEOUT -- timeout waiting for answerback; ignore */
+	return;
+
+
+INTERRUPT (12):					/* SPACE AVAILABLE	-- some buffer space freed; try again */
+	if hmd.state < HMD_LOADED then return;
+	call process_space_available ();
+	return;
+
+INTERRUPT (13):					/* various, not used by this multiplexer */
+INTERRUPT (14):
+INTERRUPT (15):
+INTERRUPT (16):
+	return;
+
+INTERRUPT (17):					/* MASKED -- treat like HANGUP but use different wakeup message */
+	call crash_mpx ();				/* death and destruction reigns */
+	call pxss$ring_0_wakeup (hmd.loader_process_id, hmd.loader_event_channel, HASP_MPX_MASKED, code);
+	return;
+
+%page;
+/* Process control orders */
+
+control:
+     entry (P_hmd_ptr, P_subchannel_idx, P_order, P_info_ptr, P_code);
+
+	ttybp = addr (tty_buf$);
+	call setup_subchannel ();
+	order = P_order;
+	info_ptr = P_info_ptr;
+	code = 0;					/* assume success */
+
+	if (order = "listen") then			/* listen to this sub-channel */
+	     if (hmd.state < HMD_LOADED) then		/* multiplexer must be loaded for this to work */
+		code = et_invalid_state;
+	     else do;
+		if (hste.state < HSTE_LISTENING) then	/* this sub-channel wasn't already listening */
+		     hste.state = HSTE_LISTENING;
+		if (hmd.minor_state < HMD_NORMAL) then	/* can only dialup the console until SIGNON is sent */
+		     if (hste.device_type = HASP_CONSOLE) & (hmd.state = HMD_STARTED) &
+		        (hste.state = HSTE_LISTENING) then
+			call signal_dialup ();
+		     else;
+		else				/* any channel can dialup now */
+		if (hmd.state = HMD_STARTED) & (hste.state = HSTE_LISTENING) then
+		     call signal_dialup ();
+	     end;
+
+	else if (order = "hangup") then		/* hangup this sub-channel */
+	     call signal_hangup (HANGUP);
+
+	else if (order = "wru") then			/* read answerback: none available */
+	     call channel_manager$interrupt (hste.devx, WRU_TIMEOUT, ""b);
+
+	else if (order = "abort") then		/* resetwrite and/or resetread */
+	     if (info_ptr = null ()) then		/* info structure required */
+		code = et_null_info_ptr;
+	     else do;
+		if abort_info.resetwrite & (hste.direction ^= HSTE_INPUT_ONLY)
+		then do;				/* resetwrite only if it could do output in the first place */
+		     if (hste.output.first_bufferp ^= null ()) then do;
+			call tty_space_man$free_chain (hste.devx, OUTPUT, hste.output.first_bufferp);
+			hste.output.first_bufferp, hste.output.last_bufferp = null ();
+		     end;
+		     call channel_manager$interrupt (hste.devx, SEND_OUTPUT, ""b);
+		end;
+		if abort_info.resetread & (hste.input.first_bufferp ^= null ())
+		then do;				/* resetread only if it has some input already */
+		     call tty_space_man$free_chain (hste.devx, INPUT, hste.input.first_bufferp);
+		     hste.input.n_records = 0;
+		     hste.input.first_bufferp, hste.input.last_bufferp = null ();
+		     if ^hmd.input_wabs (hste.device_wab_idx)
+		     then do;			/* device was not-ready: it's now ready again */
+			hmd.input_wabs (hste.device_wab_idx) = "1"b;
+			if (hmd.minor_state = HMD_REPROCESS) then
+			     call process_loopback_records ();
+			else call process_output_block ();
+		     end;				/* may want to send a status block now */
+		end;
+	     end;
+
+	else if (order = "write_status") then		/* check if output still pending */
+	     if (info_ptr = null ()) then		/* info structure is required */
+		code = et_null_info_ptr;
+	     else if (hste.output.first_bufferp ^= null ()) then
+		write_status_info.output_pending = "1"b;
+	     else write_status_info.output_pending = "0"b;
+
+	else if (order = "get_device_type") then	/* return type of device attached to this sub-channel */
+	     if (info_ptr = null ()) then		/* info structure is required */
+		code = et_null_info_ptr;
+	     else get_device_type_info = hste.device_type;
+
+	else if (order = "signon_record") then		/* send SIGNON record for multiplexer */
+	     if (info_ptr = null ()) then		/* info structure is required */
+		code = et_null_info_ptr;
+	     else if (hmd.type = HASP_WORKSTATION) then	/* workstations only */
+		if (hste.device_type ^= HASP_CONSOLE) then
+		     code = et_incorrect_device_type;   /* only from the console please */
+		else if ^hmd.signon_mode then		/* remote isn't expecting one */
+		     code = et_invalid_state;
+		else if (hmd.signon_data_ptr = null ()) &    /* if waiting for a SIGNON... */
+		        (hmd.minor_state = HMD_SEND_SIGNON) then
+		     if (sri.version ^= SIGNON_RECORD_INFO_VERSION_1) then
+			code = et_unimplemented_version;
+		     else do;
+			call tty_space_man$get_space (size (hmd_signon_data), hsd_ptr);
+			if hsd_ptr ^= null ()
+			then do;			/* got the needed room */
+			     hmd.signon_data_ptr = hsd_ptr;
+			     hmd_signon_data.processid = pds$process_id;
+			     hmd_signon_data.event_channel = sri.event_channel;
+			     hmd_signon_data.record = sri.record;
+			     call process_output_block (); /* try to send it */
+			end;
+			else code = et_noalloc;	/* no room: let caller retry */
+		     end;
+		else code = et_out_of_sequence;	/* already sent one */
+	     else code = et_undefined_order_request;	/* not valid for a host */
+
+	else if (order = "no_signon_record") then	/* caller wants to verify no SIGNON record is needed */
+	     if (hmd.type = HASP_WORKSTATION) then	/* workstations only */
+		if hmd.signon_mode then
+		     code = et_invalid_state;		/* workstation requires a signon record */
+		else;				/* workstation does not need to send a SIGNON */
+	     else code = et_undefined_order_request;	/* not valid for a host */
+
+	else if (order = "copy_meters") then		/* save current meters for use with -since_dialup */
+	     hste.saved_meters_ptr -> hasp_subchannel_meters = hste.meters;
+
+	else if (order = "get_meters") then		/* return subchannel metering data */
+	     if (info_ptr = null ()) then		/* must have a place to put results */
+		code = et_null_info_ptr;
+	     else if (info_ptr -> get_comm_meters_info.version ^= GET_COMM_METERS_INFO_VERSION_1) then
+		code = et_unimplemented_version;	/* wrong structure or version of structure */
+	     else do;				/* OK so far ... */
+		hsmd_ptr = info_ptr -> get_comm_meters_info.parent_ptr;
+		if hsmd_ptr ^= null () then
+		     if (hasp_subchannel_meters_data.version ^= HASP_SUBCHANNEL_METERS_DATA_VERSION_1) then
+			code = et_unimplemented_version;
+		     else do;
+			string (hasp_subchannel_meters_data.flags) = ""b;
+			hasp_subchannel_meters_data.report_input_meters = (hste.direction ^= HSTE_OUTPUT_ONLY);
+			hasp_subchannel_meters_data.report_output_meters = (hste.direction ^= HSTE_INPUT_ONLY);
+			hasp_subchannel_meters_data.current_meters = hste.meters;
+			hasp_subchannel_meters_data.saved_meters = hste.saved_meters_ptr -> hasp_subchannel_meters;
+		     end;
+	     end;
+
+	else code = et_undefined_order_request;
+
+	P_code = code;
+	return;
+%page;
+/* Validate a proposed mode setting */
+
+check_modes:
+     entry (P_hmd_ptr, P_subchannel_idx, P_mclp, P_code);
+
+
+/* Set modes ON or OFF */
+
+set_modes:
+     entry (P_hmd_ptr, P_subchannel_idx, P_mclp, P_code);
+
+	call setup_subchannel ();
+	mclp = P_mclp;
+	P_code = 0;
+
+	do idx = 1 to mcl.n_entries;
+
+	     mclep = addr (mcl.entries (idx));
+
+	     mcle.mpx_mode = (mcle.mode_name = "rawi") |	/* rawi, rawo, and echoplex only are checked */
+			 (mcle.mode_name = "rawo") | (mcle.mode_name = "echoplex");
+
+	     if mcle.mpx_mode then			/* process this mode */
+
+		if ((mcle.mode_name ^= "rawi") & (mcle.mode_name ^= "rawo") & (mcle.mode_name ^= "echoplex")) |
+		   ((mcle.mode_name = "rawi") & ^mcle.mode_switch) |
+		   ((mcle.mode_name = "rawo") & ^mcle.mode_switch) |
+		   ((mcle.mode_name = "echoplex") & mcle.mode_switch)
+		then do;				/* only accept:  rawo,rawi,^echoplex */
+		     mcle.error = "1"b;
+		     P_code = et_bad_mode;
+		end;
+	end;
+
+	return;
+
+
+
+/* Return multiplexer specific modes */
+
+get_modes:
+     entry (P_hmd_ptr, P_subchannel_idx, P_modes, P_code);
+
+	P_modes = "";				/* no special modes defined */
+	P_code = 0;
+
+	return;
+%page;
+/* Initialize sub-channel data pointer from parameters */
+
+setup_subchannel:
+	procedure ();
+
+	     hmd_ptr = P_hmd_ptr;
+
+	     if hmd.state < HMD_LOADED then do;		/* can't hack subchannels if not loaded */
+		code = et_action_not_performed;
+		go to ERROR_RETURN;
+	     end;
+
+	     subchannel_idx = P_subchannel_idx;
+	     hste_ptr = addr (hmd.subchannels (subchannel_idx));
+
+	     return;
+
+	end setup_subchannel;
+%page;
+/* Signal dialup on the given subchannel:  A subchannel may be dialed-up and hungup several times during the life of a
+   multiplexer loading.  Therefore, any loopbacked records for the subchannel must be preserved across hangups/dial-ups of
+   the subchannel as those records were sucessfully transmitted as far as the user ring is concerned.  Additionally, input
+   is accepted for devices before they dialup to avoid loss of data in the original blocks which are received before the
+   Initializer can listen to all the subchannels */
+
+signal_dialup:
+	procedure ();
+
+dcl  saved_input_available bit (1) aligned;
+
+	     if (hmd.minor_state_stack = null ()) & (hste.loopback.first_bufferp = null ()) then
+						/* no loopbacked records available: this subchannel can't be
+						   retransmitting any records so it's minor state should be
+						   reset.  If it were retransmitting, that process controls
+						   the minor state */
+		if hmd.rts_mode & (hste.device_type ^= HASP_CONSOLE) & (hste.direction ^= HSTE_INPUT_ONLY) then
+		     hste.minor_state = HSTE_SEND_RTS;	/* must request permission before first output */
+		else hste.minor_state = HSTE_NORMAL;	/* console or multiplexer not configured to ask: OK to send */
+
+	     hste.next_subchannel_for_output = 0;	/* not in the queues yet */
+
+	     hste.output.first_bufferp, hste.output.last_bufferp = null ();	/* can't have output outstanding */
+
+	     saved_input_available = hste.flags.input_available;
+	     string (hste.flags) = ""b;		/* can't have done a read/write call yet */
+	     hste.flags.input_available = saved_input_available;
+
+	     if (hste.direction = HSTE_INPUT_ONLY) | (hste.direction = HSTE_INPUT_OUTPUT)
+	     then do;				/* input device:  OK to receive input ... */
+		hmd.input_wabs (hste.device_wab_idx) = "1"b;
+		hmd.send_rts_ack (hste.device_wab_idx) = "0"b;	/* ... but don't send ACKs yet */
+
+	     end;
+	     else hmd.send_rts (hste.device_wab_idx) = "0"b;
+
+	     hste.dialup_info = hmd.dialup_info;
+
+	     hste.state = HSTE_DIALED;		/* now have everything to qualify as dialed */
+
+	     call channel_manager$interrupt (hste.devx, DIALUP, unspec (hste.dialup_info));
+
+	     if (hste.direction ^= HSTE_INPUT_ONLY) then	/* authorize first output */
+		call channel_manager$interrupt (hste.devx, SEND_OUTPUT, ""b);
+
+	     if (hste.direction ^= HSTE_OUTPUT_ONLY) then
+		if hste.flags.input_available then do;	/* inform the channel something's already present */
+		     call channel_manager$interrupt (hste.devx, INPUT_AVAILABLE, ""b);
+		     hste.flags.input_available = "0"b;
+		end;
+
+	     return;
+
+	end signal_dialup;
+%page;
+/* Signal hangup on the specified sub-channel */
+
+signal_hangup:
+	procedure (P_interrupt_type);
+
+dcl  P_interrupt_type fixed binary;			/* type of interrupt to give to sub-channel -- hangup/crash */
+
+	     hste.state = HSTE_HUNGUP;
+
+	     if hste.input.first_bufferp ^= null () then	/* throw away any held input */
+		call tty_space_man$free_chain (hste.devx, INPUT, hste.input.first_bufferp);
+
+	     if hste.output.first_bufferp ^= null () then
+		call tty_space_man$free_chain (hste.devx, OUTPUT, hste.output.first_bufferp);
+
+	     call dequeue_subchannel_for_output ();
+
+	     hste.input.n_records = 0;
+
+	     hste.input.first_bufferp, hste.input.last_bufferp,
+		hste.output.first_bufferp, hste.output.last_bufferp = null ();
+
+	     string (hste.flags) = ""b;
+
+	     if (hste.direction = HSTE_INPUT_ONLY) | (hste.direction = HSTE_INPUT_OUTPUT)
+	     then do;				/* input device:  shut it down and don't send RTS ack */
+		hmd.input_wabs (hste.device_wab_idx) = "0"b;
+		hmd.send_rts_ack (hste.device_wab_idx) = "0"b;
+	     end;
+	     else hmd.send_rts (hste.device_wab_idx) = "0"b;
+
+	     call channel_manager$interrupt (hste.devx, P_interrupt_type, ""b);
+
+	     return;
+
+	end signal_hangup;
+%page;
+/* Indicate that the multiplexer is loaded: initialize the multiplexer database to the point where input will be buffered
+   and the initial SEND OUTPUT interrupt can be handled */
+
+load_mpx: procedure ();
+
+dcl (saved_send_output, saved_input_available) bit (1) aligned;
+dcl  idx fixed binary;
+
+	     hmd.state = HMD_LOADED;			/* we are not loaded, but no dialups on sub-channels */
+
+	     hmd.time_mpx_booted = clock ();		/* it's there now */
+
+	     if (hmd.type = HASP_WORKSTATION) & hmd.signon_mode then
+		hmd.minor_state = HMD_SEND_SIGNON;	/* must wait for console to send SIGNON record */
+	     else hmd.minor_state = HMD_NORMAL;		/* normal data transfer may begin */
+
+	     saved_send_output = hmd.send_output;	/* these flags are valid from time boot is started */
+	     saved_input_available = hmd.flags.input_available;
+
+	     string (hmd.flags) = ""b;
+
+	     hmd.send_output = saved_send_output;
+	     hmd.flags.input_available = saved_input_available;
+
+	     hmd.suspend_all_output = "1"b;		/* do not allow any output */
+	     hmd.first_foreign_block = "1"b;		/* haven't seen the first block yet */
+	     unspec (hmd.foreign_fcs_bytes) = "700600"b3; /* FCS that can't come from foreign side */
+
+	     hmd.suspend_all_input = "1"b;		/* do not accept any input */
+	     hmd.reset_local_block_count = "1"b;	/* force BCB reset to be sent */
+	     unspec (hmd.local_fcs_bytes) = "700600"b3;   /* force FCS to be computed */
+
+	     string (hmd.input_wabs) = ""b;		/* turn off all wait-a-bits to prevent data transfer */
+	     string (hmd.output_wabs) = ""b;
+	     string (hmd.send_rts) = ""b;		/* prevent accidental shipments of RTS or RTS-ack records */
+	     string (hmd.send_rts_ack) = ""b;
+
+	     hmd.minor_state_stack,			/* these stacks are empty as loopback is not preserved ... */
+		hmd.loopback_block_chain_stack = null ();    /* ... across multiplexer load/crash sequences */
+
+	     hmd.output_chain_ptr, hmd.signon_data_ptr,
+		hmd.input.first_bufferp, hmd.input.last_bufferp,
+		hmd.loopback.first_bufferp, hmd.loopback.last_bufferp,
+		hmd.output_block.first_bufferp, hmd.output_block.last_bufferp = null ();
+
+	     hmd.output_block.subchannel_idx, hmd.output_block.tally = 0;
+
+	     do idx = 1 to hmd.n_subchannels;		/* indicate all sub-channels are still hungup */
+		hmd.subchannels(idx).state = HSTE_HUNGUP;
+		hmd.subchannels(idx).input.n_records = 0;    /* no input has arrived yet: some may arrive ... */
+		hmd.subchannels(idx).input.first_bufferp,    /* ... before dialup however */
+		     hmd.subchannels(idx).input.last_bufferp = null ();
+		hmd.subchannels(idx).loopback.n_records = 0; /* can't have any loopbacked records yet */
+		hmd.subchannels(idx).loopback.first_bufferp, hmd.subchannels(idx).loopback.last_bufferp = null ();
+	     end;
+
+	     call pxss$ring_0_wakeup (hmd.loader_process_id, hmd.loader_event_channel, HASP_MPX_UP, code);
+
+	     return;
+
+	end load_mpx;
+%page;
+/* Shutdown the multiplexer by "hanging up" all the sub-channels */
+
+crash_mpx:
+	procedure ();
+
+dcl (old_state, idx) fixed binary;
+
+
+	     old_state = hmd.state;
+
+	     hmd.state = HMD_DOWN;			/* multiplexer is now dead */
+
+	     if old_state < HMD_LOADED then		/* wasn't loaded:  couldn't be doing anything */
+		return;
+
+	     if (hmd.minor_state = HMD_SEND_SIGNON) | (hmd.minor_state = HMD_WAIT_SIGNON_RESPONSE)
+	     then do;				/* inform console's owner that the SIGNON record failed */
+		hsd_ptr = hmd.signon_data_ptr;
+		if hsd_ptr ^= null () then		/* ... insure there's someone listening */
+		     call pxss$ring_0_wakeup (hmd_signon_data.processid, hmd_signon_data.event_channel,
+				          HASP_SIGNON_HANGUP, code);
+	     end;
+
+	     if hmd.output_chain_ptr ^= null () then	/* free up all unused data */
+		call tty_space_man$free_chain (hmd.devx, OUTPUT, hmd.output_chain_ptr);
+
+	     if hmd.input.first_bufferp ^= null () then
+		call tty_space_man$free_chain (hmd.devx, INPUT, hmd.input.first_bufferp);
+
+	     if hmd.loopback.first_bufferp ^= null () then
+		call tty_space_man$free_chain (hmd.devx, INPUT, hmd.loopback.first_bufferp);
+
+	     if hmd.output_block.first_bufferp ^= null () then
+		call tty_space_man$free_chain (hmd.devx, OUTPUT, hmd.output_block.first_bufferp);
+
+	     if hmd.signon_data_ptr ^= null () then
+		call tty_space_man$free_space (currentsize (hmd.signon_data_ptr -> hmd_signon_data),
+					 hmd.signon_data_ptr);
+
+	     call empty_minor_state_stack ();
+	     call empty_loopback_block_chain_stack ();
+
+	     hmd.output_chain_ptr, hmd.signon_data_ptr,
+		hmd.input.first_bufferp, hmd.input.last_bufferp,
+		hmd.loopback.first_bufferp, hmd.loopback.last_bufferp,
+		hmd.output_block.first_bufferp, hmd.output_block.last_bufferp = null ();
+
+	     hmd.output_block.subchannel_idx, hmd.output_block.tally = 0;
+
+	     hmd.subchannels_for_output = 0;		/* empty the queue */
+
+	     string (hmd.flags) = ""b;
+
+	     do idx = 1 to hmd.n_subchannels;
+		hste_ptr = addr (hmd.subchannels (idx));
+		call signal_hangup (CRASH);
+	     end;
+
+	     return;
+
+	end crash_mpx;
+%page;
+/* Minor state stack manager:  The minor state stack is used to preserve the multiplexer state during the processing of
+   output blocks returned by the FNP.  This stack includes the previous minor state of the multiplexer and the individual
+   loopback chains of each subchannel.  These chains are saved to insure that, when a loopback occurs while retransmitting
+   previous output, the order of records for each subchannel will be preserved properly */
+
+minor_state_stack_manager:
+	procedure ();
+
+	     return;				/* not an entry */
+
+
+dcl  P_new_minor_state fixed binary parameter;		/* push_minor_state: new minor state for multiplexer */
+
+dcl  previous_msse_ptr pointer;
+
+dcl  idx fixed binary;
+
+
+
+/* Push the current minor state onto the stack */
+
+push_minor_state:
+	entry (P_new_minor_state);
+
+	     call tty_space_man$get_space (size (msse), msse_ptr);
+		if msse_ptr = null () then do;	/* punt ... */
+		     call syserr (LOG_AND_PRINT,
+			        "hasp_mpx (line ^a): No space available to preserve minor state; line will be hungup.",
+			        hmd.name);
+		     call channel_manager$control (hmd.devx, "hangup", null (), code);
+		     return;
+		end;
+
+	     do idx = 1 to hmd.n_subchannels;		/* save loopback chains */
+		msse.subchannels(idx).loopback = hmd.subchannels(idx).loopback;
+		hmd.subchannels(idx).loopback.n_records = 0;
+		hmd.subchannels(idx).loopback.first_bufferp, hmd.subchannels(idx).loopback.last_bufferp = null ();
+	     end;					/* empty chains so new records go at front */
+
+	     msse.minor_state = hmd.minor_state;	/* push state */
+	     hmd.minor_state = P_new_minor_state;
+
+	     msse.previous = hmd.minor_state_stack;	/* push */
+	     hmd.minor_state_stack = msse_ptr;
+
+	     return;
+
+
+/* Pop the minor state stack: splice any newly created loopback chains onto the front of the old chains (if any) */
+
+pop_minor_state:
+	entry ();
+
+	     if hmd.minor_state_stack = null () then	/* shouldn't happen */
+		return;
+
+	     msse_ptr = hmd.minor_state_stack;
+
+	     do idx = 1 to hmd.n_subchannels;		/* splice chains */
+		if msse.subchannels(idx).loopback.first_bufferp ^= null () then do;
+		     hmd.subchannels(idx).loopback.n_records =
+			hmd.subchannels(idx).loopback.n_records + msse.subchannels(idx).loopback.n_records;
+		     if hmd.subchannels(idx).loopback.last_bufferp = null () then	/* didn't get any this time */
+			hmd.subchannels(idx).loopback.first_bufferp = msse.subchannels(idx).loopback.first_bufferp;
+		     else hmd.subchannels(idx).loopback.last_bufferp -> buffer.next =
+			     binary (rel (msse.subchannels(idx).loopback.first_bufferp), 18, 0);
+		     hmd.subchannels(idx).loopback.last_bufferp = msse.subchannels(idx).loopback.last_bufferp;
+		end;
+	     end;
+
+	     hmd.minor_state = msse.minor_state;	/* pop */
+	     hmd.minor_state_stack = msse.previous;
+
+	     call tty_space_man$free_space (currentsize (msse), msse_ptr);
+
+	     return;
+
+
+
+/* Empty the stack: called at multiplexer crashes to flush all space used by the minor state stack */
+
+empty_minor_state_stack:
+	entry ();
+
+	     do msse_ptr = hmd.minor_state_stack
+		         repeat (previous_msse_ptr) while (msse_ptr ^= null ());
+
+		do idx = 1 to hmd.n_subchannels;
+		     if msse.subchannels(idx).loopback.first_bufferp ^= null () then
+			call tty_space_man$free_chain (hmd.subchannels(idx).devx, OUTPUT,
+						 msse.subchannels(idx).loopback.first_bufferp);
+		end;
+
+		previous_msse_ptr = msse.previous;
+
+		call tty_space_man$free_space (currentsize (msse), msse_ptr);
+	     end;
+
+	     hmd.minor_state_stack = null ();
+
+	     return;
+
+	end minor_state_stack_manager;
+%page;
+/* Loopback block chain stack manager:  The loopback block chain stack is when the FNP is returning output blocks to
+   prevent retransmitted data from being processed out of order */
+
+loopback_block_chain_stack_manager:
+	procedure ();
+
+	     return;				/* not an entry */
+
+dcl  previous_lbcse_ptr pointer;
+
+
+/* Push the current loopback block chain onto the top of the stack */
+
+push_loopback_block_chain:
+	entry ();
+
+	     call tty_space_man$get_space (size (lbcse), lbcse_ptr);
+		if lbcse_ptr = null () then do;
+		     call syserr (LOG_AND_PRINT,
+			        "hasp_mpx (line ^a): No space available to save loopback chain; line will be hungup.",
+			        hmd.name);
+		     call channel_manager$control (hmd.devx, "hangup", null (), code);
+		     return;
+		end;
+
+	     lbcse.loopback = hmd.loopback;
+	     hmd.loopback = null ();			/* start loopback chain afresh */
+
+	     lbcse.previous = hmd.loopback_block_chain_stack;  /* push */
+	     hmd.loopback_block_chain_stack = lbcse_ptr;
+
+	     return;
+
+
+
+/* Pop the top entry from the stack: splice the current loopback block chain onto the front of the chain from the stack */
+
+pop_loopback_block_chain:
+	entry ();
+
+	     if hmd.loopback_block_chain_stack = null () then
+		return;				/* nothing there */
+
+	     lbcse_ptr = hmd.loopback_block_chain_stack;
+
+	     if lbcse.loopback.first_bufferp ^= null () then do;
+		if hmd.loopback.last_bufferp = null () then  /* didn't pickup any data this time */
+		     hmd.loopback.first_bufferp = lbcse.loopback.first_bufferp;
+		else hmd.loopback.last_bufferp -> buffer.next = binary (rel (lbcse.loopback.first_bufferp), 18, 0);
+		hmd.loopback.last_bufferp = lbcse.loopback.last_bufferp;
+	     end;
+
+	     hmd.loopback_block_chain_stack = lbcse.previous;  /* pop */
+
+	     call tty_space_man$free_space (currentsize (lbcse), lbcse_ptr);
+
+	     return;
+
+
+
+/* Empty the stack: called at multiplexer crashes to flush all space used by the loopback block chain stack */
+
+empty_loopback_block_chain_stack:
+	entry ();
+
+	     do lbcse_ptr = hmd.loopback_block_chain_stack
+			repeat (previous_lbcse_ptr) while (lbcse_ptr ^= null ());
+
+		previous_lbcse_ptr = lbcse.previous;
+
+		if lbcse.loopback.first_bufferp ^= null () then
+		     call tty_space_man$free_chain (hmd.devx, INPUT, lbcse.loopback.first_bufferp);
+
+		call tty_space_man$free_space (currentsize (lbcse), lbcse_ptr);
+	     end;
+
+	     hmd.loopback_block_chain_stack = null ();	/* now empty */
+
+	     return;
+
+	end loopback_block_chain_stack_manager;
+%page;
+/* Add the sub-channel to the end of the pending output queue */
+
+enqueue_subchannel_for_output:
+	procedure ();
+
+dcl  idx fixed binary;
+
+	     do idx = hmd.subchannels_for_output.first
+		    repeat (hmd.subchannels(idx).next_subchannel_for_output)
+		     while (idx ^= 0);		/* see if it is already in the queue */
+		if (idx = hste.subchannel_idx) then return;
+	     end;
+
+	     hste.holding_output = "1"b;		/* now on the queue */
+
+	     if (hmd.subchannels_for_output.first = 0) then    /* queue empty:  this will be first element in queue */
+		hmd.subchannels_for_output.first = hste.subchannel_idx;
+
+	     else hmd.subchannels(hmd.subchannels_for_output.last).next_subchannel_for_output = hste.subchannel_idx;
+						/* chain to end of queue */
+
+	     hmd.subchannels_for_output.last = hste.subchannel_idx; /* last element on the queue */
+	     hste.next_subchannel_for_output = 0;
+
+	     return;
+
+	end enqueue_subchannel_for_output;
+%page;
+/* Remove the sub-channel from the output queue */
+
+dequeue_subchannel_for_output:
+	procedure ();
+
+dcl  previous_subchannel_idx fixed binary;
+
+	     if hste.holding_output then do;		/* it is on the queue */
+
+		previous_subchannel_idx = 0;		/* in case it is first (and last) in the queue */
+
+		if (hmd.subchannels_for_output.first = hste.subchannel_idx) then
+		     hmd.subchannels_for_output.first = hste.next_subchannel_for_output;
+
+		else				/* not first in queue:  find predecessor */
+		do previous_subchannel_idx = hmd.subchannels_for_output.first
+				      repeat (hmd.subchannels(previous_subchannel_idx).next_subchannel_for_output)
+			while (previous_subchannel_idx ^= 0);
+		     if (hmd.subchannels(previous_subchannel_idx).next_subchannel_for_output = hste.subchannel_idx)
+		     then do;
+			hmd.subchannels(previous_subchannel_idx).next_subchannel_for_output =
+				hste.next_subchannel_for_output;
+			go to EXIT_SEARCH_FOR_PREVIOUS_LOOP;
+		     end;
+		end;
+
+EXIT_SEARCH_FOR_PREVIOUS_LOOP:
+		if (hmd.subchannels_for_output.last = hste.subchannel_idx) then
+		     hmd.subchannels_for_output.last = previous_subchannel_idx;
+	     end;
+
+	     hste.next_subchannel_for_output = 0;
+
+	     hste.holding_output = "0"b;		/* no longer on the queue */
+
+	     return;
+
+	end dequeue_subchannel_for_output;
+%page;
+/* Give a SEND OUTPUT interrupt to each sub-channel that is holding output */
+
+interrupt_subchannels_with_output:
+	procedure ();
+
+dcl  saved_hste_ptr pointer;
+dcl  queue (17) fixed binary;				/* local copy of output queue to avoid looping */
+dcl (n_entries, idx) fixed binary;
+
+	     saved_hste_ptr = hste_ptr;		/* need to use this value */
+
+	     n_entries = 0;				/* make a copy of the current queue */
+	     do idx = hmd.subchannels_for_output.first
+		    repeat (hmd.subchannels(idx).next_subchannel_for_output) while (idx ^= 0);
+		n_entries = n_entries + 1;
+		queue (n_entries) = hmd.subchannels(idx).subchannel_idx;
+	     end;
+
+	     if (n_entries = 0) then return;		/* no interrupts need be sent now */
+
+	     do idx = 1 to n_entries;
+		hste_ptr = addr (hmd.subchannels (queue (idx)));
+		call dequeue_subchannel_for_output ();	/* remove from front of queue */
+		call channel_manager$interrupt_later (hste.devx, SEND_OUTPUT, ""b);
+	     end;
+
+	     hste_ptr = saved_hste_ptr;
+
+	     return;
+
+	end interrupt_subchannels_with_output;
+
+
+
+/* Give an INPUT AVAILABLE interrupt to each sub-channel that actually has input waiting */
+
+interrupt_subchannels_with_input:
+	procedure ();
+
+dcl  idx fixed binary;
+
+	     do idx = 1 to hmd.n_subchannels;
+		if hmd.subchannels(idx).input_available | (hmd.subchannels(idx).input.first_bufferp ^= null ())
+		then do;
+		     hmd.subchannels(idx).requested_input, hmd.subchannels(idx).input_available = "0"b;
+		     call channel_manager$interrupt (hmd.subchannels(idx).devx, INPUT_AVAILABLE, ""b);
+		end;
+	     end;
+
+	     return;
+
+	end interrupt_subchannels_with_input;
+%page;
+/* Give an INPUT AVAILABLE interrupt to each sub-channel which has already requested input.  If no such sub-channels
+   exist, interrupt the operator's console */
+
+interrupt_subchannels_requesting_input:
+	procedure ();
+
+dcl  sent_interrupt bit (1) aligned;
+dcl  idx fixed binary;
+
+	     sent_interrupt = "0"b;
+
+	     do idx = 1 to hmd.n_subchannels;
+		if hmd.subchannels(idx).requested_input then do;
+		     hmd.subchannels(idx).requested_input, hmd.subchannels(idx).input_available = "0"b;
+		     call channel_manager$interrupt (hmd.subchannels(idx).devx, INPUT_AVAILABLE, ""b);
+		     sent_interrupt = "1"b;
+		end;
+	     end;
+
+	     if ^sent_interrupt then			/* insure that someone is interrupted */
+		call channel_manager$interrupt (hmd.subchannels(hmd.console_hste_idx).devx, INPUT_AVAILABLE, ""b);
+
+	     return;
+
+	end interrupt_subchannels_requesting_input;
+
+
+
+/* Process available input blocks:  retrieve any input blocks from the parent multiplexer and perform preliminary
+   processing on them */
+
+process_available_input_blocks:
+	procedure ();
+
+dcl  first_bufferp pointer;
+dcl  more_input bit (1) aligned;			/* ON => parent is holding another block */
+
+
+	     more_input = hmd.flags.input_available;
+
+	     do while (more_input);			/* while the parent has some input */
+		call channel_manager$read (hmd.devx, first_bufferp, more_input, code);
+		     if code ^= 0 then go to ERROR_RETURN;
+		if hmd.trace_mode then		/* requested trace of all I/O with the FNP */
+		     call trace_block (first_bufferp, INPUT);
+		if first_bufferp ^= null () then	/* got a block */
+		     call process_input_block (first_bufferp);
+	     end;
+
+	     hmd.flags.input_available = "0"b;		/* when here all input blocks have been processed */
+
+	     return;
+
+	end process_available_input_blocks;
+%page;
+/* Process an input block:  check if the block is real input or returned output.  For real input, process the BCB and FCS;
+   save the input for later processing; and notify the sub-channels that input has arrived.  For returned output, save the
+   returned output for later processing; and, when all the output has been returned, permit the sub-channels to send
+   output again */
+
+process_input_block:
+	procedure (P_first_bufferp);
+
+dcl  P_first_bufferp pointer parameter;			/* -> first block of data in the block */
+
+dcl  foreign_bcb_char character (1) unaligned;		/* the BCB ... */
+dcl  foreign_fcs_chars character (2) unaligned;		/* ... and the FCS for this input block */
+
+dcl 1 foreign_bcb unaligned based (addr (foreign_bcb_char)) like hasp_bcb_byte;
+dcl 1 foreign_fcs unaligned based (addr (foreign_fcs_chars)) like hasp_fcs_bytes;
+
+dcl (first_bufferp, last_bufferp, next_to_last_bufferp) pointer;
+
+dcl  first_char character (1) aligned;
+
+
+	     first_bufferp = P_first_bufferp;		/* start of input message */
+
+	     next_to_last_bufferp = null ();
+	     do blockp = first_bufferp repeat (pointer (ttybp, buffer.next)) while (rel (blockp) ^= ""b);
+		if buffer.next = 0 then		/* find the last buffer in the chain ... */
+		     last_bufferp = blockp;
+		else next_to_last_bufferp = blockp;	/* ... and the buffer just before it */
+	     end;
+
+	     if last_bufferp -> buffer.tally > 2 then	/* strip DLE/SYN ETB from end */
+		last_bufferp -> buffer.tally = last_bufferp -> buffer.tally - 2;
+	     else do;				/* last buffer has part (or all) of trailer, free it */
+		if next_to_last_bufferp = null () then go to BAD_INPUT_BLOCK;
+		next_to_last_bufferp -> buffer.tally =	/* adjust to flush DLE/SYN ETB sequence */
+		     next_to_last_bufferp -> buffer.tally - 2 + last_bufferp -> buffer.tally;
+		call tty_space_man$free_buffer (hmd.devx, INPUT, last_bufferp);
+		next_to_last_bufferp -> buffer.next = 0;/* this is now end of chain */
+		last_bufferp = next_to_last_bufferp;
+	     end;
+
+	     first_char = substr_of_chain (1, 1);	/* save the DLE or SOH */
+	     call delete_leading_text (2);		/* remove DLE/SOH STX */
+
+	     if first_char = DLE then			/* transparent block, remove transparency codes */
+		call strip_dles ();
+
+	     foreign_bcb_char = substr_of_chain (1, 1);	/* get the BCB and FCS from the buffer */
+	     foreign_fcs_chars = substr_of_chain (2, 2);
+
+	     call delete_leading_text (3);		/* remove the BCB and FCS, leaving just records */
+
+
+	     if ^foreign_fcs.returned_data then
+
+		call process_real_input_block ();	/* real input:  see below */
+
+
+	     else do;
+
+/* Returned output:  This is an output block returned by the FNP because a foreign output device went not-ready.  If this
+   is not a sync-block, place it onto the loopback chain for subsequent processing.  If it is a sync-block, enter
+   a special state where the loopbacked records are processed until the loopback chain is exhausted.  (See
+   process_loopback_records for more detail) */
+
+		if (foreign_fcs.block_type = HASP_FCS_SYNC_BLOCK) then
+		     call process_sync_block ();	/* this code has gotten gravid */
+
+		else if (foreign_bcb_char = hmd.last_loopback_bcb)
+		then do;				/* FNP returned the same block twice! */
+		     call syserr (LOG_AND_PRINT,
+			        "hasp_mpx (line ^a): Duplicate loopback block received: BCB = ^3.3b",
+			        hmd.name, unspec (hmd.last_loopback_bcb));
+		     call tty_space_man$free_chain (hmd.devx, INPUT, first_bufferp);
+		end;
+
+		else do;				/* real loopback */
+		     hmd.meters.n_wraparound_blocks = hmd.meters.n_wraparound_blocks + 1;
+		     if hmd.loopback.first_bufferp = null () then
+			hmd.loopback.first_bufferp = first_bufferp;
+		     else hmd.loopback.last_bufferp -> buffer.next = binary (rel (first_bufferp), 18, 0);
+		     hmd.loopback.last_bufferp = last_bufferp;
+		     hmd.last_loopback_bcb = foreign_bcb_char;
+		end;
+	     end;
+
+	     return;
+
+
+/* Control arrives here iff the input block's header/trailer was incomplete:  As the foreign system/workstation believed
+   this block was OK and we could not interpret its content, we must drop the line */
+
+BAD_INPUT_BLOCK:
+	     call tty_space_man$free_chain (hmd.devx, INPUT, first_bufferp);
+
+	     call syserr (LOG_AND_PRINT, "hasp_mpx (line ^a): Invalid input block header/trailer; line will be hungup.", hmd.name);
+	     call channel_manager$control (hmd.devx, "hangup", null (), code);
+
+	     return;
+%page;
+/* Internal to process_input_block:  Returns the specified number of characters (up to four) from the input block */
+
+substr_of_chain:
+	     procedure (p_start_idx, p_length) returns (character (4) varying);
+
+dcl  (p_start_idx, p_length) fixed binary parameter;
+dcl  the_text character (4) varying;
+dcl  (characters_to_skip, characters_to_pickup, characters_in_buffer, start) fixed binary;
+
+		blockp = first_bufferp;
+		the_text = "";			/* nothing yet */
+
+		/*** Skip past those leading buffers which do not contain any of the desired substring */
+		characters_to_skip = p_start_idx - 1;
+		do while (buffer.tally <= characters_to_skip);
+		     if buffer.next = 0 then go to BAD_INPUT_BLOCK;
+		     characters_to_skip = characters_to_skip - buffer.tally;
+		     blockp = pointer (ttybp, buffer.next);
+		end;
+
+		/*** Collect the characters of the substring */
+		start = characters_to_skip;		/* this buffer may contain some uninteresting data */
+		characters_to_pickup = p_length;	/* caller will never ask for more than 4 characters */
+		do while (characters_to_pickup > 0);
+		     characters_in_buffer = min (characters_to_pickup, (buffer.tally - start));
+		     begin;
+dcl  text_in_buffer character (characters_in_buffer) unaligned defined (buffer.chars (start));
+			the_text = the_text || text_in_buffer;
+		     end;
+		     characters_to_pickup = characters_to_pickup - characters_in_buffer;
+		     if characters_to_pickup > 0 then do;
+			if buffer.next = 0 then go to BAD_INPUT_BLOCK;
+			blockp = pointer (ttybp, buffer.next);
+			start = 0;		/* ... always from the beginning of subsequent buffers */
+		     end;
+		end;
+
+		return (the_text);
+
+	     end substr_of_chain;
+%page;
+/* Internal to process_input_block:  Deletes the specified number of characters from the beginning of the input block */
+
+delete_leading_text:
+	     procedure (p_n_characters);
+
+dcl  p_n_characters fixed binary parameter;
+dcl  characters_left_to_delete fixed binary;
+
+		blockp = first_bufferp;
+		characters_left_to_delete = p_n_characters;
+
+		/*** Delete any leading buffers completely emptied by this delete operation */
+		do while (buffer.tally <= characters_left_to_delete);
+		     if buffer.next ^= 0 then		/* ... there are more buffers */
+			first_bufferp = pointer (ttybp, buffer.next);
+		     else go to BAD_INPUT_BLOCK;	/* ... should have been at least n_characters in the block */
+		     characters_left_to_delete = characters_left_to_delete - buffer.tally;
+		     call tty_space_man$free_buffer (hmd.devx, INPUT, blockp);
+		     blockp = first_bufferp;
+		end;
+
+		/*** Delete the rest from this buffer as it has more than enough in it */
+		if characters_left_to_delete > 0 then call delete_text (blockp, 0, characters_left_to_delete);
+
+		return;
+
+	     end delete_leading_text;
+%page;
+/* Internal to process_input_block:  Remove the DLEs added to the chain for transparency's sake */
+
+strip_dles:    procedure ();
+
+dcl  buffer_text character (bufferp -> buffer.tally) unaligned based (addr (bufferp -> buffer.chars (0)));
+dcl  bufferp pointer;
+
+dcl (start, dle_idx) fixed binary;
+dcl  last_was_dle bit (1) aligned;
+
+
+		last_was_dle = "0"b;		/* no previous buffer to end in DLE */
+
+		do bufferp = first_bufferp repeat (pointer (ttybp, bufferp -> buffer.next))
+			while (rel (bufferp) ^= ""b);
+
+		     if last_was_dle then
+			start = 2;		/* last in previous buffer a DLE: first here is escaped */
+		     else start = 1;		/* previous buffer ended normally */
+
+		     last_was_dle = "0"b;
+
+		     dle_idx = index (substr (buffer_text, start), DLE);
+
+		     do while (dle_idx ^= 0);		/* scan buffer until no DLEs are found */
+
+			dle_idx = dle_idx + start - 1;     /* actual 1-based index in buffer */
+
+			if dle_idx < (bufferp -> buffer.tally) then
+			     call delete_text (bufferp, (dle_idx - 1), 1);     /* DLE in middle: delete it */
+			else do;			/* DLE last in buffer: escaped character in next buffer */
+			     bufferp -> buffer.tally = (bufferp -> buffer.tally) - 1;
+			     last_was_dle = "1"b;
+			end;
+
+			start = dle_idx + 1;	/* "escaped" character now at dle_idx: start with next one */
+
+			if start > (bufferp -> buffer.tally) then
+			     dle_idx = 0;		/* have reached the end of this buffer */
+			else dle_idx = index (substr (buffer_text, start), DLE);
+		     end;
+		end;
+
+		return;
+
+	     end strip_dles;
+%page;
+/* Process a real input block (not output returned by the FNP):  check for a foreign device going not-ready; validate the
+   BCB; process the foreign FCS; process a bad BCB record; place input records onto the multiplexer's chain for later
+   processing; notify waiting sub-channels that input has arrived */
+
+process_real_input_block:
+	     procedure ();
+
+dcl  chain_to_release_ptr pointer;
+dcl (expected_count, received_count, record_type, idx) fixed binary;
+dcl  new_wab_bit bit (1) aligned;
+
+
+/* FNP has detected a foreign device going not ready: save the current processing state and send a sync-block as soon as
+   possible to tell the FNP that we have seen the state change and the FNP can send output to the remote system again */
+
+		if foreign_fcs.device_not_ready then do;
+		     hmd.meters.n_wraparounds = hmd.meters.n_wraparounds + 1;
+		     unspec (hmd.last_loopback_bcb) = "777"b3;
+		     if hmd.minor_state = HMD_REPROCESS then /* in middle of reprocessing loopback: FNP is ... */
+			call push_loopback_block_chain (); /* ... returning said reprocessed data; it goes first */
+		     call push_minor_state (HMD_SEND_SYNC_BLOCK);
+		end;
+
+
+/* BCB processing:	check that the received block count in the BCB is the expected value or that the BCB specifies that
+   the block count is to be ignored or reset.  If the received block count is wrong, log a message and either drop the
+   line or ignore the input block depending on the size and direction of the discrepency in the count */
+
+		expected_count = mod (hmd.foreign_block_count + 1, 16);
+		received_count = foreign_bcb.count;
+
+		if foreign_bcb.type = HASP_BCB_NORMAL then
+		     if hmd.first_foreign_block
+		     then do;			/* first foreign block:  trust the count therein */
+			hmd.first_foreign_block = "0"b;
+			hmd.foreign_block_count = received_count;
+		     end;
+		     else if received_count = expected_count then /* correct value:  remember it */
+			hmd.foreign_block_count = received_count;
+		     else				/* bad block count -- determine appropriate action */
+		     if ((received_count < expected_count) & ((expected_count - received_count) <= 3)) |
+		        ((received_count > expected_count) & ((expected_count - received_count + 16) <= 3))
+		     then do;			/* duplicate block:	 log, ignore data, process FCS */
+			hmd.meters.n_duplicate_input_blocks = hmd.meters.n_duplicate_input_blocks + 1;
+			call syserr (LOG_ONLY,
+				   "hasp_mpx (line ^a): Block received out of sequence: expected = ^d, received = ^d; block ignored.",
+				   hmd.name, expected_count, received_count);
+			first_bufferp -> buffer.tally = 1;  /* flush all but an RCB for end-of-block */
+			first_bufferp -> buffer.chars (0) = HASP_EOB_RCB;
+			last_bufferp = first_bufferp; /* this is now the only buffer in the block */
+			chain_to_release_ptr = pointer (ttybp, first_bufferp -> buffer.next);
+			first_bufferp -> buffer.next = 0;  /* break the chain now */
+			if rel (chain_to_release_ptr) ^= ""b then    /* some data to be discarded */
+			     call tty_space_man$free_chain (hmd.devx, INPUT, chain_to_release_ptr);
+		     end;
+		     else do;			/* out of sync:  log, queue bad BCB record and hangup */
+			call syserr (LOG_AND_PRINT,
+				   "hasp_mpx (line ^a): Block received out of sequence: expected = ^d, received = ^d; line will be hungup.",
+				   hmd.name, expected_count, received_count);
+			call tty_space_man$free_chain (hmd.devx, INPUT, first_bufferp);
+			hmd.minor_state = HMD_SEND_BAD_BCB_BLOCK;
+			hmd.foreign_block_count = received_count;    /* set state and save info for the block */
+			hmd.local_block_count = expected_count;
+			return;
+		     end;
+
+		else if foreign_bcb.type = HASP_BCB_IGNORE
+		     then;			/* ignore this block's counter */
+
+		else if foreign_bcb.type = HASP_BCB_RESET then
+		     hmd.foreign_block_count = received_count - 1;     /* this is to be count of next block */
+
+
+/* FCS processing:	if the foreign FCS has changed from the last input record, reflect these changes in the multiplexer's
+   local state.  The FCS bits control whether output may be sent to the individual devices at the foreign site */
+
+		hmd.meters.n_input_blocks = hmd.meters.n_input_blocks + 1;
+
+		string (foreign_fcs.mcs1) = ""b;	/* remove bits possibly added by FNP */
+		foreign_fcs.block_type = HASP_FCS_NORMAL_BLOCK;
+
+		if hmd.foreign_fcs_bytes ^= foreign_fcs_chars then do;
+						/* only if the foreign FCS has been changed */
+		     hmd.foreign_fcs_bytes = foreign_fcs_chars;	/* for the next time around */
+
+		     if foreign_fcs.system_wab & ^hmd.suspend_all_output then
+			hmd.meters.n_foreign_wab_set = hmd.meters.n_foreign_wab_set + 1;
+						/* foreign system just stopped taking output */
+
+		     hmd.suspend_all_output = foreign_fcs.system_wab;
+
+		     do idx = 1 to hmd.n_subchannels;
+
+			if hmd.subchannels(idx).direction = HSTE_INPUT_ONLY
+			     then;		/* input only: never throttled by the foreign side */
+
+			else do;			/* output device or console */
+			     if (hmd.subchannels(idx).device_wab_idx = 0) then
+				new_wab_bit = foreign_fcs.console_wab;
+			     else if (hmd.subchannels(idx).device_wab_idx <= 4) then
+				new_wab_bit = foreign_fcs.wab_bits1 (hmd.subchannels(idx).device_wab_idx);
+			     else new_wab_bit = foreign_fcs.wab_bits2 (hmd.subchannels(idx).device_wab_idx - 4);
+			     if ^new_wab_bit & hmd.output_wabs (hmd.subchannels(idx).device_wab_idx) then
+				hmd.subchannels(idx).meters.device_n_foreign_wab_set =
+				     hmd.subchannels(idx).meters.device_n_foreign_wab_set + 1;
+			     hmd.output_wabs (hmd.subchannels(idx).device_wab_idx) = new_wab_bit;
+			end;
+		     end;
+		end;
+
+
+/* Data processing:	 classify the first record of the data.  Check for a bad BCB record (which is a separate block) and,
+   if found, log the error and hangup the line (crashing the multiplexer).  Otherwise, if data is present in the block,
+   save it for subsequent processing */
+
+		record_type = classify_record (first_bufferp, 0); /* it starts at the first character in buffer */
+
+		if record_type = HASP_EOB_RECORD
+		then do;				/* no data records:  status block, some devices might be able
+						   to send output now, so ask everyone who's waiting */
+		     call tty_space_man$free_chain (hmd.devx, INPUT, first_bufferp);
+		     call interrupt_subchannels_with_output ();
+		end;
+
+		else if record_type = HASP_BAD_BCB_RECORD
+		then do;				/* foreign side detected out of sequence block: punt */
+		     received_count = foreign_bcb.count;     /* extract the usefull information */
+		     expected_count = addr (addr (first_bufferp -> buffer.chars (0)) -> based_bad_bcb_record.srcb) -> hasp_bcb_byte.count;
+		     call syserr (LOG_AND_PRINT,
+			        "hasp_mpx (line ^a): Block transmitted out of sequence: expected = ^d, received = ^d; line will be hungup.",
+			        hmd.name, expected_count, received_count);
+		     call channel_manager$control (hmd.devx, "hangup", null (), code);
+		     call tty_space_man$free_chain (hmd.devx, INPUT, first_bufferp);
+		end;
+
+		else do;				/* the block contains actual data:  save it for call time */
+		     if hmd.input.first_bufferp = null () then
+			hmd.input.first_bufferp = first_bufferp;     /* first block of unprocessed input */
+		     else hmd.input.last_bufferp -> buffer.next = binary (rel (first_bufferp), 18, 0);
+		     hmd.input.last_bufferp = last_bufferp;  /* this is now last buffer */
+		     call interrupt_subchannels_with_output ();
+		end;
+
+		return;
+
+	     end process_real_input_block;
+%page;
+/* Process a sync-block (internal to process_input_block): pop the minor state if the preiovus minor state was either
+   send-sync or loopback as the multiplexer was in the process of receiving returned data from the FNP when another
+   foreign device went not ready; otherwise, enter the reprocess minor state to retransmit the data returned by the FNP.
+   If the multiplexer was reprocessing data when this wraparound occured, splice the just returned output in front of the
+   output that was being reprocessed originally as the newly returned data must be part of the older returned data */
+
+process_sync_block:
+	     procedure ();
+
+dcl  previous_minor_state fixed binary;
+
+		call tty_space_man$free_chain (hmd.devx, INPUT, first_bufferp);
+						/* all done with this block */
+
+		if hmd.minor_state > HMD_REPROCESS then
+		     return;			/* multiplexer is preparing to shutdown */
+
+		if hmd.minor_state_stack = null () then
+		     previous_minor_state = HMD_NORMAL; /* no saved minor state? */
+		else previous_minor_state = hmd.minor_state_stack -> msse.minor_state;
+
+		if (previous_minor_state = HMD_SEND_SYNC_BLOCK) | (previous_minor_state = HMD_LOOPBACK) then
+		     call pop_minor_state ();		/* see above */
+
+		else do;
+		     if previous_minor_state = HMD_REPROCESS then
+			call pop_loopback_block_chain ();  /* merge chains */
+		     hmd.reset_local_block_count = "1"b;/* force a reset BCB to be sent */
+		     hmd.minor_state = HMD_REPROCESS;
+		end;
+
+		return;
+
+	     end process_sync_block;
+
+	end process_input_block;
+%page;
+/* Input records processing and loopbacked records processing */
+
+input_loopback_records_processor:
+	procedure ();
+	
+	     return;				/* not an entry */
+
+
+dcl  input_entry bit (1) aligned;			/* ON => process_input_records vs. process_loopback_records */
+
+dcl  saved_hste_ptr pointer;				/* -> sub-channel data of interest to caller: hste_ptr used
+						   locally and must be preserved */
+
+dcl (start_bufferp, end_bufferp) pointer;		/* -> buffer containing start/end of the current record */
+dcl (start_record_idx, end_record_idx) fixed binary;	/* index (0-based) in buffer of the current record's first and
+						   last characters */
+
+dcl  rcb_char character (1) unaligned;			/* RCB of the current record */
+dcl  srcb_char character (1) unaligned;			/* SRCB of the current record */
+
+dcl 1 rcb unaligned based (addr (rcb_char)) like hasp_rcb_byte;
+
+dcl (continue_scan, record_was_taken) bit (1) aligned;
+
+dcl  bufferp pointer;
+dcl (record_type, record_tally, dle_count) fixed binary;
+%page;
+/* Process input records:  a read call has been issued by a sub-channel and there is input data whic needs to be split
+   into individual records and assigned to their appropriate sub-channels.  Also, process any RTS or RTS acknowledgement
+   records amongst the records */
+
+process_input_records:
+	entry ();
+
+	     input_entry = "1"b;			/* this is to process input records, not loopback records */
+	     needs_space = "0"b;
+
+	     saved_hste_ptr = hste_ptr;		/* invoked at call time:  must not lose correct value */
+
+	     start_bufferp = hmd.input.first_bufferp;	/* start with the first piece of input */
+	     start_record_idx = 0;
+
+	     continue_scan = "1"b;			/* will continue until we run out of space or input data */
+
+	     do while (continue_scan);
+
+		call find_next_record (start_bufferp, start_record_idx, "1"b, "0"b,
+				   end_bufferp, end_record_idx, record_tally, (0));
+
+		if end_bufferp ^= null ()
+		then do;
+
+		     record_type = classify_record (start_bufferp, start_record_idx);
+
+
+/* Pick up the RCB and SRCB */
+
+		     record_tally = record_tally - 1;	/* don't count the RCB as it's not passed to user ring */
+
+		     rcb_char = start_bufferp -> buffer.chars (start_record_idx);
+
+		     if (start_record_idx < (start_bufferp -> buffer.tally - 1))
+		     then				/* RCB is in middle of buffer */
+			srcb_char = start_bufferp -> buffer.chars (start_record_idx + 1);
+
+		     else				/* RCB is last character in this buffer ... */
+		     if ((start_bufferp -> buffer.next) ^= 0) & (record_tally ^= 0)
+		     then do;			/* ... and more data exists in the record */
+			bufferp = pointer (ttybp, start_bufferp -> buffer.next);
+			srcb_char = bufferp -> buffer.chars (0);
+		     end;
+
+		     else do;			/* ... and no more data exists in the record */
+			record_type = HASP_EOB_RECORD;
+			srcb_char = NUL;
+		     end;
+
+
+/* Process the record according to its type */
+
+		     if (record_type = HASP_DATA_RECORD) | (record_type = HASP_EOF_RECORD)
+		     then do;
+
+/* Data records:  add the record to the input chain for the appropriate sub-channel if it can accept input.  If the device
+   isn't the console and too many input records are present, request the foreign side to suspend further input */
+
+			hste_ptr = find_subchannel (rcb_char);	/* get the sub-channel for this record */
+
+			if hste_ptr ^= null () then
+
+			     if (hste.direction = HSTE_OUTPUT_ONLY) then
+						/* output only:  flush the record */
+				call flush_record_buffers ();
+
+			     else do;		/* input device: take the record */
+				call move_record_to_device ();
+				hste.meters.device_n_input_records = hste.meters.device_n_input_records + 1;
+				if (record_type = HASP_EOF_RECORD) then
+				     hste.meters.device_n_input_eof_records = hste.meters.device_n_input_eof_records + 1;
+				if hste.input.n_records >= hmd.max_device_input_records then
+				     if hste.device_type ^= HASP_CONSOLE
+				     then do;
+					if hmd.input_wabs (hste.device_wab_idx) then
+					     hste.meters.device_n_local_wab_set = hste.meters.device_n_local_wab_set + 1;
+					hmd.input_wabs (hste.device_wab_idx) = "0"b;
+				     end;
+			     end;
+
+			else do;			/* not configured:  flush record and disallow input... */
+			     call flush_record_buffers ();	/* ... OK to set the bit: system WAB will not be set */
+			     if (rcb.type = HASP_RCB_TYPE_READER_INPUT) | (rcb.type = HASP_RCB_TYPE_PRINT_OUTPUT) then
+				hmd.input_wabs (rcb.stream) = "0"b;
+			     else if (rcb.type = HASP_RCB_TYPE_PUNCH_OUTPUT) then
+				hmd.input_wabs (9 - rcb.stream) = "0"b;
+			end;
+		     end;
+
+
+		     else if (record_type = HASP_RTS_RECORD)
+		     then do;
+
+/* Request-to-send record:  if the specified device is configured, queue an RTS acknowledgement record -- the
+   acknowledgement is sent even though the device is not dialed up as some systems will send an RTS record, time out, and
+   give up on the subchannel faster than Multics can load the multiplexer and dial-up all the subchannels */
+
+			hste_ptr = find_subchannel (srcb_char); /* this specified the device */
+
+			if hste_ptr ^= null () then
+			     if (hste.direction ^= HSTE_OUTPUT_ONLY) & (hste.device_type ^= HASP_CONSOLE) then
+				hmd.send_rts_ack (hste.device_wab_idx) = "1"b;
+
+			call flush_record_buffers ();
+		     end;
+
+
+		     else if (record_type = HASP_RTS_ACK_RECORD)
+		     then do;
+
+/* RTS acknowledgement record:  indicate that the specific sub-channel may now send output.  If the device is waiting to
+   send output, give it a SEND OUTPUT interrupt */
+
+			hste_ptr = find_subchannel (srcb_char);
+
+			if hste_ptr ^= null () then do;
+			     hste.minor_state = HSTE_NORMAL;
+			     if hste.holding_output then do;
+				call dequeue_subchannel_for_output ();
+				call channel_manager$interrupt (hste.devx, SEND_OUTPUT, ""b);
+			     end;
+			end;
+
+			call flush_record_buffers ();
+		     end;
+
+		     else call flush_record_buffers (); /* end-of-block, SIGNON, others:  just flush it */
+
+
+/* Update pointers to the next record in the block (if any) */
+
+		     if end_bufferp = null () then
+			start_bufferp = null ();	/* record was last in chain:  don't look for next one */
+
+		     else if (end_record_idx + 1) = (end_bufferp -> buffer.tally)
+		     then do;			/* record ends at end of buffer:  go to next one */
+			if end_bufferp -> buffer.next = 0 then
+			     start_bufferp = null ();
+			else start_bufferp = pointer (ttybp, end_bufferp -> buffer.next);
+			start_record_idx = 0;
+			call tty_space_man$free_buffer (hmd.devx, INPUT, end_bufferp);
+		     end;
+
+		     else do;			/* more data in this buffer */
+			start_bufferp = end_bufferp;
+			start_record_idx = end_record_idx + 1;
+		     end;
+
+		     hmd.meters.n_input_records = hmd.meters.n_input_records + 1;
+
+		     continue_scan = (start_bufferp ^= null ());
+		end;
+
+		else continue_scan = "0"b;		/* no more complete records in the chain */
+	     end;
+
+
+RETURN_FROM_PROCESS_INPUT_RECORDS:
+	     if start_bufferp ^= null () then		/* didn't process the entire chain:  return the rest */
+		if start_record_idx ^= 0 then		/* some processed stuff in this buffer should be flushed */
+		     call delete_text (start_bufferp, 0, start_record_idx);
+
+	     hmd.input.first_bufferp = start_bufferp;
+
+	     if start_bufferp = null () then		/* got all of it */
+		hmd.input.last_bufferp = null ();
+
+	     hmd.retry_process_input = needs_space;
+	     if needs_space then			/* couldn't process it all right now */
+		call tty_space_man$needs_space (hmd.devx);
+
+	     hste_ptr = saved_hste_ptr;		/* so caller will be happy */
+
+	     return;
+%page;
+/* Process loopback records: called after all loopbacked output blocks have been returned by the FNP and the FNP has
+   requested more output.  Process each record in the chain of loopbacked blocks by either (1) placing the record into a
+   new output block if the device is not suspended or (2) placing the record onto the individual loopback chain of the
+   device.  Stop processing when either (1) the new output block is full (can't include a zero length record) or (2) the
+   chain of loopbacked blocks is exhausted.  Finally, transmit the newly created output block (if any) */
+
+process_loopback_records:
+	entry ();
+
+	     input_entry = "0"b;			/* this is to process loopback records, not input records */
+	     needs_space = "0"b;
+
+	     saved_hste_ptr = hste_ptr;		/* invoked at call time:  must not lose correct value */
+
+	     start_bufferp = hmd.loopback.first_bufferp;	/* start with the first piece of loopback */
+	     start_record_idx = 0;
+
+	     continue_scan = ^full_output_blockp () &	/* while there's some room in the output block ... */
+			 (hmd.loopback.first_bufferp ^= null ());    /* ... and something to work on */
+
+	     do while (continue_scan);
+
+		call find_next_record (start_bufferp, start_record_idx, "1"b, "1"b,
+				   end_bufferp, end_record_idx, record_tally, dle_count);
+
+		if end_bufferp ^= null ()
+		then do;
+
+		     record_type = classify_record (start_bufferp, start_record_idx);
+
+
+/* Pick up the RCB and SRCB */
+
+		     record_tally = record_tally - 1;	/* don't count the RCB as it's not passed to user ring */
+
+		     rcb_char = start_bufferp -> buffer.chars (start_record_idx);
+
+		     if (start_record_idx < (start_bufferp -> buffer.tally - 1))
+		     then				/* RCB is in middle of buffer */
+			srcb_char = start_bufferp -> buffer.chars (start_record_idx + 1);
+
+		     else				/* RCB is last character in this buffer ... */
+		     if ((start_bufferp -> buffer.next) ^= 0) & (record_tally ^= 0)
+		     then do;			/* ... and more data exists in the record */
+			bufferp = pointer (ttybp, start_bufferp -> buffer.next);
+			srcb_char = bufferp -> buffer.chars (0);
+		     end;
+
+		     else do;			/* ... and no more data exists in the record */
+			record_type = HASP_EOB_RECORD;
+			srcb_char = NUL;
+		     end;
+
+
+/* Process the record according to its type */
+
+		     if (record_type = HASP_DATA_RECORD) | (record_type = HASP_EOF_RECORD)
+		     then do;
+
+/* Data records:  try to put the record in the output block being built; otherwise, hand the record back to the device for
+   later processing */
+
+			hste_ptr = find_subchannel (rcb_char);	/* get the sub-channel for this record */
+
+			if hste_ptr ^= null () then
+
+			     if hste.direction = HSTE_INPUT_ONLY then
+				call flush_record_buffers (); /* input only: couldn't have sent the record */
+
+			     else if hmd.output_wabs (hste.device_wab_idx) &
+				   (hste.loopback.first_bufferp = null ())
+			     then do;		/* device is ready and not already holding records */
+				call process_single_loopback_record (start_bufferp, (start_record_idx + 1),
+							       end_bufferp, end_record_idx, record_tally,
+							       dle_count, record_was_taken);
+				     if needs_space then /* can't do it now */
+					go to RETURN_FROM_PROCESS_LOOPBACK_RECORDS;
+				if record_was_taken then /* in output block now */
+				     call flush_record_buffers ();
+				else call move_record_to_device ();	/* try later */
+			     end;
+
+			     else call move_record_to_device ();     /* device is suspended */
+
+			else call flush_record_buffers (); /* not configured: couldn't have sent it */
+		     end;
+
+
+		     else if (record_type = HASP_RTS_RECORD)
+		     then do;
+
+/* Request-to-send record: this output sub-channel requested permission to send a file.  The actual RTS record is thrown
+   away as it will be recreated; if, however, this is the first record of loopbacked output, then the sub-channel was
+   previously not transmitting a file, and its state should be changed to force generation of an RTS record */
+
+			hste_ptr = find_subchannel (srcb_char); /* this specified the device */
+
+			if hste_ptr ^= null () then
+			     if hste.loopback.first_bufferp = null () then
+				hste.minor_state = HSTE_SEND_RTS;
+
+			call flush_record_buffers ();
+		     end;
+
+
+		     else if (record_type = HASP_RTS_ACK_RECORD)
+		     then do;
+
+/* RTS acknowledgement record: this record was being sent in response to an RTS record for one of our devices.  Turn the
+   appropriate bit back on so that the record will be sent again */
+
+			hste_ptr = find_subchannel (srcb_char);
+
+			if hste_ptr ^= null () then
+			     hmd.send_rts_ack (hste.device_wab_idx) = "1"b;
+
+			call flush_record_buffers ();
+		     end;
+
+
+		     else call flush_record_buffers (); /* anything else can be ignored */
+						/* SIGNON records are ignored as process_output_block will
+						   rebuild them automatically */
+
+
+/* Update pointers to the next record in the block (if any) */
+
+		     if end_bufferp = null () then
+			start_bufferp = null ();	/* record was last in chain:  don't look for next one */
+
+		     else if (end_record_idx + 1) = (end_bufferp -> buffer.tally)
+		     then do;			/* record ends at end of buffer:  go to next one */
+			if end_bufferp -> buffer.next = 0 then
+			     start_bufferp = null ();
+			else start_bufferp = pointer (ttybp, end_bufferp -> buffer.next);
+			start_record_idx = 0;
+			call tty_space_man$free_buffer (hmd.devx, INPUT, end_bufferp);
+		     end;
+
+		     else do;			/* more data in this buffer */
+			start_bufferp = end_bufferp;
+			start_record_idx = end_record_idx + 1;
+		     end;
+
+		     continue_scan = (start_bufferp ^= null ()) & /* something left in loopback chain ... */
+			           ^full_output_blockp ();	/* ... and still room in the output block */
+		end;
+
+		else continue_scan = "0"b;		/* no more complete records in the chain (shouldn't happen) */
+	     end;
+
+
+/* Post processing: transmit the output block if necessary and, if all loopbacked records have been processed, exit
+   HMD_REPROCESS state and return to the previous state */
+
+RETURN_FROM_PROCESS_LOOPBACK_RECORDS:
+	     if start_bufferp ^= null () then		/* didn't process the entire chain:  return the rest */
+		if start_record_idx ^= 0 then		/* some processed stuff in this buffer should be flushed */
+		     call delete_text (start_bufferp, 0, start_record_idx);
+
+	     hmd.loopback.first_bufferp = start_bufferp;
+
+	     if start_bufferp = null () then		/* got all of it */
+		hmd.loopback.last_bufferp = null ();
+
+	     hmd.retry_process_loopback_records = needs_space;
+	     if needs_space then			/* couldn't reprocess it all now */
+		call tty_space_man$needs_space (hmd.devx);
+	     else call process_output_block ();		/* enough room: ship what we just built */
+
+	     if hmd.loopback.first_bufferp = null () then do;
+		call pop_minor_state ();		/* involves much work */
+		if (hmd.minor_state = HMD_NORMAL) then	/* OK for subchannels to send output again */
+		     call interrupt_subchannels_with_output ();
+	     end;
+
+	     hste_ptr = saved_hste_ptr;		/* so caller will be happy */
+
+	     return;
+%page;
+/* Internal to input_loopback_records_processor:  find the sub-channel corresponding to the given RCB */
+
+find_subchannel: procedure (P_rcb_char) returns (pointer);
+
+dcl  P_rcb_char character (1) unaligned parameter;
+
+dcl  idx fixed binary;
+
+
+		do idx = 1 to hmd.n_subchannels;
+
+		     if (hmd.subchannels(idx).device_type = HASP_CONSOLE) then   /* console is special case */
+			if (P_rcb_char = HASP_CONSOLE_INPUT_RCB) | (P_rcb_char = HASP_CONSOLE_OUTPUT_RCB) then
+			     return (addr (hmd.subchannels (idx)));
+			else;			/* not the console */
+
+		     else if (hmd.subchannels(idx).rcb = P_rcb_char) then
+			return (addr (hmd.subchannels (idx)));
+		end;
+
+		return (null ());			/* no such sub-channel is configured */
+
+	     end find_subchannel;
+%page;
+/* Internal to input_loopback_records_processor:  free all the buffers containing this record except for the last buffer
+   as it also contains the next record */
+
+flush_record_buffers:
+	     procedure ();
+
+dcl (bufferp, p) pointer;
+
+		bufferp = start_bufferp;
+
+		do while (bufferp ^= null ());
+
+		     if bufferp = end_bufferp then	/* never free the last buffer of the record:  caller will */
+			bufferp = null ();
+
+		     else do;			/* some buffer in the middle of the record */
+			if (bufferp -> buffer.next) = 0 then
+			     p = null ();		/* last buffer:  this shouldn't occur, but ... */
+			else p = pointer (ttybp, bufferp -> buffer.next);
+			call tty_space_man$free_buffer (hmd.devx, INPUT, bufferp);
+			bufferp = p;
+		     end;
+		end;
+
+		return;
+
+	     end flush_record_buffers;
+%page;
+/* Internal to input_loopback_records_processor:  move the current record to the input/loopback chain of the selected
+   sub-channel.  The record is, in the process, copied into new buffers of the size requested for the sub-channel */
+
+move_record_to_device:
+	     procedure ();
+
+dcl 1 record_data aligned based (record_data_ptr) like hste.input;
+dcl  record_data_ptr pointer;
+
+dcl  substring character (substr_lth) unaligned based;
+dcl  substr_lth fixed binary;
+
+dcl (first_output_bufferp, last_output_bufferp, current_output_bufferp, current_input_bufferp, p) pointer;
+dcl (buffer_size_code, n_buffers, n_words_in_last_buffer, idx, amount_to_copy, current_input_idx,
+     space_needed, space_left) fixed binary;
+dcl  direction bit (1);
+
+
+		if input_entry then
+		     direction = INPUT;
+		else direction = OUTPUT;		/* loopback records:  will be freed as output records */
+
+		buffer_size_code = divide (hste.dialup_info.max_buf_size, 16, 17, 0) - 1;
+
+		n_buffers = divide ((record_tally + max_buffer_tally (buffer_size_code) - 1),
+			          max_buffer_tally (buffer_size_code), 17, 0);
+
+		if n_buffers = 1 then
+		     first_output_bufferp = null ();	/* only one buffer:  created below */
+
+		else do;				/* more than 1 buffer:  all but last one are maximum size */
+		     call tty_space_man$get_chain (hste.devx, (hste.dialup_info.max_buf_size), (n_buffers - 1),
+					     direction, first_output_bufferp);
+			if first_output_bufferp = null () then go to CANT_MOVE_RECORD_TO_DEVICE;
+		     last_output_bufferp = first_output_bufferp;
+		     do idx = 1 to (n_buffers - 2);	/* find the last buffer:  chase the chain to its end */
+			last_output_bufferp = pointer (ttybp, last_output_bufferp -> buffer.next);
+		     end;
+		end;
+
+		n_words_in_last_buffer =		/* need a buffer big enough for remainder of record */
+		     16 * divide ((record_tally - (n_buffers - 1) * max_buffer_tally (buffer_size_code)) + 67, 64, 17, 0);
+
+		call tty_space_man$get_buffer (hste.devx, n_words_in_last_buffer, direction, current_output_bufferp);
+		     if current_output_bufferp = null () then do;
+			if first_output_bufferp ^= null () then
+			     call tty_space_man$free_chain (hste.devx, direction, first_output_bufferp);
+			go to CANT_MOVE_RECORD_TO_DEVICE;
+		     end;
+
+		if first_output_bufferp = null () then	/* only buffer needed */
+		     first_output_bufferp = current_output_bufferp;
+		else last_output_bufferp -> buffer.next = binary (rel (current_output_bufferp), 18, 0);
+
+		last_output_bufferp = current_output_bufferp;	/* remember both ends of the chain */
+
+		amount_to_copy = record_tally;	/* copy the entire record */
+
+		current_input_bufferp = start_bufferp;
+		current_input_idx = start_record_idx + 1;    /* skip the RCB */
+
+		current_output_bufferp = first_output_bufferp;
+
+		do while (amount_to_copy > 0);
+
+		     space_left = max_buffer_tally (current_output_bufferp -> buffer.size_code) -
+			           (current_output_bufferp -> buffer.tally);			            
+		     space_needed = min ((current_input_bufferp -> buffer.tally - current_input_idx), amount_to_copy);
+
+		     if space_left >= space_needed then
+			substr_lth = space_needed;	/* enough room for this piece of the buffer */
+		     else substr_lth = space_left;	/* only copy a small piece */
+
+		     addr (current_output_bufferp -> buffer.chars (current_output_bufferp -> buffer.tally)) -> substring
+			= addr (current_input_bufferp -> buffer.chars (current_input_idx)) -> substring;
+
+		     current_output_bufferp -> buffer.tally = (current_output_bufferp -> buffer.tally) + substr_lth;
+		     current_input_idx = current_input_idx + substr_lth;
+		     amount_to_copy = amount_to_copy - substr_lth;
+
+		     if (amount_to_copy > 0) & (current_input_idx = (current_input_bufferp -> buffer.tally))
+		     then do;			/* used up this input buffer:  free it (if OK) and go on */
+			if (current_input_bufferp -> buffer.next) = 0
+			then do;			/* no more input????? */
+			     p = null ();
+			     amount_to_copy = 0;	/* avoid null pointer faults (sigh) */
+			end;
+			else p = pointer (ttybp, current_input_bufferp -> buffer.next);
+			if current_input_bufferp ^= end_bufferp then
+			     call tty_space_man$free_buffer (hmd.devx, INPUT, current_input_bufferp);
+						/* never free the last buffer of a record */
+			current_input_bufferp = p;
+			current_input_idx = 0;
+		     end;
+
+		     if (amount_to_copy > 0) &	/* if there is stuff left to copy ... */
+		        ((current_output_bufferp -> buffer.tally) = 
+		         max_buffer_tally (current_output_bufferp -> buffer.size_code))
+		     then				/* ... and used up this output buffer:  grab next one */
+		     if (current_output_bufferp -> buffer.next) = 0 then
+			     amount_to_copy = 0;	/* ran out of buffer space????? */
+			else current_output_bufferp = pointer (ttybp, current_output_bufferp -> buffer.next);
+		end;
+
+		if current_output_bufferp ^= last_output_bufferp then do;
+						/* didn't use the entire chain allocated */
+		     p = pointer (ttybp, current_output_bufferp -> buffer.next);
+		     call tty_space_man$free_chain (hste.devx, direction, p);
+		     current_output_bufferp -> buffer.next = 0;
+		     last_output_bufferp = current_output_bufferp;     /* new end of the chain (sigh) */
+		end;
+
+		if input_entry then
+		     record_data_ptr = addr (hste.input);    /* processing input records */
+		else record_data_ptr = addr (hste.loopback);
+
+		last_output_bufferp -> buffer.break = "1"b;  /* end of a record */
+
+		if record_data.first_bufferp = null () then
+		     record_data.first_bufferp = first_output_bufferp;
+		else record_data.last_bufferp -> buffer.next = binary (rel (first_output_bufferp), 18, 0);
+
+		record_data.last_bufferp = last_output_bufferp;
+
+		record_data.n_records = record_data.n_records + 1;
+
+		return;
+
+
+
+/* Not being able to allocate buffers for the input record transfers here */
+
+CANT_MOVE_RECORD_TO_DEVICE:
+		needs_space = "1"b;
+		if input_entry then
+		     go to RETURN_FROM_PROCESS_INPUT_RECORDS;
+		else go to RETURN_FROM_PROCESS_LOOPBACK_RECORDS;
+
+	     end move_record_to_device;
+
+	end input_loopback_records_processor;
+%page;
+/* Process an output block:  if output is not suspended, compute the new local BCB and FCS, complete the current output
+   block by adding the block trailer, and start transmission of the block to the FNP.  If there is no partial block
+   waiting to be sent, send a status block or a block with an RTS record or RTS acknowledgment record when necessary */
+
+process_output_block:
+	procedure ();
+
+dcl  local_bcb_char character (1) unaligned;		/* the BCB ... */
+dcl  local_fcs_chars character (2) unaligned;		/* ... and the FCS for this output block */
+
+dcl 1 local_bcb unaligned based (addr (local_bcb_char)) like hasp_bcb_byte;
+dcl 1 local_fcs unaligned based (addr (local_fcs_chars)) like hasp_fcs_bytes;
+
+dcl  saved_hste_ptr pointer;
+dcl  idx fixed binary;
+
+
+/* Check for permission to send a block to the FNP */
+
+	     if hmd.output_in_progress then		/* finish what was already started */
+		call transmit_output_block ();
+
+	     if ^hmd.send_output then return;		/* no permission: don't bother to finish building the block */
+
+	     if hmd.suspend_all_output &		/* remote wants us not to send anything */
+	        (hmd.minor_state ^= HMD_SEND_SYNC_BLOCK) &     /* and needn't send special sync-block for FNP */
+	        (hmd.minor_state ^= HMD_SEND_BAD_BCB_BLOCK) &  /* and needn't send a bad BCB error block */
+	        (hmd.minor_state ^= HMD_HANGUP_LINE)	/* and needn't hangup the line to punt after fatal error */
+	     then
+		return;
+
+
+	     if (hmd.minor_state = HMD_HANGUP_LINE) then
+
+/* Fatal error:  An error fatal to the operation of the multiplexer (eg: out of sequence input blocks) has occurred which
+   needed to be acknowledged by a message from the multiplexer.  That message has been sent out to the FNP and the line
+   should now be hungup which will crash the multiplexer */
+
+		call channel_manager$control (hmd.devx, "hangup", null (), code);
+
+
+	     else if (hmd.minor_state = HMD_SEND_BAD_BCB_BLOCK)
+	     then do;
+
+/* Out of sequence input block:  An input block was received which was out of sequence.  The multiplexer must now format
+   and transmit a bad BCB error block to the foreign side before breaking the connection */
+
+		if hmd.output_block.first_bufferp ^= null ()
+		then do;				/* throw out partial output block:  no need for it */
+		     call tty_space_man$free_chain (hmd.devx, OUTPUT, hmd.output_block.first_bufferp);
+		     hmd.output_block.first_bufferp = null ();
+		end;
+
+		call tty_space_man$get_buffer (hmd.devx, 16, OUTPUT, blockp);
+		     if blockp = null () then go to CANT_FINISH_PROCESS_OUTPUT_BLOCK;
+
+		addr (buffer.chars (0)) -> based_bad_bcb_block = TEMPLATE_HASP_BAD_BCB_BLOCK;
+		buffer.tally = length (string (TEMPLATE_HASP_BAD_BCB_BLOCK));
+
+		addr (addr (buffer.chars (0)) -> based_bad_bcb_block.bcb) -> hasp_bcb_byte.count =
+		     hmd.foreign_block_count;		/* this is what was received */
+
+		addr (addr (buffer.chars (0)) -> based_bad_bcb_block.srcb) -> hasp_bcb_byte.count =
+		     hmd.local_block_count;		/* this is what was expected */
+
+		hmd.output_block.tally = buffer.tally;	/* fill in information about the block */
+		hmd.output_block.first_bufferp, hmd.output_block.last_bufferp = blockp;
+
+		hmd.minor_state = HMD_HANGUP_LINE;	/* hangup the connection after the block is transmitted */
+	     end;
+
+
+	     else if ^empty_output_blockp ()
+	     then do;
+
+/* Have partial output block:	 compute local BCB and FCS, add the block trailer, and ship the block */
+
+		call compute_local_bcb_and_fcs ();
+		call finish_output_block ();
+	     end;
+
+
+	     else if ((hmd.minor_state = HMD_SEND_SIGNON) | (hmd.minor_state = HMD_REPROCESS)) &
+		   (hmd.signon_data_ptr ^= null ())
+	     then do;
+
+/* No partial block and a SIGNON record needs to be transmitted: create the SIGNON record block and mark it as requiring
+   an acknowledgement from the FNP; the acknowledgement from the FNP is used as the signal that the other sub-channels of
+   the multiplexer may be dialed-up and normal data transfer may commence.  Checking hmd.signon_data_ptr and the minor
+   state is sufficient as the minor state is changed upon transmission and the data block is not freed until the FNP
+   acknowledges the message */
+
+		call compute_local_bcb_and_fcs ();
+
+		if hmd.output_block.first_bufferp ^= null () then /* we'll create our own buffers shortly */
+		     call tty_space_man$free_chain (hmd.devx, OUTPUT, hmd.output_block.first_bufferp);
+
+		call tty_space_man$get_buffer (hmd.devx, 32, OUTPUT, blockp);
+		     if blockp = null () then go to CANT_FINISH_PROCESS_OUTPUT_BLOCK;
+
+		hmd.output_block.first_bufferp,	/* the only buffer in the block */
+		     hmd.output_block.last_bufferp = blockp;
+
+		addr (buffer.chars (0)) -> based_signon_block.header = TEMPLATE_HASP_SIGNON_BLOCK.header;
+		addr (buffer.chars (0)) -> based_signon_block.record = hmd.signon_data_ptr -> hmd_signon_data.record;
+		hmd.output_block.tally,		/* how much just used */
+		     buffer.tally = length (string (TEMPLATE_HASP_SIGNON_BLOCK.non_trailer));
+		hmd.meters.n_output_records = hmd.meters.n_output_records + 1;
+
+		call finish_output_block ();		/* shouldn't grab another buffer... */
+		addr (addr (buffer.chars (0)) -> based_block_header.fcs) -> hasp_fcs_bytes.block_type =
+		     HASP_FCS_ACKNOWLEDGE_BLOCK;	/* tell us when it gets sent */
+
+		if hmd.minor_state = HMD_SEND_SIGNON then    /* not in loopback processing */
+		     hmd.minor_state = HMD_WAIT_SIGNON_RESPONSE;	/* ... wait for the reply */
+	     end;
+
+
+	     else if (hmd.minor_state = HMD_NORMAL)
+	     then do;
+
+/* No partial block and multiplexer running normally: scan for any loopbacked records which couldn't be transmitted
+   before (the remote device wasn't ready) but can be sent now */
+
+		saved_hste_ptr = hste_ptr;		/* need to use this value */
+
+		do idx = 1 to hmd.n_subchannels	/* check them all ... */
+			while (^full_output_blockp ());    /* ... while there's still room */
+		     hste_ptr = addr (hmd.subchannels (idx));
+
+		     if (hste.direction ^= HSTE_INPUT_ONLY) & hmd.output_wabs (hste.device_wab_idx) then
+						/* it's a ready output device ... */
+			if (hste.loopback.first_bufferp ^= null ())
+			then do;			/* ... and it has some loopbacked data */
+			     call process_subchannel_loopback_records ();
+				if needs_space then /* couldn't finish */
+				     go to CANT_FINISH_PROCESS_OUTPUT_BLOCK;
+			     if (hste.loopback.first_bufferp = null ()) then do;
+						/* took all of it: subchannel can send output again */
+				call dequeue_subchannel_for_output ();
+				call channel_manager$interrupt_later (hste.devx, SEND_OUTPUT, ""b);
+			     end;
+			end;
+		end;
+
+		hste_ptr = saved_hste_ptr;		/* done with it so restore it */
+
+		if empty_output_blockp () then
+		     go to TRY_STATUS_OR_RTS_BLOCK;	/* nothing found: try to make status, RTS, or RTS ack block */
+		else do;				/* got something: done with this output block */
+		     call compute_local_bcb_and_fcs ();
+		     call finish_output_block ();
+		end;
+	     end;
+
+
+	     else if ((hmd.minor_state = HMD_NORMAL) | (hmd.minor_state = HMD_REPROCESS)) & empty_output_blockp ()
+	     then do;
+
+/* No partial block: create and transmit a block iff the local FCS has changed or an RTS record or an RTS acknowledgement
+   record needs to be sent */
+
+TRY_STATUS_OR_RTS_BLOCK:
+		call compute_local_bcb_and_fcs ();
+
+		if (hmd.local_fcs_bytes ^= local_fcs_chars) |
+		   (string (hmd.send_rts) ^= ""b) | (string (hmd.send_rts_ack) ^= ""b)
+		then do;
+
+		     if (hmd.output_block.first_bufferp = null ())
+		     then do;			/* no empty block already started */
+
+			call tty_space_man$get_buffer (hmd.devx, 16, OUTPUT, blockp);
+			     if blockp = null () then go to CANT_FINISH_PROCESS_OUTPUT_BLOCK;
+
+			hmd.output_block.first_bufferp,	/* the only buffer in the block */
+			     hmd.output_block.last_bufferp = blockp;
+
+			addr (buffer.chars (0)) -> based_block_header = TEMPLATE_HASP_BLOCK_HEADER;
+			hmd.output_block.tally,
+			     buffer.tally = length (string (TEMPLATE_HASP_BLOCK_HEADER));
+		     end;
+
+		     call add_rts_or_rts_ack_record ();
+		     call finish_output_block ();
+		end;
+	     end;
+
+
+	     else if (hmd.minor_state = HMD_SEND_SYNC_BLOCK)
+	     then do;
+
+/* Starting a loopback:  the FNP detected (from the FCS received in an input block) that one of the foreign devices just
+   went not-ready.  It is possible that the FNP has (or is receiving) one or more output blocks containing records for
+   that device.  Thus, the FNP has entered "loopback" state wherein it will return all output blocks it has or we send it
+   until it returns the specially formatted block known as a sync-block */
+
+		call tty_space_man$get_buffer (hmd.devx, 16, OUTPUT, blockp);
+		     if blockp = null () then go to CANT_FINISH_PROCESS_OUTPUT_BLOCK;
+
+		addr (buffer.chars (0)) -> based_sync_block = TEMPLATE_HASP_SYNC_BLOCK;
+		buffer.tally = length (string (TEMPLATE_HASP_SYNC_BLOCK));
+
+		hmd.output_block.tally = buffer.tally;	/* fill in information about the block */
+		hmd.output_block.first_bufferp, hmd.output_block.last_bufferp = blockp;
+
+		hmd.minor_state = HMD_LOOPBACK;	/* multiplexer now expects output blocks to be returned */
+	     end;
+
+
+	     else if (hmd.minor_state = HMD_LOOPBACK) then
+		return;				/* already in loopback (see above):  send no output */
+
+	     else if (hmd.minor_state = HMD_WAIT_SIGNON_RESPONSE) then
+		return;				/* waiting for response from foreign system to SIGNON */
+
+
+/* Begin transmission of the output block to the FNP and, if the multiplexer is not in an exceptional state, request all
+   waiting sub-channels to send more output */
+
+	     if ^empty_output_blockp () then do;	/* tests at entry guarentee that no output is in progress */
+		hmd.meters.n_output_blocks = hmd.meters.n_output_blocks + 1;
+		hmd.output_chain_ptr = hmd.output_block.first_bufferp;
+
+		hmd.output_block.tally = 0;		/* "empty" the output block for next time around */
+		hmd.output_block.first_bufferp, hmd.output_block.last_bufferp = null ();
+
+		if hmd.trace_mode then		/* requested trace of all I/O with the FNP */
+		     call trace_block (hmd.output_chain_ptr, OUTPUT);
+
+		call transmit_output_block ();	/* send it */
+
+		if hmd.minor_state = HMD_NORMAL then	/* all is well:  can accept more output */
+		     call interrupt_subchannels_with_output ();
+	     end;
+
+	     hmd.retry_process_output = "0"b;		/* didn't run out of tty_buf space */
+
+	     return;
+
+
+/* Not being able to allocate a buffer transfers here:  queue a request to be informed when space is available */
+
+CANT_FINISH_PROCESS_OUTPUT_BLOCK:
+	     hmd.retry_process_output = "1"b;
+	     call tty_space_man$needs_space (hmd.devx);
+	     return;
+%page;
+/* Internal to process_output_block:  compute the local BCB and FCS for the next block to be transmitted */
+
+compute_local_bcb_and_fcs:
+	     procedure ();
+
+dcl  idx fixed binary;
+
+/* Construct the BCB:  get the next block number (modulo 16) from the previous block count unless requested to reset
+   the counter; when resetting, the counter is always set to zero */
+
+		local_bcb_char = NUL;
+		local_bcb.mbo1 = "1"b;		/* make it not be an EBCDIC control character */
+
+		if hmd.reset_local_block_count then	/* reset count to zero: local_bcb.count is already zero */
+		     local_bcb.type = HASP_BCB_RESET;
+		else do;
+		     local_bcb.type = HASP_BCB_NORMAL;
+		     local_bcb.count = mod (hmd.local_block_count + 1, 16);
+		end;
+
+
+/* Construct the FCS:  examine all the input wait-a-bits.  If the wait-a-bit for any individual device is off (not-ready),
+   and the configuration data of the multiplexer specifies suspend_all_mode, turn the system wait-a-bit on also as foreign
+   side does not interpret the individual device wait-a-bits */
+
+		local_fcs_chars = copy (NUL, 2);
+		local_fcs.mbo1,
+		     local_fcs.mbo2 = "1"b;
+
+		if hmd.suspend_all_input then		/* if the multiplexer isn't ready yet:  indicate no input */
+		     local_fcs.system_wab = "1"b;
+
+		string (local_fcs.wab_bits1),		/* all devices not ready: insures that wait-a-bits for ... */
+		     string (local_fcs.wab_bits2) = ""b;     /* ... devices that aren't used or dialed-up are OFF */
+		local_fcs.console_wab = "0"b;
+
+		do idx = 1 to hmd.n_subchannels;
+
+		     if (hmd.subchannels(idx).direction = HSTE_OUTPUT_ONLY)
+			then;			/* this device can't accept any input at all */
+
+		     else if (hmd.subchannels(idx).state = HSTE_DIALED) then
+						/* this device is dialed up:  set wait-a-bit as desired */
+			if hmd.input_wabs (hmd.subchannels(idx).device_wab_idx) then
+						/* device is ready:  set appropriate bit */
+			     if (hmd.subchannels(idx).device_wab_idx = 0) then
+				local_fcs.console_wab = "1"b;
+			     else if (hmd.subchannels(idx).device_wab_idx <= 4) then
+				local_fcs.wab_bits1 (hmd.subchannels(idx).device_wab_idx) = "1"b;
+			     else local_fcs.wab_bits2 (hmd.subchannels(idx).device_wab_idx-4) = "1"b;
+
+			else			/* device is not ready:  appropriate bit is already off ... */
+			if hmd.suspend_all_mode then	/* ... but foreign side only interprets system wait-a-bit */
+			     local_fcs.system_wab = "1"b;
+		end;
+
+		return;
+
+	     end compute_local_bcb_and_fcs;
+%page;
+/* Internal to process_output_block:  complete the current output block by adding the block trailer, entering the already
+   computed BCB and FCS into the block, and updating the local state of the multiplexer to reflect shipment of this block
+   */
+
+finish_output_block:
+	     procedure ();
+
+dcl 1 hmd_local_fcs unaligned based (addr (hmd.local_fcs_bytes)) like hasp_fcs_bytes;
+
+dcl 1 based_split_block_trailer aligned based,
+    2 part1 character (space_left_in_buffer) unaligned,
+    2 part2 character (amount_needed - space_left_in_buffer) unaligned;
+
+dcl  based_part1 character (space_left_in_buffer) unaligned based;
+dcl  based_part2 character (amount_needed - space_left_in_buffer) unaligned based;
+
+dcl (bufferp, new_bufferp) pointer;
+dcl (space_left_in_buffer, amount_needed, saved_tally) fixed binary;
+
+
+		bufferp = hmd.output_block.last_bufferp;
+
+		space_left_in_buffer = max_buffer_tally (bufferp -> buffer.size_code) - (bufferp -> buffer.tally);
+		amount_needed = length (string (TEMPLATE_HASP_BLOCK_TRAILER.non_crc));
+
+		if space_left_in_buffer >= amount_needed
+		then do;				/* trailer fits neatly into this block */
+		     addr (bufferp -> buffer.chars (bufferp -> buffer.tally)) -> based_block_trailer.non_crc =
+			     TEMPLATE_HASP_BLOCK_TRAILER.non_crc;
+		     bufferp -> buffer.tally = (bufferp -> buffer.tally) +
+					  length (string (TEMPLATE_HASP_BLOCK_TRAILER.non_crc));
+		end;
+
+		else do;				/* must be split into two parts */
+		     saved_tally = bufferp -> buffer.tally;	/* in case tsm$get_buffer fails ... */
+		     if space_left_in_buffer > 0 then do;
+			addr (bufferp -> buffer.chars (bufferp -> buffer.tally)) -> based_part1 =
+				addr (TEMPLATE_HASP_BLOCK_TRAILER.non_crc) -> based_split_block_trailer.part1;
+			bufferp -> buffer.tally = max_buffer_tally (bufferp -> buffer.size_code);
+		     end;
+		     call tty_space_man$get_buffer (hmd.devx, 16, OUTPUT, new_bufferp);
+			if new_bufferp = null () then do;
+			     bufferp -> buffer.tally = saved_tally;
+			     go to CANT_FINISH_PROCESS_OUTPUT_BLOCK;
+			end;
+		     addr (new_bufferp -> buffer.chars (0)) -> based_part2 =
+			     addr (TEMPLATE_HASP_BLOCK_TRAILER.non_crc) -> based_split_block_trailer.part2;
+		     new_bufferp -> buffer.tally = amount_needed - space_left_in_buffer;
+		     bufferp -> buffer.next = binary (rel (new_bufferp), 18, 0);
+		     hmd.output_block.last_bufferp = new_bufferp;
+		end;
+
+		hmd.output_block.tally = hmd.output_block.tally +
+				      length (string (TEMPLATE_HASP_BLOCK_TRAILER.non_crc));
+
+		addr (hmd.output_block.first_bufferp -> buffer.chars (0)) -> based_block_header.bcb = local_bcb_char;
+		addr (hmd.output_block.first_bufferp -> buffer.chars (0)) -> based_block_header.fcs = local_fcs_chars;
+
+		if hmd.reset_local_block_count
+		then do;				/* this block indicates next block will be #0 */
+		     hmd.reset_local_block_count = "0"b;
+		     hmd.local_block_count = -1;
+		end;
+		else hmd.local_block_count = local_bcb.count;
+
+		if local_fcs.system_wab & ^hmd_local_fcs.system_wab then	/* stopped taking input */
+		     hmd.meters.n_local_wab_set = hmd.meters.n_local_wab_set + 1;
+
+		hmd.local_fcs_bytes = local_fcs_chars;	/* save BCB and FCS for next time around */
+
+		return;
+
+	     end finish_output_block;
+%page;
+/* Internal to process_output_block:  add an RTS or RTS acknowledgement record to the output block.  This procedure is
+   never called unless the current output block would be empty; only one record is added */
+
+add_rts_or_rts_ack_record:
+	     procedure ();
+
+dcl  p pointer;
+dcl  idx fixed binary;
+
+
+		do idx = 1 to hmd.n_subchannels;	/* go by subchannel in order to have the RCB */
+
+		      if (hmd.subchannels(idx).direction ^= HSTE_INPUT_ONLY) & (idx ^= hmd.console_hste_idx)
+			then if hmd.send_rts (hmd.subchannels(idx).device_wab_idx)
+			     then do;
+
+/* An output device needs to request permission to send a file:  add an RTS record (guarenteed to be room) */
+
+				hmd.meters.n_output_records = hmd.meters.n_output_records + 1;
+
+				p = hmd.output_block.last_bufferp;
+
+				addr (p -> buffer.chars (p -> buffer.tally)) -> based_rts_record =
+					TEMPLATE_HASP_RTS_RECORD;
+
+				addr (p -> buffer.chars (p -> buffer.tally)) -> based_rts_record.srcb =
+					hmd.subchannels(idx).rcb;
+
+				p -> buffer.tally = (p -> buffer.tally) +
+						 length (string (TEMPLATE_HASP_RTS_RECORD));
+				hmd.output_block.tally = hmd.output_block.tally +
+						      length (string (TEMPLATE_HASP_RTS_RECORD));
+
+				hmd.send_rts (hmd.subchannels(idx).device_wab_idx) = "0"b;
+				hmd.subchannels(idx).minor_state = HSTE_WAIT_RTS_ACK;
+				go to NO_MORE_RECORDS;   /* only one records goes in this block */
+			     end;
+
+			     else;		/* sub-channel doesn't need an RTS record */
+
+
+		     else if (hmd.subchannels(idx).direction ^= HSTE_OUTPUT_ONLY)
+			then if hmd.send_rts_ack (hmd.subchannels(idx).device_wab_idx)
+			     then do;
+
+/* Foreign side has requested permission to send a file for a given device:  add an RTS acknowledgement record */
+
+				hmd.meters.n_output_records = hmd.meters.n_output_records + 1;
+
+				p = hmd.output_block.last_bufferp;
+
+				addr (p -> buffer.chars (p -> buffer.tally)) -> based_rts_ack_record =
+					TEMPLATE_HASP_RTS_ACK_RECORD;
+
+				addr (p -> buffer.chars (p -> buffer.tally)) -> based_rts_ack_record.srcb =
+					hmd.subchannels(idx).rcb;
+
+				p -> buffer.tally = (p -> buffer.tally) +
+						 length (string (TEMPLATE_HASP_RTS_ACK_RECORD));
+				hmd.output_block.tally = hmd.output_block.tally +
+						      length (string (TEMPLATE_HASP_RTS_ACK_RECORD));
+
+				hmd.send_rts_ack (hmd.subchannels(idx).device_wab_idx) = "0"b;
+				go to NO_MORE_RECORDS;   /* only one record goes in this block */
+			     end;
+
+			     else;		/* sub-channel doesn't want an RTS acknowledgement record */
+		end;
+
+NO_MORE_RECORDS:	return;
+
+	     end add_rts_or_rts_ack_record;
+
+	end process_output_block;
+%page;
+/* Output records processing */
+
+output_records_processor:
+	procedure ();
+
+RETURN_FROM_CALLER:					/* not an entry */
+	     return;
+
+
+/* Parameters */
+
+dcl (P_start_bufferp, P_end_bufferp) pointer parameter;	/* process_single_loopback_record: -> the record */
+dcl ( P_start_record_idx, P_end_record_idx) fixed binary parameter;	/* ... */
+dcl  P_record_tally fixed binary parameter;		/* process_single_loopback_record: length of the record */
+dcl  P_dle_count fixed binary parameter;		/* process_single_loopback_record: # of DLEs in record */
+dcl  P_record_was_taken bit (1) aligned parameter;	/* process_single_loopback_record: set ON => record was put
+									     into the output block */
+
+
+/* Remaining declarations */
+
+dcl  loopback_entry bit (1) aligned;			/* ON => process_single_loopback_record;
+						   OFF => process_output_records */
+
+dcl 1 saved_output_block aligned like hmd.output_block;	/* for recovery from running out of space */
+dcl  saved_last_tally fixed binary;
+
+dcl (start_bufferp, end_bufferp) pointer;		/* -> buffer containing start and end of a record */
+dcl (start_record_idx, end_record_idx) fixed binary;	/* index (0-based) in those buffers of first and last chars */
+
+dcl  continue_scan bit (1) aligned;			/* ON => continue scanning output records */
+
+dcl (bufferp, p) pointer;
+
+dcl (record_type, record_tally, dle_count, first_idx, last_idx) fixed binary;
+%page;
+/* Process output records:  scan the supplied chain for complete records and add them to the output block presently being
+   built until (1) there are no more complete records in the chain, (2) there is no room in the output block to add the
+   record, (3) an end-of-file record is placed into the block and this device must request permission to send the next
+   file, or (4) a record is found which is simply too large to place into an output block */
+
+process_output_records:
+	entry ();
+
+	     loopback_entry = "0"b;
+	     needs_space = "0"b;
+
+	     if cant_accept_records_from_this_device () then
+		return;				/* records from this device can't be put into current block */
+
+
+/* Records may be placed into this output block:  put as many completed records as will fit into the block */
+
+	     start_bufferp = chain_ptr;		/* start with first character in the chain */
+	     start_record_idx = 0;
+
+	     continue_scan = "1"b;			/* until there is a reason to stop */
+
+	     do while (continue_scan);
+
+		call find_next_record (start_bufferp, start_record_idx, "0"b, "1"b,
+				   end_bufferp, end_record_idx, record_tally, dle_count);
+
+		if end_bufferp ^= null ()
+		then do;				/* found a record:	process it */
+
+		     record_tally = record_tally + dle_count + 1; /* the RCB and transparency */
+
+		     if ^space_in_empty_output_block_for_recordp (record_tally)
+		     then do;			/* record is too long to fit into a buffer ... */
+			continue_scan = "0"b;	/* ... stop processing now ... */
+			long_record = "1"b;		/* ... and return error code to user ring */
+		     end;
+
+		     else if space_in_output_block_for_recordp (record_tally)
+		     then do;			/* the record will fit into this block */
+			call move_record_to_output_block ("1"b);
+			hmd.meters.n_output_records = hmd.meters.n_output_records + 1;
+			hste.meters.device_n_output_records = hste.meters.device_n_output_records + 1;
+			if record_type = HASP_EOF_RECORD then	/* set by move_record_to_output_block ... */
+			     hste.meters.device_n_output_eof_records = hste.meters.device_n_output_eof_records + 1;
+
+			if (end_record_idx + 1) = (end_bufferp -> buffer.tally)
+			then do;			/* record ends at end of buffer, go to next one */
+			     if end_bufferp -> buffer.next = 0 then
+				start_bufferp = null ();
+			     else start_bufferp = pointer (ttybp, end_bufferp -> buffer.next);
+			     start_record_idx = 0;
+			     call tty_space_man$free_buffer (hste.devx, OUTPUT, end_bufferp);
+			end;
+			else do;			/* more data in this buffer, examine it */
+			     start_bufferp = end_bufferp;
+			     start_record_idx = end_record_idx + 1;
+			end;
+
+			continue_scan = (start_bufferp ^= null ()) &	/* must be more data ... */
+				      (hste.minor_state = HSTE_NORMAL); /* ... and must be OK to send more */
+		     end;
+
+		     else continue_scan = "0"b;	/* no room in output block for this record */
+		end;
+
+		else do;				/* no more complete records ... */
+		     continue_scan = "0"b;		/* ... stop processing now ... */
+		     if ^space_in_empty_output_block_for_recordp ((record_tally + dle_count + 1)) then
+			long_record = "1"b;		/* ... but it will never fit even when complete */
+		     else partial_record = "1"b;	/* ... and ask user ring for more */
+		end;
+	     end;
+
+
+RETURN_FROM_PROCESS_OUTPUT_RECORDS:
+	     if start_bufferp ^= null () then		/* didn't process entire chain:  return the rest */
+		if start_record_idx ^= 0 then		/* some processed stuff in this buffer should be flushed */
+		     call delete_text (start_bufferp, 0, start_record_idx);
+
+	     chain_ptr = start_bufferp;		/* this is untouched data */
+
+	     return;
+%page;
+/* Process a single loopbacked data/EOF record: place the record into the current output block if there is room and the
+   record would normally be permitted in this block */
+
+process_single_loopback_record:
+	entry (P_start_bufferp, P_start_record_idx, P_end_bufferp, P_end_record_idx, P_record_tally, P_dle_count,
+	       P_record_was_taken);
+
+	     start_bufferp = P_start_bufferp;		/* copy parameters */
+	     start_record_idx = P_start_record_idx;
+	     end_bufferp = P_end_bufferp;
+	     end_record_idx = P_end_record_idx;
+	     record_tally = P_record_tally + P_dle_count + 1;  /* include the RCB */
+
+	     P_record_was_taken = "0"b;		/* assume failure */
+
+	     loopback_entry = "1"b;
+	     needs_space = "0"b;
+
+	     if cant_accept_records_from_this_device () then
+		return;				/* can't be put into this buffer */
+
+	     if (hste.minor_state ^= HSTE_NORMAL) then do;    /* can't send records quite yet */
+		if (hste.minor_state = HSTE_SEND_RTS) then
+		     hmd.send_rts (hste.device_wab_idx) = "1"b;
+		return;
+	     end;
+
+	     if ^space_in_output_block_for_recordp (record_tally) then
+		return;				/* won't fit into this block */
+
+	     call move_record_to_output_block ("0"b);	/* don't free the record here */
+	     P_record_was_taken = "1"b;		/* got it */
+
+	     return;
+%page;
+/* Process records loopbacked to a subchannel: these records are present when either (1) the device for this subchannel
+   was not ready when reprocessing occured or (2) it wasn't possible to retransmit all the records of this subchannel at
+   reprocessing time.  Retransmit as many now as possible */
+
+process_subchannel_loopback_records:
+	entry ();
+
+	     loopback_entry = "1"b;
+	     needs_space = "0"b;
+
+	     if cant_accept_records_from_this_device () then
+		return;				/* can't put them into output now */
+
+	     if (hste.minor_state ^= HSTE_NORMAL) then do;     /* can't send records quite yet */
+		if (hste.minor_state = HSTE_SEND_RTS) then 
+		     hmd.send_rts (hste.device_wab_idx) = "1"b;
+		return;
+	     end;
+
+
+/* Process records: records are separated by the buffer.break flag and no buffer contains data from multiple records
+   (enforced by process_loopback_records) */
+
+	     start_bufferp = hste.loopback.first_bufferp;
+
+	     continue_scan = (start_bufferp ^= null ());
+
+	     do while (continue_scan);
+
+		record_tally, dle_count = 0;
+		do bufferp = start_bufferp
+			   repeat (bufferp) while (bufferp ^= null ());
+		     record_tally = record_tally + (bufferp -> buffer.tally) + count_dles (bufferp);
+		     if (bufferp -> buffer.next = 0) | (bufferp -> buffer.break)
+		     then do;			/* found end of the record */
+			end_bufferp = bufferp;
+			bufferp = null ();
+		     end;
+		     else bufferp = pointer (ttybp, bufferp -> buffer.next);
+		end;
+
+		start_record_idx = 0;		/* uses all of each buffer */
+		end_record_idx = (end_bufferp -> buffer.tally) - 1;
+
+		if space_in_output_block_for_recordp (record_tally)
+		then do;				/* room for this record: put it in */
+		     call move_record_to_output_block ("1"b);
+		     hste.loopback.n_records = hste.loopback.n_records - 1;
+		     if (end_bufferp -> buffer.next = 0) then
+			start_bufferp = null ();	/* last loopback record */
+		     else start_bufferp = pointer (ttybp, end_bufferp -> buffer.next);
+		     call tty_space_man$free_buffer (hste.devx, OUTPUT, end_bufferp);
+		     continue_scan = ((start_bufferp ^= null ()) &     /* still something there ... */
+			           (hste.minor_state = HSTE_NORMAL));	/* ... and still OK to send records */
+		end;
+		     
+		else continue_scan = "0"b;		/* no room anymore */
+	     end;
+
+
+/* Post processing: update hste.loopback */
+
+	     hste.loopback.first_bufferp = start_bufferp;
+
+	     if (start_bufferp = null ()) then		/* none left */
+		hste.loopback.last_bufferp = null ();
+
+	     return;
+%page;
+/* Internal to output_records_processor: determines if records from the current device can be placed into the output block
+   being constructed; if an output block isn't underway, a fresh one is started.  Records for the operator's console can
+   only be placed in a block that contains other console records; in multileave mode, any device (other than the console)
+   can share a block with any other device (other than the console); in non-multileave mode, no device can share a block
+   with other devices */
+
+cant_accept_records_from_this_device:
+	     procedure () returns (bit (1) aligned);
+
+dcl accept_records bit (1) aligned;
+
+		accept_records = "1"b;		/* assume you can accept 'till proven otherwise */
+
+		if empty_output_blockp ()
+		then do;				/* no output block:  clearly can add records */
+		     if hmd.output_block.first_bufferp = null () then
+			call start_new_output_block ();
+		     if hmd.multileave_mode & (hste.device_type ^= HASP_CONSOLE) then
+			hmd.output_block.subchannel_idx = -1;	/* not console and multileaving:  shared block */
+		     else hmd.output_block.subchannel_idx = hste.subchannel_idx;
+		end;
+
+		else if hmd.multileave_mode & (hste.device_type ^= HASP_CONSOLE)
+		     then if (hmd.output_block.subchannel_idx = -1)
+			then;			/* multileaving and not console:  only if a shared block */
+		     else accept_records = "0"b;
+
+		else if (hmd.output_block.subchannel_idx = hste.subchannel_idx)
+		     then;			/* console or not multileaving:  no shared blocks */
+		else accept_records = "0"b;
+
+		return (^accept_records);
+
+
+
+/* Internal to cant_accept_records_from_this_device: start a new output block */
+
+start_new_output_block:
+		procedure ();
+
+dcl  bufferp pointer;
+
+		     call tty_space_man$get_buffer (hmd.devx, (hmd.dialup_info.max_buf_size), OUTPUT, bufferp);
+			if bufferp = null () then do;
+			     needs_space = "1"b;	/* ran out of room */
+			     go to RETURN_FROM_CALLER;
+			end;
+
+		     addr (bufferp -> buffer.chars (0)) -> based_block_header = TEMPLATE_HASP_BLOCK_HEADER;
+
+		     hmd.output_block.tally,
+			bufferp -> buffer.tally = length (string (TEMPLATE_HASP_BLOCK_HEADER));
+		     hmd.output_block.first_bufferp, hmd.output_block.last_bufferp = bufferp;
+
+		     return;
+
+		end start_new_output_block;
+
+	     end cant_accept_records_from_this_device;
+%page;
+/* Internal to output_records_processor:  Move the current record into the output block */
+
+move_record_to_output_block:
+	     procedure (P_free_buffers);
+
+dcl  P_free_buffers bit (1) aligned parameter;		/* ON => free buffers as data is moved */
+
+		saved_output_block = hmd.output_block;	/* in case we run out of room */
+		saved_last_tally = hmd.output_block.last_bufferp -> buffer.tally;
+
+		if (hste.device_type = HASP_CONSOLE) then    /* console:  RCB is special cased */
+		     if (hmd.type = HASP_HOST) then
+			call add_to_output_block (addr (HASP_CONSOLE_OUTPUT_RCB), 1);
+		     else call add_to_output_block (addr (HASP_CONSOLE_INPUT_RCB), 1);
+		else call add_to_output_block (addr (hste.rcb), 1);    /* normal device */
+
+		bufferp = start_bufferp;
+
+		do while (bufferp ^= null ());
+
+		     if bufferp = start_bufferp then
+			first_idx = start_record_idx;
+		     else first_idx = 0;		/* take from beginning of the buffer */
+		     if bufferp = end_bufferp then
+			last_idx = end_record_idx;
+		     else last_idx = bufferp -> buffer.tally - 1; /* last character in buffer */
+
+		     call add_to_output_block (addr (bufferp -> buffer.chars (first_idx)),
+					 (last_idx - first_idx + 1));
+
+		     if (bufferp = end_bufferp) then
+			bufferp = null ();		/* got the whole record now */
+		     else bufferp = pointer (ttybp, bufferp -> buffer.next);
+		end;				/* go to next buffer */
+
+		record_type = classify_record (saved_output_block.last_bufferp, saved_last_tally);
+
+		if (record_type = HASP_EOF_RECORD) &
+		   (hste.device_type ^= HASP_CONSOLE) & hmd.rts_mode then
+		     hste.minor_state = HSTE_SEND_RTS;	/* reached EOF on device that must ask to send */
+
+		if P_free_buffers then		/* caller asked us to free the record's buffers ... */
+		     do bufferp = start_bufferp	/* ... but not the last buffer which the caller will handle */
+			        repeat (p) while (bufferp ^= end_bufferp);
+			p = pointer (ttybp, bufferp -> buffer.next);
+			call tty_space_man$free_buffer (hste.devx, OUTPUT, bufferp);
+		     end;
+
+		return;
+%page;
+/* Internal to move_record_to_output_block:  Add a string to the current output block, doubling any DLEs present in
+   the string */
+
+add_to_output_block:
+		procedure (P_text_ptr, P_text_lth);
+
+dcl  P_text_ptr pointer parameter;
+dcl  P_text_lth fixed binary parameter;
+
+dcl  text character (text_lth) unaligned based (text_ptr);
+dcl  text_ptr pointer;
+dcl  text_lth fixed binary;
+
+dcl  based_substring character (substr_lth) unaligned based;
+dcl  based_buffer_remainder character (space_left_in_buffer) unaligned based;
+dcl  based_character character (1) unaligned based;
+
+dcl (bufferp, new_bufferp) pointer;
+dcl (start, substr_lth, space_left_in_buffer) fixed binary;
+dcl  add_dle bit (1) aligned;
+
+
+		     text_ptr = P_text_ptr;
+		     text_lth = P_text_lth;
+
+		     bufferp = hmd.output_block.last_bufferp;
+
+		     start = 1;			/* start from beginning of the text (obviously) */
+
+		     do while (start <= text_lth);
+
+			space_left_in_buffer = max_buffer_tally (bufferp -> buffer.size_code)
+							  - (bufferp -> buffer.tally);
+
+			substr_lth = index (substr (text, start), DLE);
+						/* find next character requiring transparency */
+			if substr_lth ^= 0 then
+			     add_dle = "1"b;
+			else do;			/* no special characters left:  take the rest */
+			     substr_lth = text_lth - start + 1;
+			     add_dle = "0"b;
+			end;
+
+			do while (space_left_in_buffer < substr_lth);
+			     if space_left_in_buffer > 0 then do;
+				addr (bufferp -> buffer.chars (bufferp -> buffer.tally)) -> based_buffer_remainder
+				     = substr (text, start, space_left_in_buffer);
+				bufferp -> buffer.tally = max_buffer_tally (bufferp -> buffer.size_code);
+				start = start + space_left_in_buffer;
+				substr_lth = substr_lth - space_left_in_buffer;
+			     end;
+			     call tty_space_man$get_buffer (hmd.devx, (hmd.dialup_info.max_buf_size), OUTPUT,
+						      new_bufferp);
+				if new_bufferp = null () then go to NO_MORE_ROOM;
+			     bufferp -> buffer.next = binary (rel (new_bufferp), 18, 0);
+			     hmd.output_block.last_bufferp, bufferp = new_bufferp;
+			     space_left_in_buffer = max_buffer_tally (bufferp -> buffer.size_code);
+			end;
+
+			if substr_lth ^= 0 then do;	/* something left over from above loop */
+			     addr (bufferp -> buffer.chars (bufferp -> buffer.tally)) -> based_substring =
+				     substr (text, start, substr_lth);
+			     bufferp -> buffer.tally = (bufferp -> buffer.tally) + substr_lth;
+			     start = start + substr_lth;
+			end;
+
+			if add_dle then do;		/* need to insert a DLE */
+			     if (bufferp -> buffer.tally) = max_buffer_tally (bufferp -> buffer.size_code)
+			     then do;		/* no room for it in this buffer, get another */
+				call tty_space_man$get_buffer (hmd.devx, (hmd.dialup_info.max_buf_size), OUTPUT,
+							 new_bufferp);
+				     if new_bufferp = null () then go to NO_MORE_ROOM;
+				bufferp -> buffer.next = binary (rel (new_bufferp), 18, 0);
+				hmd.output_block.last_bufferp, bufferp = new_bufferp;
+			     end;
+			     addr (bufferp -> buffer.chars (bufferp -> buffer.tally)) -> based_character = DLE;
+			     bufferp -> buffer.tally = (bufferp -> buffer.tally) + 1;
+			     hmd.output_block.tally = hmd.output_block.tally + 1;
+			end;
+		     end;
+
+		     hmd.output_block.tally = hmd.output_block.tally + text_lth;
+						/* the string has been added: DLEs added were counted above */
+
+		     return;
+
+
+/* Not being able to allocate a buffer transfers here:  revert the output block to the state it was in before starting to
+   add this record and abort the call to process_output_records */
+
+NO_MORE_ROOM:	     hmd.output_block = saved_output_block;
+		     hmd.output_block.last_bufferp -> buffer.tally = saved_last_tally;
+
+		     if (hmd.output_block.last_bufferp -> buffer.next) ^= 0 
+		     then do;			/* free part of chain added by this aborted call */
+			bufferp = pointer (ttybp, hmd.output_block.last_bufferp -> buffer.next);
+			call tty_space_man$free_chain (hmd.devx, OUTPUT, bufferp);
+			hmd.output_block.last_bufferp -> buffer.next = 0;
+		     end;
+
+		     needs_space = "1"b;		/* tell the caller about it */
+
+		     if loopback_entry then
+			go to RETURN_FROM_CALLER;	/* nothing else to do */
+		     else go to RETURN_FROM_PROCESS_OUTPUT_RECORDS;
+
+		end add_to_output_block;
+
+	     end move_record_to_output_block;
+%page;
+/* Internal to output_records_processor: count DLEs in a buffer for computing # of characters added to a record by
+   transparency */
+
+count_dles:    procedure (P_bufferp) returns (fixed binary);
+
+dcl P_bufferp pointer parameter;
+
+dcl  buffer_text character (bufferp -> buffer.tally) based (addr (bufferp -> buffer.chars (0)));
+
+dcl  bufferp pointer;
+dcl (start, idx, dle_count) fixed binary;
+
+
+		bufferp = P_bufferp;
+
+		start = 1;
+		idx = index (buffer_text, DLE);
+
+		dle_count = 0;
+
+		do while (idx ^= 0);
+		     dle_count = dle_count + 1;
+		     start = start + idx;
+		     if start > (bufferp -> buffer.tally) then
+			idx = 0;
+		     else idx = index (substr (buffer_text, start), DLE);
+		end;
+
+		return (dle_count);
+
+	     end count_dles;
+
+	end output_records_processor;
+%page;
+/* Transmit an output block:	send output to the FNP.  If it accepts the entire block, permit another block to be
+   transmitted; otherwise, wait for the next SEND OUTPUT interrupt to try to complete transmission */
+
+transmit_output_block:
+	procedure ();
+
+dcl  p pointer;
+
+
+	     if ^hmd.send_output then return;		/* no permission to send anything */
+
+	     if hmd.output_chain_ptr ^= null () then do;	/* something to write */
+		p = hmd.output_chain_ptr;
+
+		call channel_manager$write (hmd.devx, p, code);
+		if code = 0 then
+		     hmd.retry_transmit_output = "0"b;	/* this write request won */
+		else if code = et_noalloc
+		     then do;			/* not enough room, try later */
+			hmd.retry_transmit_output = "1"b;
+			call tty_space_man$needs_space (hmd.devx);
+		     end;
+		     else return;			/* write failed--crash to follow? */
+
+		hmd.output_chain_ptr = p;		/* remember what's left */
+		hmd.send_output = "0"b;		/* no longer have permission */
+	     end;
+
+	     if hmd.output_chain_ptr = null () then
+		hmd.output_in_progress = "0"b;	/* it finished--OK to send the next block */
+	     else hmd.output_in_progress = "1"b;
+
+	     return;
+
+	end transmit_output_block;
+%page;
+/* Perform a line-control operation and abort loading the multiplexer if it fails */
+
+do_line_control:
+	procedure (P_line_ctl_opcode, P_line_ctl_val1, P_line_ctl_val2, P_line_ctl_val3);
+
+dcl (P_line_ctl_opcode, P_line_ctl_val1, P_line_ctl_val2, P_line_ctl_val3) fixed binary parameter;
+
+	     line_ctl.op = P_line_ctl_opcode;
+
+	     line_ctl.val (1) = P_line_ctl_val1;
+	     line_ctl.val (2) = P_line_ctl_val2;
+	     line_ctl.val (3) = P_line_ctl_val3;
+
+	     call channel_manager$control (hmd.devx, "line_control", addr (line_ctl), code);
+
+	     if code = 0 then
+		return;				/* all's well that ends well */
+	     else go to LOADING_FAILS;
+
+	end do_line_control;
+%page;
+/* Interpret line status from the FNP:  A check must be made for line status interrupts generated by the multiplexer in
+   order to delay some type of processing from call time to interrupt time */
+
+process_line_status:
+	procedure ();
+
+	     if (line_stat.op < lbound (LINE_STATUS, 1)) | (line_stat.op > hbound (LINE_STATUS, 1)) then
+		return;				/* unrecognized line status */
+
+	     else go to LINE_STATUS (line_stat.op);
+
+
+LINE_STATUS (1):					/* BID FAILED -- could not complete HASP initialization */
+	     if hmd.state = HMD_LOADING then do;	/* What if the multiplexer isn't loading? */
+		call crash_mpx ();
+		call pxss$ring_0_wakeup (hmd.loader_process_id, hmd.loader_event_channel, HASP_MPX_DOWN, code);
+	     end;
+	     return;
+
+
+LINE_STATUS (2):					/* BAD BLOCK -- we sent badly formatted block */
+	     call syserr (LOG_AND_PRINT,
+		        "hasp_mpx (line ^a): Bad block line status from FNP; line will be hungup.", hmd.name);
+	     call channel_manager$control (hmd.devx, "hangup", null (), code);
+	     return;
+
+
+LINE_STATUS (4):					/* TOO MANY NAKS -- line has gone bad */
+	     call syserr (LOG_AND_PRINT, "hasp_mpx (line ^a): Too many NAKS; line will be hungup.", hmd.name);
+	     call channel_manager$control (hmd.devx, "hangup", null (), code);
+	     return;
+
+
+LINE_STATUS (6):					/* WRITE COMPLETE -- indicates a SIGNON record was sent OK */
+	     if hmd.minor_state ^= HMD_WAIT_SIGNON_RESPONSE then
+		return;				/* ignore spurious line statuses */
+	     if hmd.signon_data_ptr ^= null () then do;	/* inform owner of the console */
+		hsd_ptr = hmd.signon_data_ptr;
+		call pxss$ring_0_wakeup (hmd_signon_data.processid, hmd_signon_data.event_channel, HASP_SIGNON_OK,
+				     code);
+		call tty_space_man$free_space (currentsize (hmd_signon_data), hsd_ptr);
+		hmd.signon_data_ptr = null ();
+	     end;
+	     hmd.minor_state = HMD_NORMAL;		/* allow normal data transmission */
+	     if (hmd.state = HMD_STARTED) then
+		do idx = 1 to hmd.n_subchannels;	/* dailup any listening subchannels */
+		     hste_ptr = addr (hmd.subchannels (idx));
+		     if hste.state = HSTE_LISTENING then
+			call signal_dialup ();
+		end;
+	     call interrupt_subchannels_with_output ();	/* in case console has data waiting to ship */
+	     return;
+
+
+LINE_STATUS (13):					/* HASP INIT COMPLETE -- HASP handshake done; line is up */
+	     if hmd.state = HMD_LOADING then
+		call load_mpx ();			/* perform necessary initialization and notify Initializer */
+	     return;
+
+
+LINE_STATUS (14):					/* HASP FOREIGN READY -- other side reset its wait-a-bit */
+	     hmd.suspend_all_output = "0"b;
+	     if hmd.state >= HMD_LOADED then		/* it's OK to send output blocks ... */
+		if hmd.minor_state = HMD_REPROCESS then
+		     call process_loopback_records ();
+		else call process_output_block ();	/* ... so start sending output again */
+	     return;
+
+LINE_STATUS (3):					/* REVERSE INTERRUPT -- ignored */
+LINE_STATUS (5):					/* FNP WRITE STATUS -- ignored */
+LINE_STATUS (7):  LINE_STATUS (8):  LINE_STATUS (9):	/* IBM 3270 line status codes -- ignored */
+LINE_STATUS (10):  LINE_STATUS (11): LINE_STATUS (12):
+	     return;
+
+	end process_line_status;
+%page;
+/* Process a SPACE AVAILABLE interrupt:	 Check each of the conditions that could have caused a wait for the interrupt
+   and process them appropriately */
+
+process_space_available:
+	procedure ();
+
+	     if hmd.retry_transmit_output then do;	/* parent rejected our write request, so retry it */
+		call transmit_output_block ();
+		if hmd.retry_transmit_output then return;    /* still rejecting ... */
+	     end;
+
+	     if hmd.retry_process_loopback_records then	/* wasn't enough room to process loopbacked data */
+		call process_loopback_records ();	/* calls process_output_block if all OK */
+
+	     else if hmd.retry_process_output then	/* wasn't enough room to finish an output block */
+		call process_output_block ();
+
+	     if hmd.retry_process_input then		/* couldn't split up input block(s) */
+		call process_input_records ();
+
+	     call interrupt_subchannels_with_output ();
+
+	     return;
+
+	end process_space_available;
+%page;
+/* Scan a chain of buffers to find the next complete HASP record */
+
+find_next_record:
+	procedure (P_start_bufferp, P_start_record_idx, P_rcb_included, P_count_dles,
+		 P_end_bufferp, P_end_record_idx, P_record_tally, P_dle_count);
+
+dcl  P_start_bufferp pointer parameter;			/* -> buffer where search should begin */
+dcl  P_start_record_idx fixed binary parameter;		/* index (0-based) in buffer of first character to check */
+dcl  P_rcb_included bit (1) aligned parameter;		/* ON => buffer already contains the record's RCB */
+dcl  P_count_dles bit (1) aligned parameter;		/* ON => caller wants a count of DLEs in the record */
+
+dcl  P_end_bufferp pointer parameter;			/* set -> buffer containing end of record/null if none */
+dcl  P_end_record_idx fixed binary parameter;		/* set to index (0-based) in buffer of last character
+						   of record found (if any) */
+dcl  P_record_tally fixed binary parameter;		/* set to # of characters in the record */
+dcl  P_dle_count fixed binary parameter;		/* set to # of characters in record requiring transparency */
+
+dcl (bufferp, previous_bufferp) pointer;
+dcl (record_idx, previous_record_idx, record_tally, dle_count) fixed binary;
+dcl (count_dles_sw, end_of_data_is_special) bit (1) aligned;
+
+dcl  scb_char character (1) unaligned;
+
+dcl 1 scb unaligned based (addr (scb_char)) like hasp_scb_byte;
+dcl 1 compressed_scb unaligned based (addr (scb_char)) like hasp_compressed_scb_byte;
+dcl 1 not_compressed_scb unaligned based (addr (scb_char)) like hasp_not_compressed_scb_byte;
+
+
+	     P_end_bufferp = null ();			/* set output for failure */
+	     P_end_record_idx, P_record_tally, P_dle_count = 0;
+
+	     bufferp = P_start_bufferp;
+	     record_idx = P_start_record_idx;
+	     count_dles_sw = P_count_dles;
+
+	     record_tally, dle_count = 0;
+
+	     end_of_data_is_special = "0"b;		/* used to stop advance_pointer from failing */
+
+
+/* If an RCB is included, check for special records:  the special records currently are the end-of-block and general
+   control records (SIGNON, for example) */
+
+	     if P_rcb_included then
+
+		if (bufferp -> buffer.chars (record_idx) = HASP_EOB_RCB) then
+		     go to SUCCESSFUL_RETURN_FROM_FIND_NEXT_RECORD;    /* end-of-block: just the RCB, counted below */
+
+		else if (bufferp -> buffer.chars (record_idx) = HASP_GENERAL_CONTROL_RCB)
+		then do;				/* general control record:  terminated by a NUL, which is not
+						   part of the record, but is the next RCB */
+		     call advance_pointer (1);	/* skip the RCB */
+		     end_of_data_is_special = "1"b;
+		     do while ("1"b);		/* until we win or run off the end */
+			previous_bufferp = bufferp;	/* will try to find the NUL, but want previous character */
+			previous_record_idx = record_idx;
+			call advance_pointer (1);
+			if (bufferp -> buffer.chars (record_idx) = NUL) then do;
+END_OF_GENERAL_CONTROL_RECORD_SCAN: bufferp = previous_bufferp;
+			     record_idx = previous_record_idx;
+			     record_tally = record_tally - 1;
+			     go to SUCCESSFUL_RETURN_FROM_FIND_NEXT_RECORD;
+			end;
+		     end;
+		end;
+
+		else call advance_pointer (2);	/* normal record:  pass over RCB and SRCB */
+
+	     else call advance_pointer (1);		/* skip past just an SRCB */
+
+
+/* Scan the actual record to find the end-of-record SCB */
+
+	     do while ("1"b);
+
+		scb_char = bufferp -> buffer.chars (record_idx);
+
+		if scb_char = HASP_EOR_SCB then	/* have reached the end-of-record */
+		     go to SUCCESSFUL_RETURN_FROM_FIND_NEXT_RECORD;
+
+		else 				/* an ordinary SCB */
+		if scb.not_compressed then
+		     call advance_pointer (not_compressed_scb.count + 1);
+
+		else if compressed_scb.not_blank then
+		     call advance_pointer (2);	/* skip the SCB and the character */
+		else call advance_pointer (1);	/* skip just the SCB */
+	     end;
+
+
+/* Return:  the above loop will have set bufferp, record_idx, and dle_count correctly; however, record_tally will not have
+   counted the last character of the record; do that here */
+
+SUCCESSFUL_RETURN_FROM_FIND_NEXT_RECORD:
+	     P_end_bufferp = bufferp;
+	     P_end_record_idx = record_idx;
+	     P_record_tally = record_tally + 1;		/* count the last character of the record */
+	     P_dle_count = dle_count;
+
+RETURN_FROM_FIND_NEXT_RECORD:
+	     return;
+%page;
+/* Internal to find_next_record:  skip over the specified number of characters, counting DLEs */
+
+advance_pointer:
+	     procedure (P_n_characters);
+
+dcl  P_n_characters fixed binary parameter;
+
+dcl (amount_left, amount_in_buffer) fixed binary;
+
+
+		record_tally = record_tally + P_n_characters;
+						/* count the characters into the record */
+
+		amount_left = P_n_characters;
+
+		do while (amount_left > 0);
+
+		     amount_in_buffer = (bufferp -> buffer.tally) - record_idx;
+
+		     if amount_in_buffer > amount_left
+		     then do;			/* first character after text is in this buffer */
+			dle_count = dle_count + count_dles (amount_left);
+			record_idx = record_idx + amount_left;
+			amount_left = 0;
+		     end;
+
+		     else do;			/* in next buffer (maybe): count DLEs and go to next buffer */
+			previously_scanned_bufferp = bufferp;
+			dle_count = dle_count + count_dles (amount_in_buffer);
+			amount_left = amount_left - amount_in_buffer;
+			if (bufferp -> buffer.next) = 0 then	/* no next buffer:  no complete record */
+			     if end_of_data_is_special then
+				go to END_OF_GENERAL_CONTROL_RECORD_SCAN;
+			     else do;		/* need record_tally/dle_count to check for overly long ... */
+				P_record_tally = record_tally - amount_left;
+				P_dle_count = dle_count; /* ... records before partial records */
+				go to RETURN_FROM_FIND_NEXT_RECORD;
+			     end;
+			bufferp = pointer (ttybp, bufferp -> buffer.next);
+			record_idx = 0;
+		     end;
+		end;
+
+		return;
+
+
+
+/* Internal to advance_pointer:  count the number of DLEs in the given piece of text */
+
+count_dles:	procedure (P_n_characters) returns (fixed binary);
+
+dcl  P_n_characters fixed binary parameter;
+
+dcl  text character (n_characters) unaligned based (addr (bufferp -> buffer.chars (record_idx)));
+dcl (n_characters, count, start, idx) fixed binary;
+
+
+		     if ^count_dles_sw then		/* caller doesn't need a count */
+			return (0);
+
+		     n_characters = P_n_characters;
+
+		     count = 0;
+
+		     start = 1;
+		     idx = index (text, DLE);
+
+		     do while (idx ^= 0);		/* while there are DLEs in the text */
+			count = count + 1;
+			start = start + idx;	/* skip past that DLE */
+			if start > n_characters then
+			     idx = 0;
+			else idx = index (substr (text, start), DLE);
+		     end;
+
+		     return (count);
+
+		end count_dles;
+
+	     end advance_pointer;
+
+	end find_next_record;
+%page;
+/* Classify a HASP record according to its functionality */
+
+classify_record:
+	procedure (P_bufferp, P_rcb_idx) returns (fixed binary);
+
+dcl  P_bufferp pointer parameter;			/* -> tty buffer containing the record */
+dcl  P_rcb_idx fixed binary parameter;			/* index of RCB in the buffer (0-based) */
+
+dcl  bufferp pointer;
+dcl  rcb_idx fixed binary;
+
+dcl  rcb_char character (1) unaligned;
+dcl  srcb_char character (1) unaligned;
+dcl  first_scb_char character (1) unaligned;
+
+dcl 1 rcb unaligned based (addr (rcb_char)) like hasp_rcb_byte;
+
+
+/* Pick up the record's RCB, SRCB, and first SCB */
+
+	     bufferp = P_bufferp;
+	     rcb_idx = P_rcb_idx;
+
+	     if rcb_idx < bufferp -> buffer.tally then
+		rcb_char = bufferp -> buffer.chars (rcb_idx);
+	     else					/* RCB is in next block (blame move_record_to_output_block) */
+	     if bufferp -> buffer.next = 0 then
+		return (0);			/* ... but there is no next block (?) */
+	     else do;
+		bufferp = pointer (ttybp, bufferp -> buffer.next);
+		rcb_idx = 0;			/* ... it's the first character in this buffer */
+		rcb_char = bufferp -> buffer.chars (0);
+	     end;
+
+	     if rcb_idx < (bufferp -> buffer.tally - 1) then
+		srcb_char = bufferp -> buffer.chars (rcb_idx+1);
+	     else					/* SRCB not in this block, check the next one */
+	     if bufferp -> buffer.next = 0 then
+		srcb_char = NUL;
+	     else do;
+		bufferp = pointer (ttybp, bufferp -> buffer.next);
+		rcb_idx = -1;			/* not in this buffer */
+		srcb_char = bufferp -> buffer.chars (0);
+	     end;
+
+	     if rcb_idx < (bufferp -> buffer.tally - 2) then
+		first_scb_char = bufferp -> buffer.chars (rcb_idx+2);
+	     else					/* first SCB not in this block, check the next one */
+	     if bufferp -> buffer.next = 0 then
+		first_scb_char = NUL;
+	     else first_scb_char = pointer (ttybp, bufferp -> buffer.next) -> buffer.chars (0);
+
+
+/* Now classify the record */
+
+	     if rcb.not_eob then			/* not an end-of-block */
+
+		if rcb.type = HASP_RCB_TYPE_CONTROL then     /* some form of control record */
+
+		     if rcb.stream = HASP_RCB_STREAM_RTS then
+			return (HASP_RTS_RECORD);
+
+		     else if rcb.stream = HASP_RCB_STREAM_RTS_ACK then
+			return (HASP_RTS_ACK_RECORD);
+
+		     else if rcb.stream = HASP_RCB_STREAM_BAD_BCB then
+			return (HASP_BAD_BCB_RECORD);
+
+		     else if rcb.stream = HASP_RCB_STREAM_CONTROL then
+			if srcb_char = HASP_SIGNON_SRCB then
+			     return (HASP_SIGNON_RECORD);
+			else return (0);		/* unknown type */
+		     else return (0);
+
+		else if (srcb_char = HASP_EOF_SRCB) & (first_scb_char = HASP_EOF_FIRST_SCB) then
+			return (HASP_EOF_RECORD);
+
+		else return (HASP_DATA_RECORD);	/* simple data record */
+
+	     else return (HASP_EOB_RECORD);		/* first bit off -- end of block */
+
+	end classify_record;
+%page;
+/* Return "1"b if the current output block is empty */
+
+empty_output_blockp:
+	procedure () returns (bit (1) aligned);
+
+	     if hmd.output_block.first_bufferp = null () then
+		return ("1"b);			/* there is no block right now */
+
+	     else return (hmd.output_block.tally <= length (string (TEMPLATE_HASP_BLOCK_HEADER)));
+
+	end empty_output_blockp;
+
+
+
+/* Return "1"b if there is room in the current output block for a record of the given length and the block trailer */
+
+space_in_output_block_for_recordp:
+	procedure (P_record_lth) returns (bit (1) aligned);
+
+dcl  P_record_lth fixed binary parameter;
+
+	     return				/* check that record and trailer won't overflow the block */
+	       (hmd.max_block_size >=
+	        (hmd.output_block.tally + P_record_lth + length (string (TEMPLATE_HASP_BLOCK_TRAILER))));
+
+	end space_in_output_block_for_recordp;
+
+
+
+/* Return "1"b if there is no more room left in the current output block */
+
+full_output_blockp:
+	procedure () returns (bit (1) aligned);
+
+	     if empty_output_blockp () then
+		return ("0"b);			/* always room in an empty block */
+	     else return (^space_in_output_block_for_recordp (length (string (TEMPLATE_HASP_RTS_RECORD))));
+						/* block full if smallest record possible won't fit */
+
+	end full_output_blockp;
+
+
+
+/* Return "1"b if there is room in an empty output block for a record of the given length */
+
+space_in_empty_output_block_for_recordp:
+	procedure (P_record_lth) returns (bit (1) aligned);
+
+dcl  P_record_lth fixed binary parameter;
+
+	     return				/* check that header, record, and trailer fit into block */
+	       (hmd.max_block_size >=
+	        (P_record_lth + length (string (TEMPLATE_HASP_BLOCK_HEADER)) +
+			    length (string (TEMPLATE_HASP_BLOCK_TRAILER))));
+
+	end space_in_empty_output_block_for_recordp;
+%page;
+/* Delete characters from a buffer */
+
+delete_text:
+	procedure (P_bufferp, P_position, P_text_lth);
+
+dcl  P_bufferp pointer parameter;
+dcl  P_position fixed binary parameter;			/* delete characters starting with this one (0-based) */
+dcl  P_text_lth fixed binary parameter;			/* # of character to delete */
+
+dcl  based_remainder character (remainder_lth) unaligned based;
+dcl  remainder_lth fixed binary;
+
+
+	     remainder_lth = (P_bufferp -> buffer.tally) - P_text_lth - P_position;
+
+	     addr (P_bufferp -> buffer.chars (P_position)) -> based_remainder =
+		addr (P_bufferp -> buffer.chars (P_position+P_text_lth)) -> based_remainder;
+
+	     P_bufferp -> buffer.tally = (P_bufferp -> buffer.tally) - P_text_lth;
+
+	     return;
+
+	end delete_text;
+
+
+
+/* Trace an input/output block:  simply dump each buffer of the block using the MCS tracing facility */
+
+trace_block:
+	procedure (P_first_bufferp, P_direction);
+
+dcl  P_first_bufferp pointer parameter;			/* -> first buffer of block to be traced */
+dcl  P_direction bit (1) parameter;			/* type of block:  ON => output; OFF => input */
+
+	     call mcs_trace (hmd.devx, "^[Output^;Input^] chain starting at ^p:", P_direction, P_first_bufferp);
+
+	     call mcs_trace$buffer_chain (hmd.devx, P_first_bufferp);
+
+	     return;
+
+	end trace_block;
+%page;
+%include hasp_mpx_data;
+%page;
+%include hasp_load_data;
+%page;
+%include hasp_mpx_meters;
+%page;
+%include hasp_subchannel_meters;
+%page;
+%include hasp_block_record_data;
+
+%include hasp_rcb_byte;
+
+%include hasp_srcb_scb_bytes;
+%page;
+%include hasp_signon_record_info;
+%page;
+%include bisync_line_data;
+%page;
+%include mcs_interrupt_info;
+%page;
+%include tty_buffer_block;
+%page;
+%include mcs_modes_change_list;
+%page;
+%include channel_manager_dcls;
+
+%include tty_space_man_dcls;
+%page;
+%include lct;
+%page;
+%include get_comm_meters_info;
+%page;
+/* BEGIN MESSAGE DOCUMENTATION
+
+   Message:
+   hasp_mpx (line TTY): No space available to preserve minor state; line will be hungup.
+
+   S:  $info
+
+   M:  Insufficient space was available in tty_buf to perform part of the critical input processing of the HASP
+   multiplexer on channel TTY.  The connection to the remote host/workstation is broken as communications cannot continue
+   under these conditions.
+
+   A:  $inform
+   It may be necessary to increase the size of tty_buf as specified on the PARM config card before using this multiplexer
+   again.
+
+
+   Message:
+   hasp_mpx (line TTY): No space available to save loopback chain; line will be hungup.
+
+   S:  $info
+
+   M:  Insufficient space was available in tty_buf to perform part of the critical input processing of the HASP
+   multiplexer on channel TTY.  The connection to the remote host/workstation is broken as communications cannot continue
+   under these conditions.
+
+   A:  $inform
+   It may be necessary to increase the size of tty_buf as specified on the PARM config card before using this multiplexer
+   again.
+
+
+   Message:
+   hasp_mpx (line TTY): Duplicate loopback block received: BCB = NNN
+
+   S:  $note
+
+   T:  $run
+
+   M:  The output block identified by the 3-digit octal sequence NNN was returned to Multics twice by the FNP for
+   reprocessing.
+
+   A:  $inform
+
+
+   Message:
+   hasp_mpx (line TTY): Invalid input block header/trailer; line will be hungup.
+
+   S:  $note
+
+   T:  $run
+
+   M:  A data block whose format does not conform to the HASP protocol was received from the remote host/workstation by
+   the HASP multiplexer on channel TTY.  The connection to the remote host/workstation is broken as communications cannot
+   continue under these conditions.
+
+   A:  Frequent occurences of this message indicate that hardware or software problems may exist in the remote
+   host/workstation.  The operator should contact the appropriate personnel before reusing the multiplexer.
+
+
+   Message:
+   hasp_mpx (line TTY): Block recevied out of sequence: expected = N, received = M; block ignored.
+
+   S:  $log
+
+   T:  $run
+
+   M:  A duplicate data block was received by the HASP multiplexer on channel TTY from the foreign host/workstation.
+
+   A:  The operator should ignore this message unless it occurs quite frequently.  Frequent occurences of this message
+   indicate possible problems in the communications equipment which should be investigated by the appropriate personnel.
+
+
+   Message:
+   hasp_mpx (line TTY): Block received out of sequence: expected = N, recevied = M; line will be hungup.
+
+   S:  $note
+
+   T:  $run
+
+   M:  One or more data blocks from the remote host/workstation for the HASP multiplexer on channel TTY were lost.  The
+   connection to the remote host/workstation is broken as communications cannot continue under these conditions.
+
+   A:  There are two possible causes for this message: communications equipment failures or problems in the remote
+   host/workstation itself.  The operator should contact the appropriate personnel before reusing the multiplexer.
+
+
+   Message:
+   hasp_mpx (line TTY): Block transmitted out of sequence: expected = N, received = M; line will be hungup.
+
+   S:  $note
+
+   T:  $run
+
+   M:  One or more data blocks transmitted by the HASP multiplexer on channel TTY were not received by the remote
+   host/workstation.  The connection to the remote host/workstation is broken as communications cannot continue
+   under these conditions.
+
+   A:  $inform
+   The HASP software is designed to prevent this situation even if the communications equipment is not functioning
+   properly.
+
+
+   Message:
+   hasp_mpx (line TTY): Bad block line status from FNP; line will be hungup.
+
+   S:  $note
+
+   T:  $run
+
+   M:  A block generated by the HASP multiplexer on channel TTY for transmission was malformed.  The connection to the
+   remote host/workstation is broken as communications cannot continue under these conditions.
+
+   A:  $inform
+
+
+   Message:
+   hasp_mpx (line TTY): Too many NAKs; line will be hungup.
+
+   S:  $note
+
+   T:  $run
+
+   M:  A block could not be transmitted or received by the HASP multiplexer on channel TTY because of excessive line
+   noise.  The connection to the remote host/workstation is broken as communications cannot continue
+   under these conditions.
+
+   A:  The operator should contact the appropriate personnel to check the communications equipment used by the line before
+   attempting to reuse this multiplexer.
+
+   END MESSAGE DOCUMENTATION */
+
+     end hasp_mpx;

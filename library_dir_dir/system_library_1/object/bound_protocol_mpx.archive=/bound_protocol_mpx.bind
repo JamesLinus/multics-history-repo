@@ -1,0 +1,36 @@
+/* *********************************************************
+   *                                                       *
+   * Copyright, (C) BULL HN Information Systems Inc., 1989 *
+   *                                                       *
+   ********************************************************* */
+
+
+/* HISTORY COMMENTS:
+  1) change(89-03-16,Parisek), approve(89-10-25,MECR0012),
+     audit(89-10-25,Farley), install(89-10-25,MR12.3-1100):
+     Add support of protocol mpx.
+                                                   END HISTORY COMMENTS */
+
+Objectname:	bound_protocol_mpx;
+Global:		delete;
+
+objectname:	protocol_mpx;
+retain:		start,
+		stop,
+		shutdown,
+		priv_control,
+		hpriv_control,
+		init_multiplexer,
+		terminate_multiplexer,
+		set_listener,
+		set_special_listener,
+		remove_listener,
+		remove_special_listener,
+		ncon_req,
+		ncon_resp,
+		ndt_req,
+		ndis_req,
+		get_info,
+		read,
+		write,
+		interrupt;

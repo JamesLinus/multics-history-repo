@@ -1,0 +1,148 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+   *                                                         *
+   * Copyright (c) 1972 by Massachusetts Institute of        *
+   * Technology and Honeywell Information Systems, Inc.      *
+   *                                                         *
+   *********************************************************** */
+
+
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+	/*									*/
+	/* Name: bound_lib_utility_							*/
+	/*									*/
+	/* This bound segment contains utility routines used for Multics System Library		*/
+	/* maintenance activities.							*/
+	/*									*/
+	/* Status									*/
+	/*									*/
+	/* Modified Oct 1972 by A. J. Scherer						*/
+	/* Modified Apr 1973 by G. C. Dixon; delete update_info, update_pt, update_pt_info,	*/
+	/* 	update_source, update_bind, update_object				*/
+	/* Modified Jun 1974 by Arlene Scherer to remove get_library_source reference		*/
+	/* Modified Jan 1975 by Steve Herbst to add access_commands_tv_			*/
+	/* Modified Oct 1977 by C. D. Tavares to remove addname ta from test_archive		*/
+	/* Modified Jan 1979 vt C. D. Tavares to add ...set_dir_ring_brackets names		*/
+	/* Modified April 1979 by S. Herbst to add short name vis for validate_info_seg		*/
+	/* Modified April 1979 by D. Spector to add hp_delete, hpdl				*/
+	/* Modified Dec 1979 by Steve Herbst to implement MCR 4232				*/
+	/*	Add l_names and hp_names to library and privileged commands			*/
+	/* Modified Dec 1981 by P. Kelley:						*/
+	/*	-  deleted update_include & cleanup					*/
+	/*	-  moved sys_dates_ from bound_updater_ to here				*/
+	/*									*/
+	/* Modified 831014 BIM to add ring_1_tools_, delete l_delete and hp_delete.		*/
+	/* Modified 831025 BIM to put hp_delete back. argggh.				*/
+	/* Modified Dec 1983 by Jim Lippard to delete sys_dates_				*/
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+
+Objectname:	bound_lib_utility_;
+
+Addname:		compare_entry_names, cen,
+		date_deleter,
+		get_archive_file_,
+		get_library_segment,  gls,
+		get_primary_name_,
+     	          hp_delete, hpdl,
+		hp_delete_acl, hpdeleteacl, hpda,
+		hp_set_acl, hpsetacl, hpsa,
+		hp_set_dir_ring_brackets, hpset_dir_ring_brackets, hpsdrb,
+		hp_set_ring_brackets, hpset_ring_brackets, hpsrb,
+		l_delete_acl, ldeleteacl, lda,
+		l_names, lnames,
+		l_patch, lpatch,
+		l_set_acl, lsetacl, lsa,
+		l_set_dir_ring_brackets, lset_dir_ring_brackets, lsdrb,
+		l_set_ring_brackets, lset_ring_brackets, lsrb,
+		ring_1_tools_,
+		ring_1_patch_,
+		test_archive,
+		validate_info_seg, vis,
+		vfile_find_bad_nodes;
+
+Global:		delete;
+
+Order:		get_library_segment,
+		get_archive_file_,
+		get_primary_name_,
+		date_deleter,
+		validate_info_seg,
+		access_commands_tv_,
+		l_names,
+		l_patch,
+		hp_delete,
+		ring_1_tools_,
+		ring_1_patch_,
+		compare_entry_names,
+		test_archive,
+		vfile_find_bad_nodes;
+
+objectname:	access_commands_tv_;
+ synonym:		l_set_acl, lsetacl, lsa,
+		l_delete_acl, ldeleteacl, lda,
+		hp_set_acl, hpsetacl, hpsa,
+		hp_delete_acl, hpdeleteacl, hpda,
+		l_set_ring_brackets, lset_ring_brackets, lsrb,
+		hp_set_ring_brackets, hpset_ring_brackets, hpsrb,
+		l_set_dir_ring_brackets, lset_dir_ring_brackets, lsdrb,
+		hp_set_dir_ring_brackets, hpset_dir_ring_brackets, hpsdrb;
+ retain:		l_set_acl, lsetacl, lsa,
+		l_delete_acl, ldeleteacl, lda,
+		hp_set_acl, hpsetacl, hpsa,
+		hp_delete_acl, hpdeleteacl, hpda,
+		l_set_ring_brackets, lset_ring_brackets, lsrb,
+		hp_set_ring_brackets, hpset_ring_brackets, hpsrb,
+		l_set_dir_ring_brackets, lset_dir_ring_brackets, lsdrb,
+		hp_set_dir_ring_brackets, hpset_dir_ring_brackets, hpsdrb;
+
+objectname:	hp_delete;
+ synonym:		hpdl;
+ retain:		hp_delete, hpdl;
+objectname:	compare_entry_names;
+ synonym:		cen;
+ retain:		compare_entry_names, cen;
+
+objectname:	date_deleter;
+  retain:		date_deleter;
+
+objectname:	get_archive_file_;
+ retain:		get_archive_file_,srchgls;
+
+objectname:	get_library_segment;
+ synonym:		gls;
+ retain:		get_library_segment,  gls;
+
+objectname:	get_primary_name_;
+ retain:		get_primary_name_,
+		search_archives;
+
+objectname:	l_names;
+ retain:		l_names, lnames,
+		copy,
+		move;
+
+objectname:	l_patch;
+ retain:		l_patch, lpatch;
+
+objectname:	ring_1_tools_;
+ global:		retain;
+ delete:		ring_1_tools_;
+
+objectname:	ring_1_patch_;
+ retain:		ring_1_patch_,
+		pathname,
+		ptr;
+
+objectname:	test_archive;
+ synonym:		ta;
+ retain:		test_archive;
+
+objectname:	validate_info_seg;
+ retain:		validate_info_seg, vis;
+ synonym:           vis;
+
+objectname:	vfile_find_bad_nodes;
+  retain:		vfile_find_bad_nodes;
+
+/* End */

@@ -1,0 +1,90 @@
+/* bound_priv_ss_.bind   Bernard Greenberg 3/8/77 */
+/* Added partition tools, 03/09/81, W. Olin Sibert */
+/* Added hp_delete_vtoce WOS 25 June 1981 */
+/* Added scavenge_vol, September 1982, J. Bongiovanni */
+/* Added seg/dir variants to fix_quota_used, December 1984, Keith Loepere. */
+
+Objectname:	bound_priv_ss_;
+
+Order:		delete_old_pdds,
+		fix_quota_used,
+		sweep_pv,
+		hp_delete_vtoce,
+		salvage_dir,
+		scavenge_vol,
+		do_subtree,
+		adopt_seg,
+		vtocx_to_record,
+		record_to_vtocx,
+		find_partition_,
+		dump_partition,
+		clear_partition,
+		list_partitions;
+
+Addname:		adopt_seg,
+		do_subtree,
+		delete_old_pdds,
+		fix_quota_used, fix_dir_quota_used, fix_seg_quota_used,
+		sweep_pv, inhibit_pv,
+		hp_delete_vtoce,
+		salvage_dir,
+		scavenge_vol,
+		vtocx_to_record, record_to_sector, sector_to_record,
+		record_to_vtocx,
+		find_partition_,
+		dump_partition,
+		clear_partition,
+		list_partitions;
+
+Global:		delete;
+
+objectname:	delete_old_pdds;
+ retain:		delete_old_pdds;
+
+objectname:	fix_quota_used;
+ retain:		fix_quota_used, fix_dir_quota_used, fix_seg_quota_used;
+
+objectname:	sweep_pv;
+ retain:		sweep_pv, inhibit_pv;
+ synonym: 	inhibit_pv;
+
+objectname:	hp_delete_vtoce;
+ retain:		hp_delete_vtoce;
+
+objectname:	salvage_dir;
+ retain:		salvage_dir;
+
+objectname:	scavenge_vol;
+ retain:		scavenge_vol;
+
+objectname:	do_subtree;
+ retain:		do_subtree, dos, abort, status, recover;
+ synonym: 	dos;
+
+objectname:	record_to_vtocx;
+ retain:		record_to_vtocx;
+
+objectname:	vtocx_to_record;
+ retain:		vtocx_to_record, record_to_sector, sector_to_record;
+ synonym: 	record_to_sector, sector_to_record;
+
+objectname:	adopt_seg;
+ synonym:		adopt_seg_;
+ retain:		adopt_seg;
+
+objectname:	find_partition_;
+ retain:		find_partition_;
+
+objectname:	dump_partition;
+ retain:		dump_partition;
+
+objectname:	clear_partition;
+ retain:		clear_partition;
+
+objectname:	list_partitions;
+ retain:		list_partitions;
+
+/* End */
+
+
+

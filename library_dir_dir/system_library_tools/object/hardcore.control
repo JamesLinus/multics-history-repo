@@ -1,0 +1,3 @@
+>ldd>hardcore>source:     get_archive_file_$srchgls;
+>ldd>hardcore>bound_components:	get_archive_file_$srchgls;
+>ldd>hardcore>object:		get_primary_name_;

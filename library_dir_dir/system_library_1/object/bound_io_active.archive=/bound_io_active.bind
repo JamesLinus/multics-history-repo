@@ -1,0 +1,53 @@
+/* Bindfile for bound_io_active. */
+/* Modified January 1984 by Chris Jones to add (add delete)_device entries to
+ioi_assignment and required for ioi_usurp_channels (IOM reconfig stuff). */
+
+Objectname:	bound_io_active;
+Global:		delete;
+
+Order:		ioam_,
+		ioi_usurp_channels,
+		ioi_suspend_devices,
+		ioi_assignment,
+		ioi_connect,
+		ioi_device,
+		ioi_get_status,
+		ioi_set,
+		ioi_config,
+		ioi_workspace,
+		ioi_verify_lock;
+
+objectname:	ioam_;
+  retain:		assign, unassign, preempt, process_release;
+
+objectname:	ioi_usurp_channels;
+ retain:		assign, required, unassign;
+
+objectname:	ioi_suspend_devices;
+ retain:		ioi_suspend_devices, ioi_release_devices;
+
+objectname:	ioi_assignment;
+ retain:		assign, unassign, add_device, delete_device,
+		lock_for_reconfig, unlock_for_reconfig;
+
+objectname:	ioi_connect;
+ retain:		ioi_connect, ioi_connect_pcw;
+
+objectname:	ioi_device;
+
+objectname:	ioi_get_status;
+ retain:		detailed_status, special_status;
+
+objectname:	ioi_set;
+ retain:		timeout, max_timeout, event, workspace, max_workspace,
+		level, channel_required, status;
+
+objectname:	ioi_config;
+ retain:		find_base_channel, find_controller_card;
+
+objectname:	ioi_workspace;
+
+objectname:	ioi_verify_lock;
+ retain:		ioi_verify_lock;
+
+/* End */

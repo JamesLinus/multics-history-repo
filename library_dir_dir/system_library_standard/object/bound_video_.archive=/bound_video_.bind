@@ -1,0 +1,107 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(87-01-06,LJAdams), approve(87-01-06,MCR7485),
+     audit(87-01-06,GJohnson), install(87-01-06,MR12.0-1259):
+     Modified to retain network_login_channel entrypoint for video_utils_.
+                                                   END HISTORY COMMENTS */
+
+
+/* Bindfile for the video system BIM July 1981 */
+/* Modified 28 June 1982 by WMY to add Perprocess_Static keyword */
+/* Modified 26 October 1982 by WMY to remove window_io_get_line_no_echo_ */
+/* Modified 26 April 1983 by WMY to add window_editor_utils_. */
+/* Modified 3 December 1983 by Jon A. Rochlis to remove window_io_video_. */
+/* Modified 2 June 1983 by JR to retain new components in video_data_. */
+
+Objectname:	bound_video_;
+Perprocess_Static;
+Global:		delete;
+Addname:		window_,
+		window_io_,
+		window_call,
+		wdc,
+		window_display_,
+		tc_io_,
+		video_et_,
+		video_data_,
+		video_utils_,
+		window_editor_utils_;
+
+Order:		window_,
+		tc_,
+		tc_request,
+		tc_input,
+		tc_block,
+		window_call,
+		window_call_data_,
+		wioctl_,
+		window_io_,
+		video_utils_,
+		tc_io_,
+		window_display_,
+		video_alm_util_,
+		tc_mask,
+		tc_screen,
+		tc_disconnect,
+		window_io_iox_,
+		window_editor_utils_,
+		video_et_,
+		tc_error,
+		video_data_;
+
+objectname:	window_;
+ global:		retain;
+ delete:		window_,
+		destroy_all,
+		destroy_all_windows;
+
+objectname:	wioctl_;
+objectname:	tc_;
+objectname:	tc_block;
+objectname:	tc_request;
+objectname:	tc_input;
+
+objectname:	video_et_;
+ global:		retain;
+
+objectname:	window_io_;
+ retain:		window_io_attach;
+
+objectname:	window_io_iox_;
+
+objectname:	window_editor_utils_;
+ global:		retain;
+
+objectname:	tc_io_;
+ retain:		tc_io_attach,
+ 		tty_attach;
+
+objectname:	window_display_;
+ global:		retain;
+
+objectname:	tc_mask;
+objectname:	tc_screen;
+objectname:	tc_disconnect;
+
+objectname:	video_utils_;
+ retain:		turn_on_login_channel,
+		turn_off_login_channel, 
+                    network_login_channel;
+
+objectname:	window_call_data_;
+objectname:	window_call;
+ synonym:		wdc;
+ retain:		window_call, wdc;
+
+objectname:	video_data_;
+ retain:		terminal_switch,
+		terminal_iocb,
+		version,
+		exl_video_system, /* why not? */
+		exl_initialized;
+
+objectname:	video_alm_util_;
+objectname:	tc_error;
+
+/* End */

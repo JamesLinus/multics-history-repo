@@ -1,0 +1,32 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1984 *
+   *                                                         *
+   * Copyright (c) 1972 by Massachusetts Institute of        *
+   * Technology and Honeywell Information Systems, Inc.      *
+   *                                                         *
+   *********************************************************** */
+
+
+/* HISTORY COMMENTS:
+  1) change(85-09-09,Fawcett), approve(85-09-09,MCR6979),
+     audit(85-12-17,CLJones), install(86-03-21,MR12.0-1033):
+     Add mca_init_
+                                                   END HISTORY COMMENTS */
+
+/* Modified 84-09-04 by EJ Sharpe to remove hvr_ */
+
+Objectname:	bound_system_startup_;
+Global:		delete;
+
+Order:		rcp_init,
+		mca_init_,
+		system_startup_;
+
+objectname:	rcp_init;
+
+objectname:	mca_init_;
+
+objectname:	system_startup_;
+ retain:		system_startup_;
+

@@ -1,0 +1,99 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1983 *
+   *                                                         *
+   *********************************************************** */
+
+/* bind file for bound_tolts_ */
+/* created 12/05/78 by J. A. Bush */
+/* modified 79/02/15 by J. A. Bush for Slave mode Polts and Slave mode Molts */
+/* modified 80/02/07 by J. A. Bush to retain tolts_util_$search and tolts_util_$cata_sel */
+/* modified 08/25/81 by J. A. Bush to retain tolts_alm_util_$ascii_to_bci_, etc */
+/* modified 12/82 by R. Fakoury to retain mtdsim_ & isolts_ for exl use only. */
+/* Modified 06/10/83 by R Fakoury to retain opr_msg and get_ttl_date. */
+
+
+/* HISTORY COMMENTS:
+  1) change(86-12-22,Fakoury), approve(86-12-22,MCR7515),
+     audit(87-01-07,Farley), install(87-01-08,MR12.0-1263):
+     Changed to make opr_query_ accessable to the outside world..
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:	bound_tolts_;
+
+Order:		isolts_,
+		isolts_err_log_,
+		mtdsim_,
+		opr_query_,
+		opr_query_response,
+		tolts_,
+		tolts_alm_util_,
+		tolts_alrm_util_,
+		tolts_device_info_,
+		tolts_file_util_,
+		tolts_init_,
+		tolts_io_int_,
+		tolts_load_firmware_,
+		tolts_pcd_,
+		tolts_qttyio_,
+		tolts_ttyio_display_,
+		tolts_ttyio_end_,
+		tolts_util_;
+
+Addname:		isolts_,
+		opr_query_,
+		opr_query_response,
+		mtdsim_,
+		tolts_alm_util_,
+		tolts_util_;
+
+Global:		delete;
+
+objectname:	isolts_;
+ retain:		isolts_;
+
+objectname:	isolts_err_log_;
+
+objectname:	mtdsim_;
+ retain:		mtdsim_;
+
+objectname:	opr_query_;
+ retain:		opr_query_;
+
+objectname:	opr_query_response;
+ retain:		opr_query_response;
+
+objectname:	tolts_;
+ retain:		tolts_;
+
+objectname:	tolts_alm_util_;
+ retain:		ascii_to_bcd_, ascii_to_bci_;
+
+objectname:	tolts_alrm_util_;
+
+objectname:	tolts_device_info_;
+
+objectname:	tolts_file_util_;
+
+objectname:	tolts_init_;
+
+objectname:	tolts_io_int_;
+
+objectname:	tolts_load_firmware_;
+
+objectname:	tolts_pcd_;
+
+objectname:	tolts_qttyio_;
+
+objectname:	tolts_ttyio_display_;
+
+objectname:	tolts_ttyio_end_;
+
+objectname:	tolts_util_;
+ retain:		bci_to_ascii, cata_sel, opr_msg, search, get_ttl_date;
+
+/* end of bind file for bound_tolts_ */
+
+
+

@@ -1,0 +1,16 @@
+/* Bindfile for bce - Multics (communication) utilities. 
+Keith Loepere, February 1984. */
+/* Moved bootload_fs_ into hardcore, Keith Loepere, March 1985. */
+
+Objectname:	bound_bce_utils_;
+Global:		delete;
+Addname:		get_flagbox,
+		set_flagbox,
+		bootload_fs;
+
+objectname:	get_flagbox;
+   retain:	get_flagbox, set_flagbox;
+
+objectname:	bootload_fs;
+   retain:	bootload_fs;
+ /* end */

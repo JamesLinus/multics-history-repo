@@ -1,0 +1,93 @@
+/* Bind file for bound_active_1 */
+/* Modified October 1975 by N I Morris */
+/* Modified 7/78 by J. A. Bush */
+/* Modified March 1981 by J. Bongiovanni to add fast_connect_init */
+/* Modified October 1981 by J. Bongiovanni to remove scr_util */
+/* Modified 7/82 BIM to remove config. */
+/* Modified 8/83 by Keith Loepere to rename call_bos to call_bce. */
+/* Modified 9/83 by Keith Loepere for flagbox_mgr$(set get)_bce_command.
+/* Modified 10/83 (diito) for dbr_util_ and changes to ptw_util_ */
+/* Modified 4/84 (ditto) for freecore$thread. */
+
+Objectname:	bound_active_1;
+Global:		delete;
+
+Force_Order:	initializer,
+		call_bce,
+		freecore,
+		prds_init,
+		fast_connect_init,
+		wire_proc,
+		get_main,
+		rsw_util,
+		mask_instruction,
+		init_scu,
+		flagbox_mgr,
+		ptw_util_,
+		sdw_util_,
+		dbr_util_,
+		delete_segs;
+
+objectname:	initializer;
+ retain:		initializer;
+
+objectname:	call_bce;
+ retain:		call_bce;
+
+objectname:	freecore;
+ retain:		freecore, thread;
+
+objectname:	prds_init;
+ retain:		prds_init;
+
+objectname:	fast_connect_init;
+ retain:		fast_connect_init;
+
+objectname:	wire_proc;
+ retain:		wire_proc, unwire_proc, wire_me, unwire_me;
+
+objectname:	get_main;
+ retain:		get_main, given_address;
+
+objectname:	rsw_util;
+ retain:		port_info, set_rsw_mask, init_rsw_mask;
+
+objectname:	mask_instruction;
+ retain:		smcm, rmcm, staq, ldaq;
+
+objectname:	init_scu;
+ retain:		init_scu, final_scu;
+
+objectname:	flagbox_mgr;
+ retain:		set, get, set_bce_command, get_bce_command;
+
+objectname:	ptw_util_;
+ retain:		make_core, get_coreadd, get_add_type, make_disk, 
+		make_null_disk, make_null, make_pd, set_valid, set_faulted,
+		set_wired, set_unwired, set_phm, reset_phm, get_phm,
+		dissect;
+
+objectname:	sdw_util_;
+ retain:		construct, construct_l68, construct_adp, 
+		dissect, dissect_l68, dissect_adp, 
+		set_access, set_access_l68, set_access_adp, 
+		set_address, set_address_l68, set_address_adp, 
+		set_size, set_size_l68, set_size_adp,
+		get_access, get_access_l68, get_access_adp,
+		get_address, get_address_l68, get_address_adp, 
+		get_size,	get_size_l68, get_size_adp, 
+		set_valid, set_valid_l68, set_valid_adp, 
+		set_faulted, set_faulted_l68, set_faulted_adp, 
+		get_valid, get_valid_l68, get_valid_adp;
+
+objectname:	dbr_util_;
+ retain:		dissect;
+
+objectname:	delete_segs;
+ retain:		temp, delete_segs_init;
+ delete:		delete_segs;
+
+/* end */
+
+
+

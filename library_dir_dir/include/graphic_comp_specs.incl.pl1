@@ -1,0 +1,56 @@
+/* Begin include file ... graphic_comp_specs.incl.pl1 */
+
+/* Table of node lengths, etc., for compilation of graphic structures */
+
+dcl  structural_effector_codes (0:35) char (1) unaligned	/* refers to struc in graphic_code_dcl.incl.pl1 */
+	defined (Graphic_Code_Structure.Setposition_char);
+
+
+dcl  no_args (0:31) fixed bin static options (constant)	/* Number of arguments for each type of effector */
+        initial					/* Zero means an indeterminate but computable number */
+         (3 /* setpos */,	3 /* setpt */,	3 /* vector */,	3 /* shift */,
+	3 /* point */,							(3) -1 /* ILLEGAL */,
+	3 /* scale */,	3 /* rotate */,	6 /* clip */,			(5) -1 /* ILLEGAL */,
+	1 /* intens */,	1 /* linetype */,	1 /* blink */, 	1 /* sensitivity */,
+	3 /* color */,							(3) -1 /* ILLEGAL */,
+	0 /* symbol */,	0 /* text */,	0 /* datablk */,			(5) -0 /* ILLEGAL */);
+
+
+dcl  arg_types (0:31) fixed bin static options (constant) init	/* format of character string for each effector */
+         (3 /* sps SCL */,	3 /* spt SCL */,	3 /* vec SCL */,	3 /* sft SCL */,
+	3 /* pnt SCL */,							(3) 0 /* ILLEGAL */,
+	3 /* scl SCL */,	2 /* rot DPI */,	3 /* clip SCL */,			(5) 0 /* ILLEGAL */,
+	1 /* int SPI */,	1 /* lin SPI */,	1 /* blk SPI */,	1 /* sns SPI */,
+	1 /* color SPI */,							(3) 0 /* ILLEGAL */,
+	5 /* sym T */,	5 /* text T */,	6 /* data D */,			(5) 0 /* ILLEGAL */);
+
+
+dcl  Illegal_char char (1) aligned static init ("U") options (constant);  /* Illegal character, "\525" */
+
+
+/* Effector argument format types */
+
+dcl 1 arg_formats aligned internal static options (constant),
+      2 SPI fixed bin (3) init (1),		/* single precision (6 bit) integer */
+      2 DPI fixed bin (3) init (2), 		/* double precision (12 bit) integer */
+      2 SCL fixed bin (3) init (3),		/* scaled fixed point (11,6) binary */
+      2 UI fixed bin (3) init (4),		/* unique id (18 bit) integer */
+      2 T fixed bin (3) init (5),		/* text (character string) */
+      2 D fixed bin (3) init (6);		/* bit string */
+
+
+/* Numbers of characters representing an argument, by type */
+
+dcl  arg_lengths (6) fixed bin internal static options (constant) init
+    (1 /* SPI */,	2 /* DPI */,	3 /* SCL */,	3 /* UI */,	0 /* T */,	0 /* D */);
+
+dcl (SPI_arg_length initial (1),
+     DPI_arg_length initial (2),
+     SCL_arg_length initial (3),
+     UI_arg_length initial (3)) fixed bin static options (constant);
+
+/* This include file includes graphic_code_dcl.incl.pl1, appearing below. */
+
+%include graphic_code_dcl;
+
+/* End include file ... graphic_comp_specs.incl.pl1 */

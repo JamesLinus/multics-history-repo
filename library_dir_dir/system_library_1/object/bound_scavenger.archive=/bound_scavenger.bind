@@ -1,0 +1,12 @@
+Objectname:	bound_scavenger;
+
+Global:		delete;
+
+Order:		scavenger, 
+		scavenge_volume;
+
+objectname:	scavenger;
+ retain:		scavenger,
+		shutdown;
+
+objectname:	scavenge_volume;

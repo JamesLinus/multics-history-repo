@@ -1,0 +1,59 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1985 *
+   *                                                         *
+   *********************************************************** */
+
+/* HISTORY COMMENTS:
+  1) change(86-04-01,Swenson), approve(87-07-24,MCR7702),
+     audit(87-04-23,GDixon), install(87-08-04,MR12.1-1055):
+     Initially created.
+  2) change(87-04-24,GDixon), approve(87-07-24,MCR7702),
+     audit(87-07-24,Martinson), install(87-08-04,MR12.1-1055):
+      A) Remove excess objectname statements.
+      B) Eliminate use of global retain statements.
+                                                   END HISTORY COMMENTS */
+
+Objectname:	bound_ls_user_ctl_;
+
+Addname:		uc_cleanup_network_dials_,
+		uc_ls_rq_server_wakeup_,
+		uc_send_ls_response_;
+
+Order:		uc_ls_rq_server_wakeup_,
+		uc_ls_validate_request_,
+		uc_login_,
+		uc_ls_process_request_,
+		uc_ls_create_request_,
+		uc_ls_connect_request_,
+		uc_ls_destroy_request_,
+		uc_ls_disconnect_request_,
+		uc_ls_logout_request_,
+		uc_logout_,
+		uc_cleanup_network_dials_,
+		uc_ls_new_proc_request_,
+		uc_ls_dial_request_,
+		uc_dial_,
+		uc_ls_list_request_,
+		uc_list_disconnected_procs_,
+		uc_ls_operator_request_,
+		uc_create_process_,
+		uc_create_process_check_,
+		uc_proc_term_handler_,
+		uc_send_ls_response_,
+		uc_set_pit_tty_info_,
+		uc_setup_process_connect_;
+		
+Global:		delete;
+
+objectname:	uc_cleanup_network_dials_;
+  retain:		uc_cleanup_network_dials_;
+
+objectname:	uc_ls_rq_server_wakeup_;
+  retain:		trace_on, trace_off, 
+		uc_ls_rq_server_wakeup_;
+
+objectname:         uc_send_ls_response_;
+  retain:		uc_send_ls_response_;
+
+/* end */

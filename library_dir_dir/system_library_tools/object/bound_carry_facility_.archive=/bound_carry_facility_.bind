@@ -1,0 +1,48 @@
+/* Bind file for bound_carry_facility_ */
+
+/* Written 1/14/77 by Steve Herbst */
+/* Obsolete carry command deleted 05/02/79 S. Herbst */
+
+
+Objectname:	bound_carry_facility_;
+
+Addname:		enter_carry_request, ecr,
+		list_carry_requests, lcr,
+		cancel_carry_request, ccr,
+		carry_total,
+		carry_dump,
+		remake_carry_tape,
+		carry_load,
+		carry_map,
+		carry_retrieve;
+
+Order:		enter_carry_request,
+		carry_total,
+		carry_dump,
+		carry_dump_dp,
+		carry_load;
+
+Global:		delete;
+
+objectname:	enter_carry_request;
+retain:		enter_carry_request, ecr,
+		list_carry_requests, lcr,
+		cancel_carry_request, ccr;
+
+objectname:	carry_total;
+retain:		carry_total;
+
+objectname:	carry_dump;
+synonym:		remake_carry_tape;
+retain:		carry_dump,
+		remake_carry_tape;
+
+objectname:	carry_dump_dp;
+retain:		carry_dump_dp;
+
+objectname:	carry_load;
+retain:		carry_load,
+		carry_map,
+		carry_retrieve;
+
+/* End bind file for bound_carry_facility_ */

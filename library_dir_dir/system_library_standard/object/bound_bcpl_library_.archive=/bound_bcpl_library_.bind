@@ -1,0 +1,13 @@
+/*  Bind control file for the BCPL library (bound_bcpl_library_).
+/*  All entry points are retained.
+/*  Last modified on 06/14/74 at 02:03:42 by R F Mabee.
+/*  Written for 6180 version of library in June 1973 by R F Mabee.  */
+
+Objectname:	bound_bcpl_library_;
+Addname:		bcpl_arithmetic_, bcpl_strings_, bcpl_conversions_, bcpl_machine_code_,
+		bcpl_command_lib_, bcpl_filesys_lib_, bcpl_stream_io_;
+Global:		retain;
+Order:		bcpl_arithmetic_, bcpl_strings_, bcpl_conversions_, bcpl_machine_code_,
+		bcpl_command_lib_, bcpl_filesys_lib_, bcpl_stream_io_;
+
+/*  End of bind control file for bound_bcpl_library_.  */

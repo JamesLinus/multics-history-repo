@@ -1,0 +1,913 @@
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) Honeywell Bull Inc., 1988                *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(88-10-05,GWMay), approve(88-10-05,MCR8005), audit(88-10-12,Farley),
+     install(88-10-17,MR12.2-1173):
+     Changed to output a unique string to delimit each set of system data
+     dumped.
+                                                   END HISTORY COMMENTS */
+
+
+/* format: style1,ind2,^inddcls,ifthenstmt,dclind2,declareind2,ifthendo,ifthen*/
+dmpr_output_: proc;
+
+/* This routine writes the objects that are being dumped through the specified switch. It controls
+   error recovery and volume attachment for the switch. Any object written is preceeded by logical header which
+   identifies its type and length and provides a unique pattern in case resynchronization is necessary. */
+
+/* 1) Modified:	12/17/81 by GA Texada to add a query in the attach proc to enable a clean exit.	    */
+/*			  and to fix phxXXXXX					    */
+/* 2) Modified:	7/15/82 by GA Texada to fix hardcore 372 (phx01702).			    */
+/* 3) Modified:	11/12/82 by GA Texada to implement phx14088,				    */
+/*	implements preattach_(vols ioname)						    */
+/* 4) Modified:	1/26/83 to set dmpr_data_.cur_vol_open					    */
+/* 5) Modified:     August 1983 by GA Texada to add new_pass_attach and end_pass_detach.		    */
+/* 6) Modified:	April 1985 by SGH (UNCA) to fix preattach cleanup -- phx17367,
+		to complete fix for phx8938, and to synchronize output after
+		non-null objects */
+
+dcl dirname	     char (168);
+dcl ename		     char (32);
+dcl ldn		     fixed bin;
+dcl current_length	     fixed bin;
+dcl attach_name	     char (32);
+dcl answer	     char (3) var;
+dcl error_count	     fixed bin;
+dcl prev_contentsp	     ptr;
+dcl retry		     bit (1);
+dcl new_tape	     bit (1);
+dcl att_desc	     char (256);
+dcl write_volume_log     bit (1);
+dcl code		     fixed bin (35);
+dcl ignore	     fixed bin (35);
+dcl datap		     ptr;
+dcl (prex, sprex)	     fixed bin;
+dcl pagex		     fixed bin;
+dcl pagep		     ptr;
+dcl page_of_chars	     char (CHARS_PER_PAGE) based (pagep) aligned;
+dcl page_by_page	     bit (1);
+dcl start_numeric	     fixed bin;
+dcl char_num	     char (32);
+dcl num		     fixed bin;
+
+dcl myname	     char (32) int static init ("dmpr_output_") options (constant);
+dcl max_error_count	     fixed bin int static options (constant) init (64);
+dcl zero_char	     char (1) int static init ("") options (constant);
+dcl ascii_type	     (3) char (4) int static init ("incr", "cons", "comp") options (constant);
+dcl retry_explanation    char (143) init (
+		     "The attachment of the dump volume has failed. 
+A ""yes"" answer will attempt to reattach the same volume. 
+A ""no"" answer will terminate the dump.") int static options (constant);
+dcl delete_explanation   char (148) init (
+		     "The open of the dump volume has failed.
+A ""yes"" answer will delete the volume from the volume pool.
+A ""no"" answer will leave the volume in the pool.") int static options (constant);
+dcl continue_explanation char (141) init (
+		     "The open of the dump volume has failed.
+A ""yes"" answer will continue the dump with a different volume.
+A ""no"" answer will terminate the dump.") int static options (constant);
+
+
+dcl 1 volid	     aligned,
+    2 char	     char (2) unaligned,
+    2 num		     fixed bin unaligned;
+
+
+dcl 1 local_status_branch like status_branch aligned;
+
+dcl command_query_	     entry options (variable);
+dcl continue_to_signal_  entry (fixed bin (35));
+dcl suffixed_name_$make  entry (char (*), char (*), char (*), fixed bin (35));
+dcl manage_volume_pool_$reserve entry (ptr, entry options (variable), char (*), char (*), char (*),
+		     fixed bin (35));
+dcl manage_volume_pool_$allocate entry (ptr, entry options (variable), char (*), char (*), char (*),
+		     fixed bin (35));
+dcl manage_volume_pool_$free entry (ptr, entry options (variable), char (*), fixed bin (35));
+dcl manage_volume_pool_$delete entry (ptr, entry options (variable), char (*), fixed bin (35));
+dcl manage_volume_pool_$set_volid entry (ptr, entry options (variable), char (*), bit (36), fixed bin (35));
+dcl cv_dec_check_	     entry (char (*), fixed bin (35)) returns (fixed bin);
+dcl iox_$attach_ioname   entry (char (*), ptr, char (*), fixed bin (35));
+dcl iox_$control	     entry (ptr, char (*), ptr, fixed bin (35));
+dcl iox_$modes	     entry (ptr, char (*), char (*), fixed bin (35));
+dcl iox_$open	     entry (ptr, fixed bin, bit (36), fixed bin (35));
+dcl iox_$put_chars	     entry (ptr, ptr, fixed bin, fixed bin (35));
+dcl iox_$close	     entry (ptr, fixed bin (35));
+dcl iox_$detach_iocb     entry (ptr, fixed bin (35));
+dcl dmpr_output_$preattach_vols entry (fixed bin, fixed bin, fixed bin (35));
+dcl dmpr_output_$preattach_ioname entry (fixed bin, fixed bin, fixed bin (35));
+dcl dmpr_report_$error_output entry options (variable);
+dcl dmpr_log_$init_account_file entry (fixed bin (35));
+dcl dmpr_log_$close_account_file entry (fixed bin (35));
+dcl dmpr_log_$open_volume_log entry (fixed bin (35));
+dcl dmpr_log_$close_volume_log entry (fixed bin (35));
+dcl dmpr_log_$init_contents_seg entry (fixed bin (35));
+dcl dmpr_log_$update_pvolog entry (fixed bin (35));
+dcl dmpr_log_$create_pvolog entry (char (*), fixed bin (35));
+dcl hcs_$delentry_seg    entry (ptr, fixed bin (35));
+dcl hcs_$initiate	     entry (char (*), char (*), char (*), fixed bin,
+		     fixed bin, ptr, fixed bin (35));
+dcl hcs_$terminate_seg   entry (ptr, fixed bin, fixed bin (35));
+dcl hcs_$fs_get_path_name entry (ptr, char (*), fixed bin, char (*), fixed bin (35));
+dcl adjust_bit_count_    entry (char (*), char (*), bit (1), fixed bin, fixed bin (35));
+dcl hcs_$status_long     entry (char (*), char (*), fixed bin, ptr, ptr, fixed bin (35));
+dcl dmpr_report_$online_output entry options (variable);
+dcl ioa_$rsnnl	     entry options (variable);
+dcl unique_bits_	     entry () returns (bit (70));
+dcl tape_check	     bit (72);
+dcl seg_fault_error	     condition;
+dcl page_read_error	     condition;
+dcl page_fault_error     condition;
+
+dcl error_table_$segfault ext fixed bin (35);
+dcl error_table_$bad_volid ext fixed bin (35);
+dcl error_table_$action_not_performed ext fixed bin (35);
+dcl error_table_$device_end ext fixed bin (35);
+dcl error_table_$end_of_info ext fixed bin (35);
+dcl error_table_$fatal_error ext fixed bin (35);
+dcl error_table_$undefined_order_request ext fixed bin (35);
+dcl error_table_$no_operation ext fixed bin (35);
+
+dcl (addr, substr, null, size, fixed, ptr, search, unspec, length, rtrim, clock) builtin;
+dcl (before, bit, divide) builtin;
+
+init: entry (code);
+
+/* This entry initializes the output routine.  It sets up the logical record header and attaches the
+   number of output volumes requested */
+
+dcl local_pre_attach_vol fixed bin;			/* for use in preattaching volumes		*/
+
+    code = 0;
+    write_volume_log = ""b;
+    query_info.version = query_info_version_5;
+    query_info.yes_or_no_sw = "1"b;
+    recordp = dmpr_data_.recordp;
+    backup_volume_record.version = backup_volume_record_version_2;
+    backup_volume_record.pattern1 = pattern1;
+    backup_volume_record.pattern2 = pattern2;
+    backup_volume_record.pattern3 = pattern3;
+
+    if dmpr_data_.pre_attach_vol > 0 then do;
+        local_pre_attach_vol = dmpr_data_.pre_attach_vol;
+        dmpr_data_.pre_attach_vol = 0;
+        call dmpr_output_$preattach_vols (local_pre_attach_vol, 1, code);
+        if code ^= 0 then return;
+        call dmpr_report_$online_output (0, dmpr_data_.myname, "Please get the following volumes: ^v(^a ^)",
+	   local_pre_attach_vol, dmpr_data_.pre_attach_volname (*));
+        dmpr_data_.pvlp = null;
+        dmpr_data_.volid = "0"b;
+        dmpr_data_.volname = "";
+        call dmpr_output_$preattach_ioname (local_pre_attach_vol, 1, code);
+        if code ^= 0 then return;
+        dmpr_data_.pre_attach_vol = local_pre_attach_vol;
+      end;
+    call attach;
+    return;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+new_pass_attach: entry (code);
+
+    write_volume_log = ""b;
+    call attach ();					/* takes care of errors himself		*/
+    return;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+end_pass_detach: entry (code);
+
+    write_volume_log = ""b;
+    call detach ();
+    return;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+
+output_object: entry (datap, code);
+
+/* This entry writes the vtoce and the object , if one exists, on the attached switch.  If the object has
+   pages of zeros it is written out in a compacted form. The output strategy is to write the object
+   untill the write succedes. Thus if an object spans a dump volume , it will be rewritten, in
+   its entirity on the new dump volume */
+
+    code = 0;
+    write_volume_log = ""b;
+    query_info.version = query_info_version_5;
+    query_info.yes_or_no_sw = "1"b;
+    recordp = dmpr_data_.recordp;
+    bvlp = dmpr_data_.bvlp;
+    page_by_page = "0"b;
+    backup_volume_record.rec1_type = vtoce_type;
+    backup_volume_record.rec1_len = CHARS_PER_WORD * size (backup_volume_record);
+
+    if datap ^= null then do;
+        if backup_volume_record.dirsw then backup_volume_record.rec2_type = dir_type;
+        else backup_volume_record.rec2_type = seg_type;
+        if fixed (backup_volume_record.csl, 9) ^= fixed (backup_volume_record.records, 9) then do;
+	  page_by_page = "1"b;
+	  backup_volume_record.rec2_len = CHARS_PER_PAGE * fixed (backup_volume_record.records, 9);
+	end;
+        else if fixed (backup_volume_record.csl, 9) = 0 then backup_volume_record.rec2_len = 0;
+        else backup_volume_record.rec2_len = CHARS_PER_PAGE * (fixed (backup_volume_record.records, 9) - 1)
+	        + CHARS_PER_WORD * last_page_length ();
+      end;
+    else do;
+        backup_volume_record.rec2_type = null_type;
+        backup_volume_record.rec2_len = 0;
+      end;
+
+start_io:
+    retry = "1"b;
+    do while (retry);				/* write the VTOCE for this seg/dir */
+      call iox_$put_chars (dmpr_data_.outputvol_iocbp, recordp,
+	 backup_volume_record.rec1_len, code);
+      call check_output_error;
+    end;
+
+    on seg_fault_error, page_fault_error begin;
+        if tape_check ^= ""b then do;
+	  call iox_$put_chars (dmpr_data_.outputvol_iocbp,
+	       addr (tape_check), size (tape_check) * CHARS_PER_WORD, code);
+	  call check_output_error;
+	end;
+        call continue_to_signal_ (code);
+      end;
+
+    tape_check = ""b;				/* write the data from this seg/dir */
+    if backup_volume_record.rec2_len ^= 0 then do;
+        tape_check = dmpr_data_.volid || substr (unique_bits_ (), 35);
+        call iox_$put_chars (dmpr_data_.outputvol_iocbp,
+	   addr (tape_check), size (tape_check) * CHARS_PER_WORD, code);
+        call check_output_error;
+        if new_tape then goto start_io;
+
+        if ^page_by_page then do;
+	  retry = "1"b;
+	  do while (retry);
+	    call iox_$put_chars (dmpr_data_.outputvol_iocbp, datap,
+	         backup_volume_record.rec2_len, code);
+	    call check_output_error;
+	    if new_tape then goto start_io;
+	  end;
+	end;
+        else call page_by_page_write;
+
+        call iox_$put_chars (dmpr_data_.outputvol_iocbp,
+	   addr (tape_check), size (tape_check) * CHARS_PER_WORD, code);
+        call check_output_error;
+        if new_tape then goto start_io;
+        tape_check = ""b;				/* back to "" so it doesn't get written below */
+
+        call iox_$control (dmpr_data_.outputvol_iocbp, "error_count", addr (error_count), code); /* force output synchronization */
+        if ^(code = error_table_$undefined_order_request | code = error_table_$no_operation) then do;
+	  if code = 0 then
+	    if error_count > max_error_count then
+	      code = error_table_$fatal_error;		/* too many errors, abandon tape */
+	  call check_output_error;
+	  if new_tape then goto start_io;
+	end;
+      end;
+non_local_return:
+    if tape_check ^= ""b then do;
+        call iox_$put_chars (dmpr_data_.outputvol_iocbp,
+	   addr (tape_check), size (tape_check) * CHARS_PER_WORD, code);
+        call check_output_error;
+      end;
+
+    return;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+
+preattach_vols:
+  entry (nvols_to_get, begin_indx, mcode);
+
+dcl (nvols_to_get, begin_indx) fixed bin,
+  mcode		     fixed bin (35),
+  safe_pvlp	     ptr,				/* use to save the current values		*/
+  safe_volname	     char (32),			/* crucial variables from dmpr_data_		*/
+  safe_volid	     bit (36);			/* when doing this routine			*/
+
+    safe_volname = dmpr_data_.volname;
+    safe_volid = dmpr_data_.volid;
+    safe_pvlp = dmpr_data_.pvlp;
+    write_volume_log = ""b;
+
+    do prex = begin_indx to (dmpr_data_.pre_attach_vol + nvols_to_get);
+      call get_volname (mcode);
+      if mcode ^= 0 then goto restore_safe;
+      dmpr_data_.pre_attach_volname (prex) = dmpr_data_.volname;
+      dmpr_data_.pre_attach_volid (prex) = dmpr_data_.volid;
+      dmpr_data_.pre_attach_pvlp (prex) = dmpr_data_.pvlp;
+    end;
+restore_safe:
+    dmpr_data_.volname = safe_volname;			/* restore all these			*/
+    dmpr_data_.volid = safe_volid;
+    dmpr_data_.pvlp = safe_pvlp;
+    return;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+
+preattach_ioname:
+  entry (nvols_to_name, begin_indx, picode);
+
+dcl nvols_to_name	     fixed bin,
+  picode		     fixed bin (35);
+
+    write_volume_log = ""b;
+    do prex = begin_indx to (dmpr_data_.pre_attach_vol + nvols_to_name);
+      call ioa_$rsnnl ("^a.^d", attach_name, (0), "dump_volume", prex);
+      if dmpr_data_.att_desc ^= "" then
+        call ioa_$rsnnl (dmpr_data_.att_desc, att_desc, (0), dmpr_data_.pre_attach_volname (prex));
+      else call ioa_$rsnnl ("tape_mult_ ^a -write -system", att_desc, (0), dmpr_data_.pre_attach_volname (prex));
+      dmpr_data_.io_module = before (att_desc, " ");
+      call iox_$attach_ioname (attach_name, dmpr_data_.pre_attach_iocbp (prex), att_desc, picode);
+      if picode ^= 0 then do;
+	call dmpr_report_$error_output (picode, myname, "Unable to attach ^a via desc ^a", attach_name, att_desc);
+	if (prex - begin_indx >= 1) then do;		/* if I got at least one attached, fake 'em out	*/
+	    picode = 0;				/* so we don't quit				*/
+	    sprex = prex - begin_indx;		/* this is how many we have */
+	  end;
+	else sprex = 0;
+	do prex = prex to (dmpr_data_.pre_attach_vol + nvols_to_name); /* get rid of the pvolog segments for these 	*/
+	  call hcs_$delentry_seg (dmpr_data_.pre_attach_pvlp (prex), ignore);
+	  dmpr_data_.pre_attach_pvlp (prex) = null ();
+	  if dmpr_data_.auto_vol then			/* and free the volumes in the pool		*/
+	    call manage_volume_pool_$free (dmpr_data_.vpp, dmpr_report_$error_output,
+	         (dmpr_data_.pre_attach_volname (prex)), ignore);
+	  dmpr_data_.pre_attach_volname (prex) = "";	/* and clean up these...			*/
+	  dmpr_data_.pre_attach_volid (prex) = "0"b;
+	end;
+	nvols_to_name = sprex;			/* now, tell him how many we really did		*/
+        end;
+    end;
+    return;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+
+write_volume_log: entry (code);
+
+/* This entry writes a volume log on the attached switch.  */
+
+    code = 0;
+    query_info.version = query_info_version_5;
+    write_volume_log = "1"b;
+    recordp = dmpr_data_.recordp;
+    bvlp = dmpr_data_.bvlp;
+
+
+    call get_seg_current_length (bvlp);
+    if code ^= 0 then do;
+        call dmpr_report_$error_output (code, myname, "Unable to find length of volume log ^a.volog", dmpr_data_.pvname);
+        return;
+      end;
+
+    backup_volume_log.rec1_len = current_length * CHARS_PER_PAGE;
+    backup_volume_record.rec2_type = null_type;
+    backup_volume_record.rec2_len = 0;
+    backup_volume_log.time_dumped = substr (bit (fixed (clock, 52), 52), 1, 36);
+
+/* vologs have the header builtin so
+				   we don't write one. */
+/* Just write it as one big header */
+    retry = "1"b;
+    do while (retry);
+      call iox_$put_chars (dmpr_data_.outputvol_iocbp, bvlp, backup_volume_log.rec1_len, code);
+      call check_output_error;
+    end;
+
+
+    return;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+
+get_volname: proc (ec);
+
+dcl volid		     bit (36);
+dcl volname	     char (32);
+dcl ec		     fixed bin (35);
+
+
+/* This proc reads a dump volume name and converts it to a  volume id. Volume names are restricted to two or less
+   acsii characters preceeding a numeric value(eg ic12345 is ok but inc12345 is not). It also creates an output log
+   for the dump volume in which all the physical volumes that are dumped on this dump volume will be recorded.
+   If the output log can not be created then it is assumed that the volume is alreay in use and another volume name
+   is requested. */
+
+request: volname = "*";
+    if dmpr_data_.auto_vol then do;
+get_vol: call manage_volume_pool_$reserve (dmpr_data_.vpp, dmpr_report_$error_output, volname,
+	   ascii_type (dmpr_data_.dump_type), volname, ec);
+        if ec ^= 0 then do;
+	  if volname ^= "*" & ec = error_table_$action_not_performed then do;
+	      call dmpr_report_$online_output (0, myname,
+		 "Pool volume ^a already allocated", volname);
+	      return;				/* let attach get us a new one		*/
+	    end;
+	  if ec = error_table_$action_not_performed then ec = 0;
+	  call dmpr_report_$online_output (ec, myname,
+	       "Unable to get next dump volume name from dump volume pool");
+reread1:	  call get_volname_from_user (volname);
+	  goto get_vol;				/* add to volume pool */
+	end;
+        call set_volid (volname, volid, ec);
+        if ec ^= 0 then do;
+	  call dmpr_report_$online_output (ec, myname, "Invalid volume id ^a",
+	       volname);
+bad_volid:  call manage_volume_pool_$free (dmpr_data_.vpp, dmpr_report_$error_output,
+	       volname, ignore);
+	  call manage_volume_pool_$delete (dmpr_data_.vpp, dmpr_report_$error_output,
+	       volname, ignore);
+	  goto request;
+	end;
+        call manage_volume_pool_$set_volid (dmpr_data_.vpp, dmpr_report_$error_output,
+	   volname, volid, ec);
+        if ec ^= 0 then do;
+	  call dmpr_report_$error_output (ec, dmpr_data_.myname, "Unable to set volid for ^a",
+	       volname);
+	  goto bad_volid;
+	end;
+      end;
+    else do;
+reread2: call get_volname_from_user (volname);
+        call set_volid (volname, volid, ec);
+        if ec ^= 0 then do;
+	  call dmpr_report_$online_output (ec, myname, "Invalid volume id ^a specified.", volname);
+	  goto reread2;
+	end;
+      end;
+    call dmpr_log_$create_pvolog (volname, ec);
+    if ec ^= 0 then do;
+        call dmpr_report_$online_output (0, myname,
+	   "Dump volume ^a still contains pertinent information", volname);
+        goto request;
+      end;
+    dmpr_data_.volid = volid;
+    dmpr_data_.volname = volname;
+    return;
+  end get_volname;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+
+attach: proc;
+
+/* This proc attaches an output volume through the specified attach description and opens it.
+   It then create a contents segment and an account sgment for this volume.  It then attempts to determine the previous
+   dump volume of this type and write its contents segment on the just attached dump volume.  Finally it
+   updates the prev output log to reflect this dump volume is now the previous dump volume. 
+    A return code of a -1 will indicate that the dump should be aborted by Operator request. */
+
+
+
+    dmpr_data_.cur_vol_open = "0"b;
+retry_attach:
+    if dmpr_data_.pre_attach_vol > 0 then do;
+        dmpr_data_.vol_idx = dmpr_data_.vol_idx + 1;
+        if dmpr_data_.vol_idx > dmpr_data_.pre_attach_vol then do;
+	  dmpr_data_.pre_attach_vol, dmpr_data_.vol_idx = 0;
+	  goto non_pre_attach;			/* turn it off */
+	end;
+        dmpr_data_.volname = dmpr_data_.pre_attach_volname (dmpr_data_.vol_idx);
+        dmpr_data_.volid = dmpr_data_.pre_attach_volid (dmpr_data_.vol_idx);
+        dmpr_data_.outputvol_iocbp = dmpr_data_.pre_attach_iocbp (dmpr_data_.vol_idx);
+        dmpr_data_.pvlp = dmpr_data_.pre_attach_pvlp (dmpr_data_.vol_idx);
+      end;
+    else do;
+non_pre_attach:
+        call get_volname (code);
+        if code ^= 0 then return;
+
+        if dmpr_data_.att_desc ^= "" then
+	call ioa_$rsnnl (dmpr_data_.att_desc, att_desc, (0), dmpr_data_.volname);
+        else call ioa_$rsnnl ("tape_mult_ ^a -write -system", att_desc, (0), dmpr_data_.volname);
+        dmpr_data_.io_module = before (att_desc, " ");
+reattach: call iox_$attach_ioname ("dump_volume", dmpr_data_.outputvol_iocbp, att_desc, code);
+        if code ^= 0 then do;
+	  call dmpr_report_$error_output (code, myname, "Unable to attach dump volume ^a.",
+	       dmpr_data_.volname);
+	  query_info.explanation_ptr = addr (retry_explanation);
+	  query_info.explanation_len = length (retry_explanation);
+	  call command_query_ (addr (query_info), answer, myname, "^/Do you wish to re-try the attachment?");
+
+	  query_info.explanation_ptr = null ();		/* because its used elsewhere			*/
+	  query_info.explanation_len = 0;		/* and we dont want to confuse anyone		*/
+	  if answer = "yes" then goto reattach;
+	  else do;
+	      call hcs_$delentry_seg (dmpr_data_.pvlp, ignore);
+	      call hcs_$terminate_seg (dmpr_data_.pvlp, 0, ignore);
+	      dmpr_data_.pvlp = null ();
+	      if dmpr_data_.auto_vol then
+	        call manage_volume_pool_$free (dmpr_data_.vpp, dmpr_report_$error_output,
+		   (dmpr_data_.volname), ignore);
+	      code = -1;				/* flag for dumper				*/
+	      return;
+	    end;
+	end;
+      end;
+    if dmpr_data_.auto_vol then do;
+        call manage_volume_pool_$allocate (dmpr_data_.vpp, dmpr_report_$error_output, (dmpr_data_.volname),
+	   ascii_type (dmpr_data_.dump_type),
+	   (dmpr_data_.volname), code);
+        if code ^= 0 then do;
+	  call dmpr_report_$error_output (code, myname, "Unable to mark ^a allocated in volume pool",
+	       dmpr_data_.volname);
+	  call hcs_$delentry_seg (dmpr_data_.pvlp, ignore);
+	  call hcs_$terminate_seg (dmpr_data_.pvlp, 0, ignore);
+	  dmpr_data_.pvlp = null ();
+	  call iox_$detach_iocb (dmpr_data_.outputvol_iocbp, (0));
+	  goto retry_attach;
+	end;
+      end;
+    call iox_$open (dmpr_data_.outputvol_iocbp, Stream_output, "0"b, code);
+    if code ^= 0 then do;
+        call dmpr_report_$error_output (code, myname, "Error on opening dump volume ^a",
+	   dmpr_data_.volname);
+        call iox_$detach_iocb (dmpr_data_.outputvol_iocbp, ignore);
+        call hcs_$delentry_seg (dmpr_data_.pvlp, ignore);
+        call hcs_$terminate_seg (dmpr_data_.pvlp, 0, ignore);
+        dmpr_data_.pvlp = null ();
+        if dmpr_data_.auto_vol then do;
+	  call manage_volume_pool_$free (dmpr_data_.vpp, dmpr_report_$error_output,
+	       (dmpr_data_.volname), ignore);
+	  if dmpr_data_.pre_attach_vol > 0 then goto retry_attach; /* presumably, there isn't anyone to answer our questions so,*/
+
+	  query_info.explanation_ptr = addr (delete_explanation);
+	  query_info.explanation_len = length (delete_explanation);
+	  call command_query_ (addr (query_info), answer, myname, "^/^a^/^a",
+	       "The open operation has failed.",
+	       "Do you wish to delete the volume from the pool? ");
+	  if answer = "yes" then
+	    call manage_volume_pool_$delete (dmpr_data_.vpp, dmpr_report_$error_output,
+	         (dmpr_data_.volname), ignore);
+	  query_info.explanation_ptr = addr (continue_explanation);
+	  query_info.explanation_len = length (continue_explanation);
+	  call command_query_ (addr (query_info), answer, myname, "^/Do you wish to continue the dump?");
+	  query_info.explanation_ptr = null ();
+	  query_info.explanation_len = 0;
+	  if answer = "yes" then ;
+	  else do;
+	      code = -1;				/* Operator aborted the dump			*/
+	      return;
+	    end;
+	end;
+        goto retry_attach;
+      end;
+    call iox_$modes (dmpr_data_.outputvol_iocbp, "async", (""), (0));
+						/* run asynchronously			*/
+    dmpr_data_.cur_vol_open = "1"b;			/* ok, good open				*/
+    call dmpr_log_$init_contents_seg (code);
+    if code ^= 0 then do;
+        call dmpr_report_$error_output (code, myname, "Contents seg init failure");
+        return;
+      end;
+
+    if dmpr_data_.accounting then do;
+        call dmpr_log_$init_account_file (code);
+        if code ^= 0 then do;
+	  call dmpr_report_$error_output (code, myname, "Account file init failure");
+	  return;
+	end;
+      end;
+
+    infop = dmpr_data_.infop;
+    backup_info.rec2_type = null_type;
+    backup_info.rec2_len = 0;
+    backup_info.dump_volname = dmpr_data_.volname;
+    backup_info.dump_volid = dmpr_data_.volid;
+    backup_info.time_dumped = substr (bit (fixed (clock, 52), 52), 1, 36);
+    retry = "1"b;
+    do while (retry);
+      call iox_$put_chars (dmpr_data_.outputvol_iocbp, infop, backup_info.rec1_len, code);
+      call check_output_error;
+    end;
+
+    if dmpr_data_.prev_volname = "" then do;
+        call dmpr_report_$error_output (0, dmpr_data_.myname,
+	   "Previous dump volume not known. Contents segment not written to new dump volume");
+        goto update_prev;
+      end;
+    call suffixed_name_$make ((dmpr_data_.prev_volname), "contents", ename, code);
+    if code ^= 0 then goto prev_err;
+
+    call hcs_$initiate (rtrim (dmpr_data_.sys_dir) || ">contents", ename, "", 0, 1, prev_contentsp, code);
+    if prev_contentsp = null then do;
+prev_err: call dmpr_report_$error_output (code, myname,
+	   "Unable to locate contents seg ^a", ename);
+        goto update_prev;
+      end;
+
+    call get_seg_current_length (prev_contentsp);
+    if code ^= 0 then do;
+        call dmpr_report_$error_output (code, myname,
+	   "Unable to determine length of previous contents file");
+        goto update_prev;
+      end;
+    prev_contentsp -> backup_volume_contents.rec1_len = CHARS_PER_PAGE * current_length;
+    prev_contentsp -> backup_volume_contents.rec2_type = null_type;
+    prev_contentsp -> backup_volume_contents.rec2_len = 0;
+    prev_contentsp -> backup_volume_contents.time_dumped = substr (bit (fixed (clock, 52), 52), 1, 36);
+    retry = "1"b;
+    do while (retry);
+      call iox_$put_chars (dmpr_data_.outputvol_iocbp, prev_contentsp,
+	 prev_contentsp -> backup_volume_contents.rec1_len, code);
+      call check_output_error;
+    end;
+
+update_prev:
+    dmpr_data_.prev_volname = dmpr_data_.volname;
+
+    if dmpr_data_.bvlp ^= null then do;
+        if ^write_volume_log then call dmpr_log_$open_volume_log (code);
+        if code ^= 0 then
+	call dmpr_report_$error_output (code, myname, "Unable to open ^a.volog", dmpr_data_.pvname);
+      end;
+
+    dmpr_data_.not_reported = "1"b;
+    dmpr_data_.dump_volume_seg_num = 0;
+    dmpr_data_.dump_volume_seg_rec = 0;
+    dmpr_data_.dump_volume_dir_num = 0;
+    dmpr_data_.dump_volume_dir_rec = 0;
+
+  end attach;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+
+detach: proc;
+
+/* This proc closes out the use of a dump volume. It does this by closing the account segment and terminating the
+   account and contents segment. It then closes and detachs the dump volume. */
+
+    if dmpr_data_.accounting then do;
+        call dmpr_log_$close_account_file (code);
+        if code ^= 0 then
+	call dmpr_report_$error_output (code, myname, "Unable to close account seg");
+      end;
+    call setbc_term (dmpr_data_.contentsp);
+    call setbc_term (dmpr_data_.pvlp);
+    call iox_$close (dmpr_data_.outputvol_iocbp, code);
+    if code ^= 0 then
+      call dmpr_report_$error_output (code, myname, "Unable to close dump volume ^a", dmpr_data_.volname);
+    call iox_$detach_iocb (dmpr_data_.outputvol_iocbp, code);
+    if code ^= 0 then
+      call dmpr_report_$error_output (code, myname, "Unable to detach dump volume ^a", dmpr_data_.volname); ;
+    dmpr_data_.outputvol_iocbp = null;			/* be sure */
+    call dmpr_report_$online_output (0, myname,
+         "Finished ^a: ^d ^d ^d ^d", dmpr_data_.volname,
+         dmpr_data_.dump_volume_dir_rec, dmpr_data_.dump_volume_dir_num, dmpr_data_.dump_volume_seg_rec,
+         dmpr_data_.dump_volume_seg_num);
+    dmpr_data_.not_reported = "0"b;
+    if ^write_volume_log then call dmpr_log_$close_volume_log (code);
+    if code ^= 0 then
+      call dmpr_report_$error_output (code, myname,
+	 "Unable to close ^a.volog", dmpr_data_.volname);
+
+    dmpr_data_.dump_volume_seg_num = 0;
+    dmpr_data_.dump_volume_seg_rec = 0;
+    dmpr_data_.dump_volume_dir_num = 0;
+    dmpr_data_.dump_volume_dir_rec = 0;
+  end detach;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+
+check_output_error: proc;
+
+/* This proc checks the error code retrurned from a write operation. If no error then it returns to its caller.
+   If the dump volume is used up(end of reel/no more room) it closes the volume log, resets the counters associated with
+   the dump volume and detachs the dump volume. It then atttaches a new dump volume, opens  the same volume log, but
+   for a new dump volume, and requests the caller to retry the write operation. For any other kind of error it is
+   reported but the action is the same */
+
+
+    new_tape, retry = "0"b;
+    if code = 0 then return;
+continue_error_check:				/* if segfault err return to caller - data pointer is no good */
+    if code = error_table_$segfault then goto non_local_return;
+    if ^(code = error_table_$device_end | code = error_table_$end_of_info) then do;
+        if code = error_table_$fatal_error then		/* Special case too many recoverable errors for *proper* message*/
+	call dmpr_report_$error_output (0, myname, "The threshold for recoverable write errors (^d) has been reached.
+Output to volume ^a will be terminated to minimize possible problems in later attempts to read it.",
+	     max_error_count, dmpr_data_.volname);
+        else call dmpr_report_$error_output (code, myname, "Error on output volume ^a", dmpr_data_.volname);
+      end;
+    call detach;
+    call attach;
+    if code ^= 0 then goto non_local_return;
+    if ^write_volume_log then
+      call dmpr_log_$update_pvolog (code);
+    if code ^= 0 then do;
+        call dmpr_report_$error_output (code, myname, "Unable to update ^a.pvolog", dmpr_data_.volname);
+        goto non_local_return;
+      end;
+    new_tape = "1"b;
+    retry = "1"b;
+    return;
+
+  end check_output_error;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+
+get_seg_current_length: proc (segp);
+
+/* This proc calculates the length of the segment specified by segptr and returns the value in a global variable */
+
+dcl segp		     ptr;
+    call hcs_$fs_get_path_name (segp, dirname, ldn, ename, code);
+    if code ^= 0 then do;
+        call dmpr_report_$error_output (code, myname, "Unable to convert ptr to path-name");
+        return;
+      end;
+
+    call hcs_$status_long (dirname, ename, 1, addr (local_status_branch), null, code);
+    if code ^= 0 then do;
+        call dmpr_report_$error_output (code, myname, "Unable to get current length of ^a>^a", dirname, ename);
+        return;
+      end;
+
+    current_length = local_status_branch.current_length;
+
+  end get_seg_current_length;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+
+page_by_page_write: proc;
+
+/* This proc is use to write out a data object which has whole pages of zeros intermixed with non-zero pages.
+   This is done to reduce the output load. To do this the file map contained in the vtoce is scanned and
+   only non-null pages are written. If we switch to a new volume then we start from the beginning again. */
+
+    do pagex = 0 to fixed (backup_volume_record.csl, 9) - 1;
+      if ^substr (backup_volume_record.fm (pagex), 1, 1) then do;
+	pagep = ptr (datap, pagex * WORDS_PER_PAGE);
+	retry = "1"b;
+	do while (retry);
+	  call iox_$put_chars (dmpr_data_.outputvol_iocbp, pagep, fixed (CHARS_PER_PAGE, 21), code);
+	  call check_output_error;
+	  if new_tape then goto start_io;
+	end;
+        end;
+    end;
+    return;
+  end page_by_page_write;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+
+set_volid: proc (a_volname, a_volid, code);
+dcl a_volname	     char (*);
+dcl a_volid	     bit (36);
+dcl code		     fixed bin (35);
+
+/* This proc constructs a volume id from a volume name. This is a interim measure until all dump volume are registered
+   and have a unique id. This construction restricts the volume name to two or less non numeric characters followed
+   by any numeric value lest then 262144. */
+
+/* when rcp_ interface is defined
+   call rcp_$volname_info (volname, dmpr_data_.volid, code);
+   if code ^= 0 then
+   call dmpr_report_$error_output (code, myname, "Unable to set volid");
+
+   but until then  fudge it */
+
+
+    start_numeric = search (a_volname, "0123456789");
+    if start_numeric > 3 | start_numeric = 0 then do;
+bad_volid: code = error_table_$bad_volid;
+        return;
+      end;
+    else do;
+        if start_numeric > 1 then volid.char = substr (a_volname, 1, start_numeric - 1);
+        else volid.char = "";
+        char_num = substr (a_volname, start_numeric, length (a_volname) - start_numeric);
+        num = cv_dec_check_ (char_num, code);
+        if code ^= 0 then goto bad_volid;
+        volid.num = num;
+      end;
+    a_volid = unspec (volid);
+    return;
+  end set_volid;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+
+get_volname_from_user: proc (a_volname);
+dcl a_volname	     char (*);
+dcl avolname	     char (32) var;
+						/* query_info is already set up		*/
+    query_info.yes_or_no_sw = "0"b;			/* except for this				*/
+rq: call command_query_ (addr (query_info), avolname, myname, "Type output volume name:");
+    if avolname ^= "" then do;
+        a_volname = avolname;
+        query_info.yes_or_no_sw = "1"b;			/* back to my "normal" state			*/
+      end;
+    else goto rq;
+
+  end get_volname_from_user;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+
+last_page_length: proc returns (fixed bin);
+
+/* This proc back scans the last page of an object for the first non-zero character and returns the
+   length of the non-zero page in words. The condition handler is established in case we share the segment with an
+   other user who deletes/resets the ACL. */
+
+
+    on seg_fault_error, page_read_error begin;
+        code = error_table_$segfault;
+        goto non_local_return;
+      end;
+    pagep = ptr (datap, (fixed (backup_volume_record.csl, 9) - 1) * WORDS_PER_PAGE);
+    return (divide (length (rtrim (page_of_chars, zero_char)) + 3, CHARS_PER_WORD, 17, 0));
+  end last_page_length;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+
+setbc_term: proc (p);
+
+/* This proc terminates the specified segment and sets the ptr to it to null */
+
+dcl p		     ptr;
+dcl dn		     char (168);
+dcl en		     char (32);
+dcl ldn		     fixed bin;
+    call hcs_$fs_get_path_name (p, dn, ldn, en, ignore);
+    call adjust_bit_count_ (dn, en, "0"b, (0), ignore);
+    call hcs_$terminate_seg (p, 0, ignore);
+    p = null;
+
+  end setbc_term;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 	*/
+
+%include dmpr_data_;
+
+%include backup_info;
+
+%include backup_volume_contents;
+
+%include backup_volume_header;
+%include backup_volume_record;
+
+%include vtoce;
+
+%include backup_volume_log;
+%include backup_pvol_info;
+
+%include fs_vol_label;
+
+%include iox_modes;
+
+%include status_structures;
+
+%include query_info;
+
+%include system_constants;
+
+  end dmpr_output_;
+
+
+

@@ -1,0 +1,56 @@
+/* ********************************************
+   *                                          *
+   * Copyright, (C) Honeywell Bull Inc., 1987 *
+   *                                          *
+   ******************************************** */
+
+
+
+/* HISTORY COMMENTS:
+  1) change(87-04-08,Parisek), approve(87-07-14,MCR7644),
+     audit(87-07-30,Martinson), install(87-08-04,MR12.1-1055):
+     Added the name "disconnect" to the bind file.
+                                                   END HISTORY COMMENTS */
+
+
+/* Bindfile for Answering Service request interface */
+/* 82-10-12 created  E. N. Kittlitz. */
+/* Modified 1984-10-08 BIM to add send_as_request_ */
+/* Modified 1984-12-04 BIM to add dial_manager_call */
+
+Objectname:	bound_as_requests_;
+Global:		delete;
+
+Addname:		logout,
+		new_proc,
+		disconnect,
+		dial_manager_call,
+		convert_dial_message_,
+		dial_manager_,
+		term_signal_handler_,
+		terminate_process_,
+		send_as_request_;
+
+objectname:	convert_dial_message_;
+ global:		retain;
+
+objectname:	dial_manager_;
+ global:		retain;
+
+objectname:	dial_manager_call;
+ retain:		dial_manager_call;
+
+objectname:	logout;
+ synonym:		new_proc, term_signal_handler_, disconnect;
+ retain:		logout, new_proc, term_signal_handler_, disconnect;
+
+objectname:	terminate_process_;
+ retain:		terminate_process_;
+
+objectname:	send_as_request_;
+ retain:		block, no_block;
+
+/* end of bound_as_requests_.bind */
+
+
+

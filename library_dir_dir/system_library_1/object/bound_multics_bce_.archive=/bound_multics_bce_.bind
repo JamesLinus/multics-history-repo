@@ -1,0 +1,129 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1985 *
+   *                                                         *
+   *********************************************************** */
+
+
+/* HISTORY COMMENTS:
+  1) change(84-01-01,Loepere), approve(), audit(), install():
+     Keith Loepere 1/84
+  2) change(84-08-01,Loepere), approve(), audit(), install():
+     Modified 8/84 to add display_disk_label_ - ADB
+  3) change(85-03-01,Loepere), approve(), audit(), install():
+     Modified 3/85 to remove bce/Multics dual objects, Keith Loepere.
+  4) change(85-05-01,Lippard), approve(85-01-23,MCR7151),
+     audit(85-11-07,Spitzer), install(86-02-21,MR12.0-1024):
+     Modified 5/85 to add reverse_substr, Jim Lippard
+  5) change(87-07-13,GWMay), approve(87-07-13,MCR7730), audit(87-08-10,JRGray),
+     install(87-09-10,MR12.1-1104):
+     added definitions for the pipe_ subroutine.
+                                                   END HISTORY COMMENTS */
+
+
+/* Bindfile for bound_multics_bce_, the bce active functions (etc.) mostly
+grabbed from Multics. */
+
+Objectname:	bound_multics_bce_;
+Perprocess_Static;
+Global:		delete;
+Order:		command_processor_,
+		find_command_,
+		pipe_, 
+		cp_data_,
+
+		config_deck_parse_,
+		config_deck_data_,
+
+		display_disk_label_,
+
+		equal,
+		plus,
+		substr,
+		pl1_decat_char_,
+		move_r_or_t_,
+		numeric_to_ascii_,
+		numeric_to_ascii_base_,
+
+		op_mnemonic_,
+		relocate_instruction_;
+
+objectname:	command_processor_;
+   synonym:	execute_command_line_;
+   global:	retain;
+   delete:	symbol_table;
+
+objectname:	config_deck_data_;
+   global:	retain;
+   delete:	symbol_table;
+
+objectname:	config_deck_parse_;
+   global:	retain;
+   delete:	symbol_table;
+
+objectname:	cp_data_;
+   global:	retain;
+   delete:	symbol_table;
+
+objectname:	display_disk_label_;
+   global:	retain;
+   delete:	symbol_table;
+
+objectname:	equal;
+   synonym:	greater, less, or, and, not, nequal, nless, ngreater;
+   retain:	equal, greater, less, or, and, not, nequal, nless, ngreater;
+
+objectname:	find_command_;
+  retain:		find_command_, fc_no_message, clear;
+
+objectname:	move_r_or_t_;
+   retain:	move_r_or_t_;
+
+objectname:	numeric_to_ascii_;
+   retain:	numeric_to_ascii_;
+
+objectname:	numeric_to_ascii_base_;
+   retain:	numeric_to_ascii_base_;
+
+objectname:	op_mnemonic_;
+   global:	retain;
+   delete:	symbol_table;
+
+objectname:	pipe_;
+   global:	retain;
+   delete:	symbol_table;
+
+objectname:	pl1_decat_char_;
+   retain:	pl1_decat_char_;
+
+objectname:	plus;
+   synonym:	minus, times, divide, mod, max, min, quotient, ceil, trunc, floor;
+   retain:	plus, minus, times, divide, mod, max, min, quotient, ceil, trunc, floor;
+
+objectname:	relocate_instruction_;
+   synonym:	bce_relocate_instruction_;
+   global:	retain;
+   delete:	symbol_table;
+
+objectname:	substr;
+ synonym:		after, af, before, be, bool, collate, collate9,
+		copy_characters, cpch, decat, high, high9, index,
+		length, ln, low, lower_case, lowercase, ltrim, reverse, rv,
+		reverse_after, rvaf, reverse_before, rvbe,
+		reverse_decat, rvdecat, reverse_index, rvindex,
+		reverse_search, rvsrh, reverse_substr, rvsubstr,
+		reverse_verify, rvverify, rtrim, search, srh, translate,
+		upper_case, uppercase, verify;
+   retain:	substr, after, af, before, be, bool, collate, collate9,
+		copy_characters, cpch, decat, high, high9, index,
+		length, ln, low, lower_case, lowercase, ltrim, reverse, rv,
+		reverse_after, rvaf, reverse_before, rvbe,
+		reverse_decat, rvdecat, reverse_index, rvindex,
+		reverse_search, rvsrh, reverse_substr, rvsubstr,
+		reverse_verify, rvverify, rtrim, search, srh, translate,
+		upper_case, uppercase, verify;
+
+/* end */
+
+
+

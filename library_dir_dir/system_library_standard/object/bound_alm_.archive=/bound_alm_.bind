@@ -1,0 +1,147 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(86-10-01,JRGray), approve(86-10-01,MCR7507),
+     audit(86-10-27,RWaters), install(86-11-12,MR12.0-1202):
+     Modified to delete references to obsolete subroutine alm_6180_ and to add
+     references to the new routines pu_def_ and alm_ .
+  2) change(88-09-07,JRGray), approve(88-09-07,MCR7952),
+     audit(88-09-30,WAAnderson), install(88-10-17,MR12.2-1169):
+     Modified to add alm_symtab_ . Part of symbol table support for C.
+                                                   END HISTORY COMMENTS */
+
+
+/* Bindfile for bound_alm_.
+   Initially written 3 March 1971 by Dan Bricklin.
+   Modified by R Gumpertz 4 June 1971 to add almsym as an entry point.
+   modified 30 Nov 1971 by C Garman.
+   Added order statement, and objectname statements for new modules, 27 July 1972, R F Mabee.
+   Added new module alm_eis_parse_, 16 January 1973, R F Mabee.
+   Modified by E Bush, 14 January 1981, to add alm_data1, alm_data2, and
+   alm_table_tool. 
+   Modified by E Bush, 6 February 1981, to temporarily add system_type_
+   Last modified by E Bush, 29 April 1981, to remove system_type_ */
+
+Objectname:	bound_alm_;
+Addname:		alm,alm_;
+Global:		delete;
+Order:		alm, alm_, eb_data_, getid_,
+		glpl_, inputs_, object_, utils_, sthedr_,
+		oplook_, ascevl_, decevl_,  expevl_,
+		getbit_, litevl_, lstman_, alm_merge_, modevl_,
+		octevl_, pakbit_, pass1_, alm_data1, pass2_, alm_data2,
+		postp1_,
+		postp2_, prlst_, prnam_, prnter_, prwrd_, prwrd_util_,
+		pudef_, pulnk_, pusmb_, putout_, putxt_, setid_,
+		table_, varevl_, vfdevl_, alm_definitions_,
+		make_alm_object_map_, alm_source_map_, alm_symtab_,
+		alm_include_file_, alm_cross_reference_,
+		new_sthedr_, alm_eis_parse_, mexp_, alm_table_tool;
+
+
+objectname:	alm;
+ retain:		alm;
+
+objectname:	alm_;
+ retain:		alm_;
+
+objectname:	eb_data_;
+
+objectname:	getid_;
+
+objectname:	glpl_;
+
+objectname:	inputs_;
+
+objectname:	object_;
+
+objectname:	utils_;
+
+objectname:	sthedr_;
+
+objectname:	oplook_;
+retain:		opcode_table;
+
+objectname:	ascevl_;
+
+objectname:	decevl_;
+
+objectname:	expevl_;
+
+objectname:	getbit_;
+
+objectname:	litevl_;
+
+objectname:	lstman_;
+
+objectname:	alm_merge_;
+
+objectname:	modevl_;
+
+objectname:	octevl_;
+
+objectname:	pakbit_;
+
+objectname:	pass1_;
+
+objectname:	pass2_;
+
+objectname:	postp1_;
+
+objectname:	postp2_;
+
+objectname:	prlst_;
+
+objectname:	prnam_;
+
+objectname:	prnter_;
+ retain:		debug_p1_macroerr;
+
+objectname:	prwrd_;
+
+objectname:	prwrd_util_;
+
+objectname:	pudef_;
+
+objectname:	pulnk_;
+
+objectname:	pusmb_;
+
+objectname:	putout_;
+
+objectname:	putxt_;
+
+objectname:	setid_;
+
+objectname:	table_;
+
+objectname:	varevl_;
+
+objectname:	vfdevl_;
+
+objectname:	alm_definitions_;
+
+objectname:	make_alm_object_map_;
+
+objectname:	alm_source_map_;
+
+objectname:	alm_symtab_;
+
+objectname:	alm_include_file_;
+
+objectname:	alm_cross_reference_;
+
+objectname:	new_sthedr_;
+
+objectname:	mexp_;
+
+objectname:	alm_eis_parse_;
+
+objectname:	alm_data1;
+
+objectname:	alm_data2;
+
+objectname:	alm_table_tool;  /* retain entry, but not important enough to add name */
+ retain:		alm_table_tool;
+
+/* End */

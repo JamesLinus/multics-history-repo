@@ -1,0 +1,60 @@
+/* HISTORY COMMENTS:
+  1) change(85-05-01,Coren), approve(87-07-24,MCR7679), audit(87-03-26,GDixon),
+     install(87-08-04,MR12.1-1055):
+     Initially created.
+  2) change(87-04-08,GDixon), approve(87-07-24,MCR7679),
+     audit(87-07-24,Martinson), install(87-08-04,MR12.1-1055):
+     Add ls_report_error_ entrypoint in ls_report_subr_error_.
+                                                   END HISTORY COMMENTS */
+
+/* Bindfile for bound_login_server_ */
+
+Objectname:	bound_login_server_;
+
+Global:		delete;
+
+Addname:		login_server_overseer_,
+		login_server_trace, ls_trace,
+		ls_convert_as_error_code_,
+		ls_message_,
+		ls_report_error_,
+		ls_report_internal_error_,
+		ls_report_subr_error_,
+		ls_validate_user_;
+
+Order:		ls_data_,
+		ls_message_,
+		ls_cleanup_connections_,
+		login_server_overseer_,
+		login_server_,
+		ls_ssu_request_tables_,
+		login_server_connection_,
+		ls_validate_user_,
+		ls_convert_as_error_code_,
+		ls_message_table_,
+		ls_report_subr_error_,
+		ls_dump_;
+
+objectname:	login_server_overseer_;
+ retain:		login_server_overseer_,
+		login_server_trace, ls_trace,
+		test;
+
+objectname:	ls_validate_user_;
+ retain:		ls_validate_user_;
+
+objectname:	ls_convert_as_error_code_;
+ retain:		ls_convert_as_error_code_;
+
+objectname:	ls_message_;
+ retain:		print,
+		print_error;
+
+objectname:	ls_report_subr_error_;
+ retain:		ls_report_error_, 
+		ls_report_internal_error_,
+		ls_report_subr_error_;
+ synonym:		ls_report_error_, 
+		ls_report_internal_error_;
+
+/* END */

@@ -1,0 +1,104 @@
+/* Bindfile for bound_dir_control.  Those modules associated with the
+maintenance of the contents of directories.  Also included herein are the
+modules that encompass address and name space management.  Directory control
+is also responsible for computing access, making access checks, and
+maintaining the process' notion of accessability.
+
+Formed from bound_file_system, bound_priv_procs and bound_system_faults
+by Keith Loepere, October 1984.
+Added segno_usage$increment_other_ring, January 1985, Keith Loepere.
+Modified 1985-02-27 by Keith Loepere to move get_pathname_ into 
+   bound_dir_control.
+Modified 1985-04-01 by Keith Loepere to improve ordering.
+*/
+
+Objectname:	bound_dir_control;
+Global:		delete;
+Order:		check_gate_acl_,
+		acc_list_,
+		acl_,
+		acc_name_,
+		fs_alloc,
+		hash,
+		allocate_dir_ht_,
+		pathname_am,
+		kst_util,
+		kstsrch,
+		makeknown_,
+		makeunknown_,
+		segno_usage,
+		get_kstep,
+		sum,
+		vtoc_attributes,
+		change_dtem,
+		ref_name_,
+		get_pathname_,
+		getuid;
+
+objectname:         acc_list_;
+ retain:            match;
+
+objectname:	acc_name_;
+ retain:		delete, elements, encode, get;
+
+objectname:         acl_;
+ retain:            add_entry, del_acl, del_entry, list_entry;
+
+objectname:         allocate_dir_ht_;
+ retain:            allocate_dir_ht_;
+
+objectname:         change_dtem;
+ retain:            change_dtem;
+
+objectname:         check_gate_acl_;
+ retain:            check_gate_acl_;
+
+objectname:	fs_alloc;
+ delete:		fs_alloc;
+ retain:		alloc, free, init;
+
+objectname:	get_kstep;
+ retain:		dir, get_kstep;
+
+objectname:	get_pathname_;
+ retain:		get_pathname_;
+
+objectname:         getuid;
+ retain:            getuid, init;
+
+objectname:	hash;
+ delete:		hash;
+ retain:		in, out, search;
+
+objectname:	kst_util;
+ global:		retain;
+ delete:		kst_util;
+
+objectname:	kstsrch;
+ retain:		kstsrch;
+
+objectname:	makeknown_;
+ retain:		makeknown_;
+
+objectname:	makeunknown_;
+ retain:		makeunknown_, protect_names;
+
+objectname:	pathname_am;
+ retain:		clear, flush, get_path, get_segno, initialize,
+		pathname_am, set;
+
+objectname:	ref_name_;
+ retain:		delete, delete_segno, get_count, get_refnames, get_segno, 
+		insert;
+
+objectname:	segno_usage;
+ retain:		decrement, increment_other_ring;
+
+objectname:	sum;
+ retain:		dirmod, getbranch, getbranch_root_my;
+
+objectname:	vtoc_attributes;
+ retain:		correct_qused, get_dump_info, get_dump_switches, get_info, 
+		get_quota, reloading, salv_update, set_dates, 
+		set_dump_info, set_dump_switches, set_max_lth, 
+		set_pc_switches, set_quota;

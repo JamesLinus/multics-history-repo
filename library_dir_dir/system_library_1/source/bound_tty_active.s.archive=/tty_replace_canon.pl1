@@ -1,0 +1,242 @@
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) Honeywell Bull Inc., 1987                *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+/* Replacement canonicalization (can_type=replace):  Assuming that overstriking is destructive, space (SP) is destructive,
+   and horizontal tab (HT) is not destructive, this procedure accepts a line of ASCII characters as input and replaces it
+   with the canonical representation of that line.  Characters are sorted by column position; NUL (\000) characters are
+   discarded; when characters are overstruck, only the last character in the column is preserved */
+
+/* Created:  18 September 1980 by G. Palter */
+/* Modified: 11 November 1980 by G. Palter to rename to tty_replace_canon and accept additional parameters */
+/* Modified: 14 February 1984 by Robert Coren to preserve invisible control characters */
+
+tty_replace_canon:
+     procedure (P_line_ptr, P_line_lth, P_line_max_lth, P_erase_character, P_kill_character, P_code);
+
+
+/* Parameters */
+
+dcl  P_line_ptr pointer parameter;			/* -> string to be processed and output area */
+dcl  P_line_lth fixed binary parameter;			/* current length of string (Input/Output) */
+dcl  P_line_max_lth fixed binary parameter;		/* maximum size of the string */
+dcl  P_erase_character character (1) aligned parameter;	/* current erase character or SP if none */
+dcl  P_kill_character character (1) aligned parameter;	/* current kill character or SP if none */
+dcl  P_code fixed binary (35) parameter;		/* status code (Output) */
+
+
+/* Local copies of parameters */
+
+dcl  line_ptr pointer;
+dcl (line_lth, line_max_lth) fixed binary;
+dcl  code fixed binary (35);
+
+
+/* Remaining declarations */
+
+dcl  line character (line_max_lth) unaligned based (line_ptr);
+
+dcl 1 char_array (P_line_max_lth) aligned,		/* characters to be sorted by column */
+    2 column fixed binary (18) unaligned unsigned,
+    2 flags unaligned,
+      3 vertical bit (1) unaligned,			/* ON => character has vertical paper motion */
+      3 pad bit (6) unaligned,
+      3 not_control bit (1) unaligned,			/* ON => character is not "invisible" control character */
+      3 not_tab bit (1) unaligned,			/* ON => character isn't horizontal tab */
+    2 char character (1) unaligned;			/* the character itself */
+
+dcl  complete_item (1) bit (36) aligned based (addr (char_array));
+dcl 1 partial_item (1) aligned based (addr (char_array)),
+    2 sorted bit (27) unaligned,
+    2 unsorted bit (9) unaligned;
+
+dcl  temp_item bit (36) aligned;
+dcl 1 partial_temp aligned based (addr (temp_item)),
+    2 sorted bit (27) unaligned,
+    2 unsorted bit (9) unaligned;
+
+dcl (start_column, current_column, next_column, end_of_tab) fixed binary;
+dcl (char_idx, array_idx, idx) fixed binary;
+
+dcl  the_char character (1) aligned;
+
+dcl  n_characters fixed binary;			/* # of characters possibly in output */
+
+dcl (NUL		initial (""),			/* NUL */
+     CR		initial (""),						/* carriage return */
+     BS		initial (""),			/* backspace */
+     HT		initial ("	"),		/* horizontal tab */
+     NL		initial ("
+"),						/* newline */
+     VT		initial				/* vertical tab */
+		 (""),
+     FF		initial				/* form feed */
+		 (""),
+     SP		initial (" "))			/* space */
+	character (1) aligned static options (constant);
+
+dcl  HTSP  character (2) static options (constant) initial ("	 ");
+
+dcl  MAX_COLUMN fixed binary (18) static options (constant) initial (262143);
+
+dcl  error_table_$long_record fixed binary (35) external;
+
+dcl (addr, length, max, mod, rtrim, string, substr) builtin;
+%page;
+	start_column, current_column = 0;
+
+	line_ptr = P_line_ptr;
+	line_lth = P_line_lth;
+	line_max_lth = P_line_max_lth;
+
+	P_code, code = 0;
+
+
+/* Classify each input character and determine which column it appears in on the screen */
+
+	array_idx = 1;
+
+	do char_idx = 1 to line_lth;
+
+	     string (char_array(array_idx).flags) = "003"b3;   /* turn on flags.not_tab and flags.not_control */
+	     the_char = substr (line, char_idx, 1);
+
+	     if (the_char = CR) then			/* carriage return: reset to start of line */
+		current_column = start_column;
+
+	     else if (the_char = BS) then		/* backspace: move back one column -- replacement later */
+		current_column = max (start_column, (current_column - 1));
+
+	     else if (the_char = NUL) then;		/* throw away NULs */
+
+	     else do;				/* anything else: put into array */
+		if (the_char = NL)			/* newline: insure it is last in output */
+		     then do;
+			char_array(array_idx).column = MAX_COLUMN;
+			char_array(array_idx).vertical = "1"b;
+		     end;
+
+		else if (the_char = VT) | (the_char = FF)
+		     then do;			/* these characters start a new "line" */
+			current_column, start_column = start_column + 1000;
+			char_array(array_idx).column = start_column - 1;
+			char_array(array_idx).vertical = "1"b;
+		     end;
+
+		else do;				/* ordinary character */
+		     char_array(array_idx).column = current_column;  /* into next column */
+		     if (the_char = HT)
+			then do;			/* horizontal tab: compute next tab stop */
+			     char_array(array_idx).not_tab = "0"b;
+			     current_column = current_column + 10 - mod (current_column, 10);
+			end;
+		     else if (the_char >= SP) then	/* advances to next position */
+			current_column = current_column + 1;
+
+		     else char_array(array_idx).not_control = "0"b;
+		end;
+
+		char_array(array_idx).char = the_char;
+		array_idx = array_idx + 1;
+	     end;
+	end;
+
+	n_characters = array_idx - 1;			/* incremented by one too many */
+
+
+/* Sort characters according to column */
+
+	do array_idx = 1 to n_characters - 1;
+	     if partial_item(array_idx).sorted > partial_item(array_idx+1).sorted then do;
+		temp_item = complete_item (array_idx+1);
+		do idx = array_idx to 1 by -1 while (partial_item(idx).sorted > partial_temp.sorted);
+		     complete_item (idx+1) = complete_item (idx);
+		end;
+		complete_item (idx+1) = temp_item;
+	     end;
+	end;
+
+
+/* Place characters into output string, replacing overstruck sequences with the last character typed into the column */
+
+	char_idx = 1;
+	current_column = 0;
+
+	do array_idx = 1 to n_characters;
+
+	     next_column = char_array(array_idx).column;	/* where this graphic belongs */
+
+	     do while (current_column < next_column);	/* insert spaces as needed */
+		if char_array(array_idx).vertical
+		then do;
+		     current_column = next_column;	/* moves to next line: don't add uneeded spaces */
+		     char_idx = length (rtrim (substr (line, 1, char_idx-1), HTSP)) + 1;
+		end;				/* stip trailing whitespace already present */
+		else do;
+		     call insert_character (SP);
+		     current_column = current_column + 1;
+		end;
+	     end;
+
+	     if ^char_array(array_idx).not_tab
+	     then do;				/* horizontal tab */
+		end_of_tab = current_column + 10 - mod (current_column, 10);
+		if array_idx < n_characters then
+		     if char_array(array_idx+1).column >= end_of_tab then do;
+			call insert_character (HT);   /* chars after HT don't overwrite it */
+			current_column = end_of_tab;
+		     end;
+	     end;
+
+	     /* if HT is overwritten, next character will cause spaces to be inserted by above loop */
+
+	     else do;				/* not HT */
+		call insert_character ((char_array(array_idx).char));
+						/* put it into string */
+		do while ((array_idx < n_characters) & (char_array(array_idx+1).column = current_column));
+		     if ^char_array (array_idx).not_control then
+			char_idx = char_idx + 1;	/* don't overwrite control characters */
+		     array_idx = array_idx + 1;	/* process overstrikes by replacing previous character */
+		     substr (line, char_idx-1, 1) = char_array(array_idx).char;
+		end;
+		current_column = current_column + 1;
+	     end;
+	end;
+
+	P_line_lth = char_idx - 1;			/* set output length */
+
+RETURN_TO_CALLER:
+	P_code = code;
+	return;
+%page;
+/* Insert the given character into the output string */
+
+insert_character:
+	procedure (p_character);
+
+dcl  p_character character (1) aligned parameter;
+
+	     if char_idx > line_max_lth then do;	/* overflowed */
+		code = error_table_$long_record;
+		go to RETURN_TO_CALLER;
+	     end;
+
+	     substr (line, char_idx, 1) = p_character;
+	     char_idx = char_idx + 1;
+
+	     return;
+
+	end insert_character;
+
+     end tty_replace_canon;
+
+
+

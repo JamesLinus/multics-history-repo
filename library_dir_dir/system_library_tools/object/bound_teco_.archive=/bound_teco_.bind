@@ -1,0 +1,78 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(86-10-17,Margolin), approve(86-10-17,MCR7549),
+     audit(86-10-21,Lippard), install(86-10-30,MR12.0-1203):
+     Added get_temp_seg_ (it came from bound_proj_admin_, although teco is its
+     only user).
+  2) change(89-04-05,Huen), approve(89-04-05,MCR8094), audit(89-04-27,RWaters),
+     install(89-05-04,MR12.3-1039):
+     Add the addname and retain the entrypoint for teco_get_macro (Editors 199)
+                                                   END HISTORY COMMENTS */
+
+Objectname:	bound_teco_;
+Global:		delete;
+Order:		teco,
+		teco_get_macro_,
+		teco_backup_file_,
+		get_seg_ptr_,
+		teco_error,
+		get_temp_seg_;
+Addname:		teco_ssd,
+		teco,
+		teco_get_macro_,
+		teco_error,
+		teco_error_mode,
+		get_temp_seg_,
+		assign_temp_seg_id_,
+		release_temp_seg_,
+		release_temp_segs_all_,
+		get_seg_ptr_,
+		get_seg_ptr_arg_,
+		get_seg_ptr_full_path_,
+		get_seg_ptr_search_,
+		release_seg_ptr_;
+
+objectname:	teco;
+retain:		TECO,
+		teco,
+		teco_error_mode,
+		teco_no_ES,
+		ABORT,
+		abort,
+		macro,
+		set_prompt;
+
+objectname:	teco_error;
+retain:		teco_error;
+
+objectname:	teco_get_macro_;
+retain:		teco_ssd,
+		teco_get_macro_,
+		teco_search;
+
+objectname:	teco_backup_file_;
+
+objectname:	get_seg_ptr_;
+synonym:		get_seg_ptr_full_path_,
+		release_seg_ptr_;
+retain:		get_seg_ptr_,
+		get_seg_ptr_arg_,
+		get_seg_ptr_full_path_,
+		get_seg_ptr_search_,
+		release_seg_ptr_;
+
+objectname:	get_temp_seg_;
+ synonym:		release_temp_segs_all_,
+		list_temporary_segments,
+		assign_temp_seg_id_,
+		release_temp_seg_,
+		lts,
+		list_temp_segs;
+ retain:		get_temp_seg_,
+		release_temp_segs_all_,
+		list_temporary_segments,
+		assign_temp_seg_id_,
+		release_temp_seg_,
+		lts,
+		list_temp_segs;

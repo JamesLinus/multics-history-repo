@@ -1,0 +1,39 @@
+
+/* HISTORY COMMENTS:
+  1) change(87-06-23,TLNguyen), approve(87-06-23,MCR7692),
+     audit(87-07-14,Blair):
+     convert read_tape_and_query nonstandard subsystem to a standard subsystem.
+                                                   END HISTORY COMMENTS */
+
+/* bind file for bound_tape_utilities_ */
+/* Written 08/31/79 by J. A. Bush */
+/* Modified 04/27/82 by J. A. Bush to add tape_io_interpret_ */
+
+
+Objectname:	bound_tape_utilities_;
+
+Order:		list_tape_contents,
+		tape_io,
+		tape_io_interpret_;
+
+Addname:		list_tape_contents,
+		ltc,
+		tape_in,
+		tin,
+		tape_out,
+		tout;
+
+Global:		delete;
+
+objectname:	list_tape_contents;
+ retain:		list_tape_contents, ltc;
+
+objectname:	tape_io;
+ retain:		tape_in, tin, tape_out, tout;
+
+objectname:	tape_io_interpret_;
+
+/* End bind file for bound_tape_utilities_ */
+
+
+

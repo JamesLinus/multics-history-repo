@@ -1,0 +1,21 @@
+/* Bind file for bound_ibm3270_ */
+/* Prepared January 1978 by Larry Johnson */
+
+Objectname:	bound_ibm3270_;
+
+Addname:		ibm3270_;
+
+Order:		ibm3270_,
+		ibm3270_control_,
+		ibm3270_translate_,
+		ibm3270_io_call_;
+
+Global:		delete;
+
+objectname:	ibm3270_;
+ retain:		ibm3270_attach, ibm3270_detach, ibm3270_open, ibm3270_close;
+
+objectname:	ibm3270_control_;
+ retain:		control;
+
+/* End bind file for bound_ibm3270_ */

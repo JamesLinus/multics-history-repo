@@ -1,0 +1,268 @@
+/* *	Modification history:
+   *	84-10-06, W. Olin Sibert: Initial collection
+   *	84-11-11, WOS: Added move_log_segments
+   *      84-12-06, WOS: Added expander procedures
+   *      1984-12-07, BIM: added monitor_sys_log, retained all of format_log_message_.
+   *      1984-12-11, BIM: added summarize_sys_log, removed migrate_log until it works.
+   *	1985-01-25, EJ Sharpe: changed expand_ioi_msg_ to expand_io_status_msg_
+   *      1985-01-25, BIM: added more entrypoints to expand_log_message_,
+   *		  added set_log_history_dir, log_match_ data class
+   *		  support.
+   *                  Also added match_strings_$add_literal.
+   *      1985-01-28, E. Swneson: added expand_as_ia_audit_info_, 
+   *                  expand_channel_audit_info_, expand_pnt_audit_info_,
+   *		  and expand_dial_serv_audit_info_.
+   *	1985-02-21, EJ Sharpe: added expand_mmdam_msg_, expand_mdc_uidpath_msg_,
+   *		  and expand_ibm3270_mde_msg_.
+   *	1985-02-26, EJ Sharpe: added expand_rcp_obj_audit_info_
+   *	1985-05-02, BIM: added expand_mseg_msg_audit_info_
+   */
+
+Objectname:	bound_log_tools_;
+
+Global:		delete;
+
+Addname:		convert_syserr_log,
+		display_log_segment,
+		monitor_sys_log,
+		msl,
+		move_log_segments,
+		print_sys_log,
+		psl,
+		set_log_history_dir,
+		summarize_sys_log,
+		ssl,
+		expand_log_message_,
+		format_log_message_,
+		log_expand_select_,
+		log_format_time_,
+		log_limit_scan_,
+		log_match_,
+		match_strings_,
+		log_output_,
+		/* expanders in alphabetical order */
+                    expand_access_audit_msg_,
+		expand_as_ia_audit_info_,
+		expand_channel_audit_info_,
+                    expand_config_deck_msg_,
+		expand_dial_serv_audit_info_,
+                    expand_fnp_poll_msg_,
+                    expand_hwfault_msg_,
+		expand_ibm3270_mde_msg_,
+                    expand_io_status_msg_,
+		expand_mdc_uidpath_msg_,
+		expand_mmdam_msg_,
+                    expand_mos_msg_,
+                    expand_mpc_poll_msg_,
+		expand_mseg_msg_audit_info_,
+		expand_pnt_audit_info_,
+		expand_rcp_obj_audit_info_,
+                    expand_segdamage_msg_,
+                    expand_syserr_msg_,
+                    expand_voldamage_msg_,
+                    expand_vtoce_msg_;
+
+Order:		display_log_segment,
+		print_sys_log,
+		monitor_sys_log,
+		monitor_sys_log_wakeup_,
+		move_log_segments,
+		summarize_sys_log,
+		expand_log_message_,
+		format_log_message_,
+		log_expand_select_,
+		log_format_time_,
+		log_limit_scan_,
+		log_match_,
+		match_strings_,
+		log_output_,
+		log_output_io_,
+		convert_syserr_log,
+		old_syserr_log_util_,
+		set_log_history_dir,
+		/* expanders in alphabetical order */
+                    expand_access_audit_msg_,
+		expand_as_ia_audit_info_,
+		expand_channel_audit_info_,
+                    expand_config_deck_msg_,
+		expand_dial_serv_audit_info_,
+                    expand_fnp_poll_msg_,
+                    expand_hwfault_msg_,
+		expand_ibm3270_mde_msg_,
+                    expand_io_status_msg_,
+		expand_mdc_uidpath_msg_,
+                    expand_mos_msg_,
+		expand_mmdam_msg_,
+                    expand_mpc_poll_msg_,
+		expand_mseg_msg_audit_info_,
+		expand_pnt_audit_info_,
+		expand_rcp_obj_audit_info_,
+                    expand_segdamage_msg_,
+                    expand_syserr_msg_,
+                    expand_voldamage_msg_,
+                    expand_vtoce_msg_;
+
+objectname:	set_log_history_dir;
+  retain:		set_log_history_dir;
+
+objectname:	convert_syserr_log;
+  retain:		convert_syserr_log;
+
+objectname:	display_log_segment;
+  synonym:	dls;
+  retain:		display_log_segment,
+		dls;
+
+objectname:	print_sys_log;
+  synonym:	psl;
+  retain:		print_sys_log,
+		psl;
+
+objectname:	monitor_sys_log;
+  synonym:	msl;
+  retain:		monitor_sys_log,
+		msl;
+
+objectname:	monitor_sys_log_wakeup_;
+
+objectname:	move_log_segments;
+  retain:		move_log_segments;
+
+objectname:	summarize_sys_log;
+ synonym:		ssl;
+ retain:		summarize_sys_log,
+		ssl;
+
+objectname:	expand_log_message_;
+  retain:		expand_log_message_,
+		append_octal,
+		append_process_id,
+		append_data_class,
+                    unknown,
+                    unknown_syserr;
+
+objectname:	format_log_message_;
+  retain:		adjust,
+		init,
+		free,
+		format;
+
+objectname:	log_expand_select_;
+  retain:		add,
+		test,
+		free,
+		print;
+
+objectname:	log_format_time_;
+  retain:		log_format_time_;
+
+objectname:	log_limit_scan_;
+  retain:		log_limit_scan_;
+
+objectname:	log_match_;
+  retain:		add_exclude,
+		add_exclude_data,
+		add_match,
+		add_match_data,
+		add_severity,
+		clear_text_strings,
+		clear_data_strings,
+		clear_severity,
+		add_match_data_class,
+		add_exclude_data_class,
+		clear_data_class_strings,
+		test,
+		free,
+		print;
+
+objectname:         log_output_;
+ retain:		log_output_attach;
+
+objectname:	log_output_io_;
+
+objectname:	match_strings_;
+  retain:		add,
+		add_literal,
+		test,
+		free,
+		print;
+
+objectname:         expand_access_audit_msg_;
+ no_link:           format,
+                    syserr;
+
+objectname:         expand_config_deck_msg_;
+ no_link:           format,
+                    syserr;
+
+objectname:         expand_fnp_poll_msg_;
+ no_link:           format,
+                    syserr;
+
+objectname:         expand_hwfault_msg_;
+ no_link:           format,
+                    syserr;
+
+objectname:	expand_ibm3270_mde_msg_;
+ no_link:		format,
+		syserr;
+
+objectname:         expand_io_status_msg_;
+ no_link:           format,
+                    syserr;
+
+objectname:	expand_mdc_uidpath_msg_;
+ no_link:		format,
+		syserr;
+
+objectname:	expand_mmdam_msg_;
+ no_link:		format,
+		syserr;
+
+objectname:         expand_mos_msg_;
+ no_link:           format,
+                    syserr;
+
+objectname:         expand_mpc_poll_msg_;
+ no_link:           format,
+                    syserr;
+
+objectname:         expand_segdamage_msg_;
+ no_link:           format,
+                    syserr;
+
+objectname:         expand_syserr_msg_;
+ no_link:           format;
+
+objectname:         expand_voldamage_msg_;
+ no_link:           format,
+                    syserr;
+
+objectname:         expand_vtoce_msg_;
+ no_link:           format,
+                    syserr;
+
+/* Secondary expanders for the access_audit data class */
+
+objectname:	expand_as_ia_audit_info_;
+ retain:		expand_as_ia_audit_info_;
+
+objectname:	expand_channel_audit_info_;
+ retain:		expand_channel_audit_info_;
+
+objectname:	expand_dial_serv_audit_info_;
+ retain:		expand_dial_serv_audit_info_;
+
+objectname:	expand_mseg_msg_audit_info_;
+ retain:		expand_mseg_msg_audit_info_;
+
+objectname:	expand_pnt_audit_info_;
+ retain:		expand_pnt_audit_info_;
+
+objectname:	expand_rcp_obj_audit_info_;
+ retain:		expand_rcp_obj_audit_info_;
+
+/*                  END                 */
+
+
+

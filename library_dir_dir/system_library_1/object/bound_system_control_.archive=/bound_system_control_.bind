@@ -1,0 +1,105 @@
+/* ********************************************
+   *                                          *
+   * Copyright, (C) Honeywell Bull Inc., 1987 *
+   *                                          *
+   ******************************************** */
+
+/* HISTORY COMMENTS:
+  1) change(86-04-08,Fawcett), approve(86-04-08,MCR7359),
+     audit(86-04-28,Lippard), install(86-09-16,MR12.0-1159):
+     Add lock_mca, this allows the interface to the MCA to be locked or
+     unlocked.
+  2) change(87-05-03,GDixon), approve(87-06-11,MCR7708),
+     audit(87-05-29,Parisek), install(87-08-04,MR12.1-1055):
+     Add sys_log_$general.
+  3) change(87-08-07,Parisek), approve(87-08-07,MCR7716),
+     audit(87-08-07,Fawcett), install(87-08-11,MR12.1-1079):
+     Added call_ec_.
+                                                   END HISTORY COMMENTS */
+
+
+/* bound_system_control_.bind BIM 1984-11-03 */
+/* Modified 1985-01-03 by E. Swenson for sys_log_$binary */
+/* Modified 1985-01-29 by E. Swenson to add back addnames */
+
+Objectname:	bound_system_control_;
+Global:		delete;
+
+Order:		system_control_,
+		sc_process_command_line_,
+		sc_execute_command_line_,
+		sc_signal_io_handler_,
+		sc_admin_mode_,
+		sc_create_sci_,
+		sc_abort_line_util_,
+		sc_get_error_name_,
+		sc_edit_motd_,
+		sc_exec_request_,
+		sc_ipc_mask_,
+		sc_init_,
+		sc_requests_,
+		sc_shutdown_,
+		sc_signal_handler_,
+		sys_log_,
+		sc_command,
+		sc_admin_command_,
+		sc_request_table_,
+		sc_stat_,
+		lock_mca,
+		call_ec_;
+
+objectname:	system_control_;
+ retain:		system_control_,
+		multics_entry,
+		startup_entry;
+
+objectname:	sc_command;
+ retain:		sc_command, test;
+
+objectname:	sc_abort_line_util_;
+
+objectname:	sc_admin_mode_;
+  synonym:	admin_mode_exit, ame;
+  retain:		admin_mode_exit, ame;
+
+objectname:	sc_create_sci_;
+ retain:		sc_create_sci_, destroy;   /* used in the MC */
+
+objectname:         sc_get_error_name_;
+objectname:	sc_edit_motd_;
+objectname:	sc_exec_request_;
+objectname:	sc_init_;
+objectname:	sc_process_command_line_;
+ retain:		sc_process_command_line_, multics_command, test;
+objectname:	sc_requests_;
+objectname:	sc_shutdown_;
+objectname:	sc_signal_handler_;
+objectname:	sc_signal_io_handler_;
+ retain:		sc_signal_io_handler_;    /* For the benefit of the test interface */
+objectname:	sc_admin_command_;
+ retain:		sc_admin_command_;
+
+objectname:	sc_request_table_;
+
+objectname:	sc_ipc_mask_;
+ retain:		unmask, remask;
+
+objectname:	sc_stat_;
+ global:		retain;
+
+objectname:	sys_log_;
+ retain:		sys_log_, error_log, 
+		command, command_error,
+		binary, general;
+
+objectname:	lock_mca;
+ synonym:		unlock_mca;
+ retain:		lock_mca, unlock_mca;
+
+objectname:	call_ec_;
+ retain:		call_ec_;
+
+/* End */
+
+
+

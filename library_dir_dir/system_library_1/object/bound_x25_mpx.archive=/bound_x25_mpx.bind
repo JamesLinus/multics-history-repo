@@ -1,0 +1,53 @@
+/* ********************************************
+   *                                          *
+   * Copyright, (C) Honeywell Bull Inc., 1988 *
+   *                                          *
+   ******************************************** */
+
+/* Bind file for wired X.25 demultiplexer */
+/* Written by C. Hornig, March 1980 */
+/* Modified: 11 January 1983 by G. Palter to all mrl_ */
+/* Modified: 05 April 1983 by R. Holmstedt to move mrl_ to bound_sss_wired_*/
+/* Modified: 1986 September 26, John Mills, add lap_simplex. */
+
+
+/* HISTORY COMMENTS:
+  1) change(88-07-07,Beattie), approve(88-06-27,MCR7926),
+     audit(88-07-22,Brunelle), install(88-08-08,MR12.2-1082):
+     Added lap_simplex.
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:	bound_x25_mpx;
+Global:		delete;
+
+Order:		x25_mpx_data,
+		x25_mpx,
+                    lap_simplex;
+
+objectname:	x25_mpx;
+ retain:		control,
+		check_modes, set_modes, get_modes,
+		write,
+		interrupt,
+		system_init;
+
+objectname:	x25_mpx_data;
+
+objectname:         lap_simplex;
+ retain:            check_modes,
+                    control,
+                    get_modes,
+                    hpriv_control,
+                    init_multiplexer,
+                    interrupt,
+                    priv_control,
+                    set_modes,
+                    shutdown,
+                    start,
+                    stop,
+                    terminate_multiplexer,
+                    write;
+
+
+

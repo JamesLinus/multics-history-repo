@@ -1,0 +1,70 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+   *                                                         *
+   *********************************************************** */
+/* This procedure tries to hyphenate a word supplied by the caller.
+
+   dcl hyphenate_ entry(char(*), (*) bit(1) aligned, fixed bin);
+
+   call hyphenate_ (word, returned_hyphens, code);
+
+   1) word      A word consisting of ASCII letters to be hyphenated.
+   The first character may be uppercase or lowercase; the other
+   characters may be lowercase only.
+
+   3) returned_hyphens
+   A one bit in this array means that the corresponding
+   character in word is to have a hyphen after it.
+
+   3) code      Status code: 0  word has been successfully hyphenated.
+   -1 word contains illegal characters.
+   -2 word was more than 20 or less than 3 characters.
+   Any positive value of code means the word couldn't
+   be hyphenated.  In this case code is the position of the
+   first character that was not accepted.
+
+   The word is hyphenated by using random_word_ and whatever existing digram
+   table is in use by random_word_ to determine the syllabification and pronounceability
+   of the word supplied.  The standard random_unit_ routine is not used,
+   except that random_unit_$probabilities is called by hyphenate_$probability.
+*/
+
+hyphenate_: procedure (word, returned_hyphens, code);
+dcl  word char (*);
+dcl  code fixed bin;
+dcl  debug static bit (1) init ("0"b);
+dcl  ioa_$nnl entry options (variable);
+dcl  word_array (20) fixed bin static;			/* word spread out into units */
+dcl  hyphenated_word (0:20) bit (1) aligned;		/* returned hyphens from random_word_ */
+dcl  returned_hyphens (*) bit (1) aligned;		/* hyphens to be returned to caller */
+dcl  split_point fixed bin;				/* set on internal call at 2-letter unit to be split */
+dcl  word_length_in_chars fixed bin static;		/* length of word in characters */
+dcl  word_length fixed bin static;			/* length of word_array in units */
+dcl  i fixed bin;
+dcl  j fixed bin;
+dcl  chars char (2);
+dcl  char char (1);
+dcl  word_index fixed bin static;			/* index into word_array */
+dcl  returned_word (0:20) fixed bin;			/* word returned by random_word_ */
+dcl  vowel_flag bit (1);				/* 1 when random_vowel is called */
+dcl  last_good_unit static fixed bin;			/* word_index of last good unit */
+dcl  new_unit fixed bin;
+dcl  random_word_ entry ((0:*)fixed bin, (0:*) bit (1) aligned,
+     fixed bin, fixed bin, entry, entry);
+dcl  random_unit_$probabilities entry ((*) float bin, (*) float bin);
+dcl  probability float bin;				/* value of p returned to user */
+dcl  calculate bit (1) static;			/* says we're calculating the probability of a word */
+dcl  p float bin static;				/* accumulated product of probability for the word */
+dcl  total_p_this_unit float bin;			/* total sum of probabilities of units that could be accepted in this position */
+dcl  returned_length fixed bin;
+
+/* probabilities of generating each unit at random */
+/* obtained from a call to random_unit_$probabilities */
+
+dcl (unit_probabilities based (u_p_ptr), vowel_probabilities based (v_p_ptr)) dim (n_units) float bin;
+dcl (u_p_ptr, v_p_ptr) static ptr init (null ());
+dcl  first_call static bit (1) init ("1"b);
+%include digram_structure;
+	split_point = 0;
+	calculate = "0"b;				/* we aren't calculating probabi

@@ -1,0 +1,38 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1986 *
+   *                                                         *
+   *********************************************************** */
+
+
+/* HISTORY COMMENTS:
+  1) change(86-06-24,DGHowe), approve(86-06-24,MCR7395), audit(86-11-12,Zwick),
+     install(86-11-20,MR12.0-1222):
+     created bound_heap_mgr_.bind
+                                                   END HISTORY COMMENTS */
+
+/* Begin bindfile for bound_heap_mgr_ */
+
+Objectname:         bound_heap_mgr_;
+
+Addname:		heap_manager_,
+		list_heap_variables, lhv;
+
+Global:             delete;
+
+Order:              heap_manager_, 
+		list_heap_variables;
+
+objectname:         heap_manager_;
+  retain:		get_heap_level, push_heap_level, pop_heap_level,
+		get_heap_area, get_heap_header, 
+		create_heap_for_set_ext_var;
+
+objectname:	list_heap_variables;
+  synonym:	lhv;
+  retain:		list_heap_variables, lhv;
+
+/* End Bindfile bound_heap_mgr_ */
+
+
+

@@ -1,0 +1,186 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1986 *
+   *                                                         *
+   *********************************************************** */
+
+
+
+/* HISTORY COMMENTS:
+  1) change(86-05-02,Elhard), approve(86-05-02,MCR7391),
+     audit(86-07-18,DGHowe), install(86-11-20,MR12.0-1222):
+     Modified to include object_lib_ subroutine.
+  2) change(86-06-24,DGHowe), approve(86-06-24,MCR7396), audit(86-11-13,Zwick),
+     install(86-11-20,MR12.0-1222):
+     added star_heap to the retained list for set_ext_variable_
+  3) change(86-06-24,DGHowe), approve(86-06-24,MCR7420), audit(86-11-13,Zwick),
+     install(86-11-20,MR12.0-1222):
+     added pointer to the retained list for set_ext_variable_
+  4) change(86-06-24,DGHowe), approve(86-06-24,MCR7421), audit(86-11-13,Zwick),
+     install(86-11-20,MR12.0-1222):
+     removed allocate from the retained list for set_ext_variable_
+                                                   END HISTORY COMMENTS */
+
+
+/* Bindfile for bound_library_2_
+
+   Completely rewritten by R. J. Feiertag on June 6, 1972
+
+   Last modified (date, author and reason):
+
+    6 June 1972,	  R. J. Feiertag  for complete rewrite
+      July 1973,	  G. C. Dixon     to add match_star_name_
+   27 September 1976, Noel I. Morris  to remove sss_active_tv_
+   15 June 1977,	  Melanie Weaver  to add signal stuff and static handlers
+    3 January 1977,	  Melanie Weaver  to add Perprocess_Static attribute
+   22 December 1980,  James R. Davis  to add mode_string_
+    4 February 1981,  J. Spencer Love to move requote_string_ from bound_io_commands_ (in SSS)
+    7 April 1981,	  G. Palter       to delete move_
+    1 June 1981,      M.R. Jordan     to move set_ext_variable_ from bound_system_faults
+    5 June  1981      B. Margulies    call_outer_ring_
+    1 July  1981      B. Margulies    pl1_resignaller_
+    November 1981	  C. Hornig       retain synonyms
+    December 1981     E. N. Kittlitz  retain entry requote_string_$quote_string
+    August   1982     BIM             moved much to bound_sss_wired_.
+    October 1982	  J. Bongiovanni  filemap_checksum_
+    March 1983	  K. Loepere      renamed to bound_library_2_
+			        and to move filemap_checksum_ to bound_library_1_
+    April 1983 	  M. Weaver       add list_init_ and retain set_ext_variable_$for_linker
+    May 1983	  M. Weaver       add list_init_ and retain set_ext_variable_$for_linker
+    1983-1984	  K. Loepere      to move objects to bound_library_1_
+    84-04-12	  BIM             aim_check_$in_range.
+    84-04-27	  BIM	        aim_util_, display_access_class_.
+    84-08-10	  E. A. Ranzenbach
+			        to remove unique_chars and unique_bits.
+    84-08-21	  J Falksen       move date_name_ to bound_library_1_ to consolidate
+				all time routines into one module
+
+    84-10-10	  Allen Ball      move display_access_class_ from
+				bound_library_2_ to bound_library_1_
+    84-11-02	  Keith Loepere   add access_operations_.
+    84-11-13	  EJ Sharpe       add convert_access_operation_
+    84-11-16 	  E. Swenson      add ipc_validate_.
+    85-01-23	  Keith Loepere   moved date/time stuff out of wired memory.
+    85-01-31          Chris Jones     added aim_check_$range_in_range
+    85-10-22	  Dean Elhard     add object_lib_
+*/
+
+Objectname:	bound_library_2_;
+Global:		delete;
+
+Perprocess_Static;
+
+Order:		aim_check_,
+		aim_util_,
+		access_operations_,
+		convert_access_operation_,
+		crawlout_default_handler_,
+		buddy_alloc_, 
+		buddy_freen_, 
+		buddy_area_, 
+		buddy_area_assign_,
+		unique_bits_, 
+		unique_chars_, 
+		object_info_, 
+		object_lib_,
+		link_trap_caller_,
+	          pl1_resignaller_,
+		copy_on_write_handler_,
+		isot_fault_handler_,
+		lot_fault_handler_,
+		parse_tty_name_,
+		mode_string_,
+		set_ext_variable_,
+		list_init_,
+		call_outer_ring_,
+		rtcd_util_,
+		ipc_validate_;
+
+objectname:	aim_check_;
+ synonym:		read_allowed_, write_allowed_, read_write_allowed_;
+ retain:		read_allowed_, read_write_allowed_, write_allowed_,
+		equal, greater, greater_or_equal, in_range, range_in_range;
+
+objectname:	aim_util_;
+ global:		retain;
+
+objectname:	access_operations_;
+ global:		retain;
+
+objectname:	convert_access_operation_;
+ retain:		convert_access_operation_;
+
+objectname:	buddy_area_assign_;
+ retain:		buddy_area_assign_;
+
+objectname:	buddy_alloc_;
+ retain:		buddy_alloc_, buddy_storage_;
+
+objectname:	buddy_area_;
+ retain:		buddy_redef, buddy_area_;
+
+objectname:	call_outer_ring_;
+ retain:		call_outer_ring_;
+
+objectname:	object_info_;
+ synonym:		decode_object_;
+ retain:		decode_object_, brief, display, long;
+
+objectname:	object_lib_;
+ retain:		initiate, init_no_clear, get_def_target,
+		get_component_info;
+
+objectname:	buddy_freen_;
+ retain:		buddy_freen_;
+
+objectname:	unique_bits_;
+ retain:		unique_bits_;
+
+objectname:	unique_chars_;
+ retain:		bits, unique_chars_;
+
+objectname:	link_trap_caller_;
+ retain:		link_trap_caller_;
+
+objectname:	crawlout_default_handler_;
+ global:		no_link;
+
+objectname:	pl1_resignaller_;
+  retain:		establish_handlers;
+
+objectname:	copy_on_write_handler_;
+ retain:		copy_on_write_handler_;
+
+objectname:	isot_fault_handler_;
+ retain:		isot_fault_handler_;
+
+objectname:	lot_fault_handler_;
+ retain:		lot_fault_handler_;
+
+objectname:	parse_tty_name_;
+ synonym:		compare_tty_name_,
+		get_fnp_name_, parse_fnp_name_;
+ retain:		parse_tty_name_, compare_tty_name_,
+		parse_fnp_name_, get_fnp_name_;
+
+objectname:	mode_string_;
+ retain:		combine, delete, get, get_error, get_mode, parse;
+
+objectname:	rtcd_util_;
+
+objectname:	set_ext_variable_;
+ retain:		set_ext_variable_, locate, for_linker, star_heap,
+		pointer;
+
+objectname:	list_init_;
+ retain:		list_init_, variable_already_zero;
+
+objectname:	ipc_validate_;
+ retain:		encode_event_channel_name,
+		decode_event_channel_name,
+		validate_event_channel_name;
+
+/* end */
+
+
+

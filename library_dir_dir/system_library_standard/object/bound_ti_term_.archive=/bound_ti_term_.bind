@@ -1,0 +1,96 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(86-05-02,Elhard), approve(86-05-02,MCR7391),
+     audit(86-07-18,DGHowe), install(86-11-20,MR12.0-1222):
+     Modified to include msf_prelink_ subroutine.
+                                                   END HISTORY COMMENTS */
+
+
+/* bind file for bound_ti_term_.
+   Last modified 27 Dec 1971 by C Garman.
+   Last modified 1972, August 3 by D. M. Wells to add Order statement and to add "find_include_file_".
+   Last modified 1/11/73 by R. Mullen
+   Modified 9/9/76 by Dennis Capps to add translator_search_cmds_.
+   Modified to delete find_include_file_ and translator_search_cmds_ 03-Nov-78 by M. Davidoff.
+   Modified to split terminate into initiate and terminate 02/08/80 S. Herbst
+   Modified to retain translator_info_$component_get_source_info 05/17/83 by M. Weaver
+   Modified to retain term_$no_name 06/15/83 by M. Weaver (from C. Hornig)
+   Modified to add find_source_file_ 07/12/83 by M. Weaver
+   Added find_source_file_$search_path 10/21/83 S. Herbst
+   Added vlo_prelink_ 02/14/86 D. Elhard
+*/
+Objectname:	bound_ti_term_;
+
+Addname:		ti_,
+		tssi_,
+		make_object_map_,
+		initiate, in,
+		terminate, tm, terminate_segno, tms,
+		terminate_refname, tmr, terminate_reference,
+		terminate_single_refname, tmsr,
+		term_,
+		msf_prelink_,
+		expand_,
+		find_source_file_,
+		translator_info_,
+		link_unsnap_;
+
+Global:		delete;
+
+Order:		link_unsnap_,
+		term_,
+		msf_prelink_,
+		ti_,
+		tssi_,
+		initiate,
+		terminate,
+		find_source_file_,
+		translator_info_,
+		expand_,
+		make_object_map_;
+
+objectname:	link_unsnap_;
+ retain:		link_unsnap_;
+
+objectname:	term_;
+ retain:		term_, refname, unsnap, nomakeunknown, seg_ptr,
+		no_clear, single_refname, no_name;
+
+objectname:	msf_prelink_;
+ retain:		msf_prelink_;
+
+objectname:	ti_;
+ retain:		clean_up, getseg, finobj, findata;
+
+objectname:	tssi_;
+ retain:		get_segment, get_file,
+		finish_segment, finish_file,
+		clean_up_segment, clean_up_file;
+
+objectname:	initiate;
+ synonym:		in;
+ retain:		initiate, in;
+
+objectname:	terminate;
+ synonym: 	tm, terminate_segno, tms, terminate_refname, tmr,
+		terminate_single_refname, tmsr;
+ retain:		terminate, tm, terminate_segno, tms, terminate_refname,
+		tmr, terminate_single_refname, tmsr;
+
+objectname:	find_source_file_;
+ retain:		find_source_file_, look_in_wdir, search_path;
+
+objectname:	translator_info_;
+ retain:		get_source_info, component_get_source_info;
+
+objectname:	expand_;
+ retain:		expand_;
+
+objectname:	make_object_map_;
+ retain:		make_object_map_, tl;
+
+/* End */
+
+
+

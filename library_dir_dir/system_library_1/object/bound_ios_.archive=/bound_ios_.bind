@@ -1,0 +1,54 @@
+Objectname:	bound_ios_;
+Global:		delete;
+Perprocess_Static;
+
+/* Written by C. Hornig, June 1982 */
+/* Modified 830930 to delete ocd_ entries that have been moved to  bound_oc_ -E. A. Ranzenbach */
+
+Order:		get_at_entry_,
+		ios_,
+		ios_write_around_,
+		ios_signal_;
+
+objectname:	get_at_entry_;
+ retain:		get_at_entry_;
+
+objectname:	ios_;
+ retain:		abort,
+		attach,
+		changemode,
+		detach,
+		getdelim,
+		getsize,
+		ios_quick_init,
+		no_entry,
+		order,
+		read,
+		read_ptr,
+		readsync,
+		resetread,
+		resetwrite,
+		seek,
+		setdelim,
+		setsize,
+		tell,
+		write,
+		write_ptr,
+		writesync;
+
+objectname:	ios_signal_;
+
+objectname:	ios_write_around_;
+ synonym:		mr_,
+		netd_;
+  retain:		mr_attach,
+		netd_attach,
+		ios_write_around_get_line,
+		ios_write_around_get_chars,
+		ios_write_around_put_chars,
+		ios_write_around_modes,
+		ios_write_around_position,
+		ios_write_around_control;
+
+
+

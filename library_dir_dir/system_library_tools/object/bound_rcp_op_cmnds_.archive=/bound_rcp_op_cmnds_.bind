@@ -1,0 +1,29 @@
+/*	Bindfile for bound_rcp_op_cmnds_
+*	Created on 04/20/78 by Michael R. Jordan
+*	Modified 2/79 by R.J.C. Kissel to add rcp_cancel.
+*/
+
+Objectname:	bound_rcp_op_cmnds_;
+
+Addname:		rcp_list,
+		rcp_cancel,
+		rcp_op_cmnd_;
+
+Global:		delete;
+
+objectname:	rcp_list;
+ retain:		rcp_list;
+
+objectname:	rcp_cancel;
+ retain:		rcp_cancel;
+
+objectname:	rcp_op_cmnd_;
+ retain:		rcp_op_cmnd_,
+		preload,
+		unload;
+
+
+/*	End.	*/
+
+
+

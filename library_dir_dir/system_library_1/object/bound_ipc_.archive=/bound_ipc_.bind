@@ -1,0 +1,101 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1985 *
+   *                                                         *
+   *********************************************************** */
+
+/*	This is the bind file for bound_ipc_.
+	Modified by E Donner Jan 1981 for new ipc
+	Modified January 1982 by C. Hornig to add ipc_.
+*/
+
+
+/* HISTORY COMMENTS:
+  1) change(86-08-12,Kissel), approve(86-08-12,MCR7473),
+     audit(86-10-20,Fawcett), install(86-11-03,MR12.0-1206):
+     Modified to support control point management.  These changes were actually
+     made in March 1985 by G. Palter.
+  2) change(86-08-12,Kissel), approve(86-08-12,MCR7479),
+     audit(86-10-20,Fawcett), install(86-11-03,MR12.0-1206):
+     Modified to add the create_event_channel and run_event_calls entries to
+     support async event channels.
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:	bound_ipc_;
+Global:		delete;
+Perprocess_Static;
+
+Order:		ipc_,
+		ipc_data_,
+		ipc_fast_,
+		ipc_real_,
+		ipc_util_,
+		get_control_point_id_,
+		create_ips_mask_,
+		set_lock_,
+		timer_manager_,
+		wkp_signal_handler_;
+
+objectname:	create_ips_mask_;
+ retain:		create_ips_mask_;
+
+objectname:	get_control_point_id_;
+   retain:	get_control_point_id_;
+
+objectname:	ipc_;
+ synonym:		convert_ipc_code_;
+ retain:		block,
+		create_ev_chn,
+		create_event_channel,
+		convert_ipc_code_,
+		cutoff,
+		decl_ev_call_chn,
+		decl_ev_wait_chn,
+		decl_event_call_chn,
+		delete_ev_chn,
+		drain_chn,
+		mask_ev_calls,
+		read_ev_chn,
+		reassign_call_channels,
+		reconnect,
+		reset_ev_call_chn,
+		run_event_calls,
+		set_call_prior,
+		set_wait_prior,
+		unmask_ev_calls,
+		wait_for_an_event;
+
+objectname:	ipc_data_;
+retain:		event_calls_pending,
+		fast_channel_events;
+
+objectname:	ipc_real_;
+
+objectname:	ipc_util_;
+ retain:		create_single_seg_ect;
+
+objectname:	set_lock_;
+ retain:		lock, unlock;
+
+objectname:	timer_manager_;
+ retain:		alarm_call,
+		alarm_call_inhibit,
+	          alarm_interrupt,
+		alarm_wakeup,
+		cpu_call,
+		cpu_call_inhibit,
+	          cpu_time_interrupt,
+		cpu_wakeup,
+		get_schedule,
+		reset_alarm_call,
+		reset_alarm_wakeup,
+		reset_cpu_call,
+		reset_cpu_wakeup,
+		sleep,
+		sleep_lss;
+
+objectname:	wkp_signal_handler_;
+ retain:		wkp_signal_handler_;
+
+/* end; */

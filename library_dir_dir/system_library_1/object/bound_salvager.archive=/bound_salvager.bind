@@ -1,0 +1,47 @@
+Objectname:	bound_salvager;
+
+Order:		salvage_pv,
+		disk_rebuild,
+		vm_vio,
+		on_line_salvager,
+		salv_directory,
+		salvager,
+		salv_err_msg,
+		dir_dump,
+		salv_dump_copy,
+		salv_dir_checker_,
+		salv_check_vtoce_;
+
+Global:		delete;
+
+objectname:	salvage_pv;
+ retain:		convert_vtoc;
+
+objectname:	disk_rebuild;
+ retain:		disk_rebuild;
+
+objectname:	vm_vio;
+
+objectname:	on_line_salvager;
+ retain:		on_line_salvager;
+
+objectname:	salv_directory;
+ retain:		salv_directory;	/* hphcs_ */
+
+objectname:	salvager;
+ retain:		dir_salv_boot,
+		online,
+		set_options,
+		volume_salvage;
+
+objectname:	salv_err_msg;
+
+objectname:	dir_dump;
+
+objectname:	salv_dump_copy;
+
+objectname:	salv_dir_checker_;
+
+objectname:	salv_check_vtoce_;
+
+/*		END		*/

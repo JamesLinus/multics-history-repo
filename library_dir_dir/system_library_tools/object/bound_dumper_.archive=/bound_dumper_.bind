@@ -1,0 +1,76 @@
+/* Bindfile for bound_dumper_ */
+/* Last modified 10 January 1972 by R. Tilden */
+/* Modified: 6 March 1981 by G. Palter to add backup_preattach */
+
+
+/* HISTORY COMMENTS:
+  1) change(87-04-15,GDixon), approve(87-04-15,MCR7617),
+     audit(87-06-22,RBarstad), install(87-07-15,MR12.1-1040):
+     Add copy_dump_tape/compare_dump_tape.
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:	bound_dumper_;
+  Global:		  delete;
+
+  Addname:	  backup_cleanup, bc,
+		  backup_dump, 
+		  backup_dump_, 
+		  backup_preattach,
+		  catchup_dump,
+		  complete_dump,
+		  compare_dump_tape,
+		  copy_dump_tape,
+		  end_dump,
+		  idump,
+		  list_err, mail_errfiles,
+		  start_dump,
+		  wakeup_dump;
+
+  Order:		  backup_dump,
+		  backup_dump_recurse,
+		  bk_output,
+		  start_dump,
+		  sort_branches,
+		  list_err,
+		  mail_errfiles,
+		  backup_cleanup,
+		  backup_preattach,
+		  copy_dump_tape;
+
+/* Entries for individual components */
+
+objectname:	backup_cleanup;
+ synonym:		  bc;
+ retain:		  backup_cleanup, bc;
+
+objectname:	backup_dump;
+  synonym: 	  backup_dump_, idump;
+  retain:		  backup_dump, backup_dump_, idump;
+
+objectname:	backup_dump_recurse;
+
+objectname:	backup_preattach;
+  retain:		  backup_preattach;
+
+objectname:	bk_output;
+
+objectname:	copy_dump_tape;
+  retain:		copy_dump_tape,
+		compare_dump_tape;
+  synonym:	compare_dump_tape;
+
+objectname:	list_err;
+  retain:		  list_err;
+
+objectname:	mail_errfiles;
+  retain:		  mail_errfiles;
+
+objectname:	start_dump;
+  synonym: 	  catchup_dump, complete_dump, end_dump, wakeup_dump;
+  retain:		  catchup_dump, complete_dump, end_dump, start_dump, wakeup_dump;
+
+/* end; */
+
+
+

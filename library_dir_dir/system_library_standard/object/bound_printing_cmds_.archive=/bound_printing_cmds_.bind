@@ -1,0 +1,21 @@
+/* Bindfile for bound_printing_cmds_ */
+/* THVV Jan 77 */
+
+Objectname:	bound_printing_cmds_;
+Global:		delete;
+Order:		calendar,
+		bigletter_,
+		letseg_;
+Addname:		calendar,
+		bigletter_;
+
+objectname:	calendar;
+ retain:		calendar;
+
+objectname:	bigletter_;
+ retain:		bigletter_, five, var, init;
+
+/* end */
+
+
+

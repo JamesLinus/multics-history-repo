@@ -1,0 +1,21 @@
+* control segment for "usage_total"
+*
+* this segment is actually referenced only once a month, by
+* "reset_use_totals" when setting up for next month's billing
+*
+*This file is project name dependent and should be modified
+*accordingly by other sites.  The maximum number of projects
+*that may be specified is 39 plus one line specifying "other"
+*which means all the rest.
+*
+SysDaemon,System Daemon Processes
+SysAdmin,System Maintenance
+Operator,System Maintenance
+Terminals,System Maintenance
+HFED,System Maintenance
+other,Paying Customers
+*
+* end
+
+
+

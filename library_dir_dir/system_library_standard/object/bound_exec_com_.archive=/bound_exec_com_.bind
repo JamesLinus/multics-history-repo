@@ -1,0 +1,127 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+   *                                                         *
+   *********************************************************** */
+
+/* Multics exec_com processor and value manager */
+
+/* Created:  27 April 1981 by S. Herbst */
+/* Modified: 14 July 1981 by S. Herbst to add value commands */
+/* Modified: 15 February 1982 by G. Palter to retain exec_com_ */
+/* Modified: 7 June 1983 by S. Herbst to add abs_io_list_vars */
+
+
+/* HISTORY COMMENTS:
+  1) change(86-08-18,JSLove), approve(86-08-18,MCR7518),
+     audit(86-08-21,Parisek), install(86-10-02,MR12.0-1175):
+     Changed to delete value_match_ because match_star_name_ (HARDCORE) is used
+     instead.
+                                                   END HISTORY COMMENTS */
+
+
+
+Objectname:	bound_exec_com_;
+
+Global:		delete;
+
+Perprocess_Static;
+
+Order:		absentee_listen_,
+		abs_io_,
+		abs_io_control,
+		abs_io_put_chars,
+		abs_io_v1_get_line,
+		abs_io_v2_get_line,
+		abs_io_expand_,
+		abs_io_list_vars,
+		convert_ec,
+		signal_io_error_,
+		value_,
+		value_defined,
+		value_delete,
+		value_get,
+		value_list,
+		value_path,
+		value_set,
+		value_set_path;
+
+Addname:		abs_io_, ec_input_,
+		absentee_listen_,
+		exec_com, exec_com_, ec,
+		get_ec_version_,
+		convert_ec, cvec,
+		value_,
+		value_defined, vdf,
+		value_delete, vdl,
+		value_get, vg,
+		value_list, vls,
+		value_path, vp,
+		value_set, vs,
+		value_set_path, vsp;
+
+
+/* Instructions for individual components */
+
+objectname:	absentee_listen_;
+ synonym:		exec_com, exec_com_, ec, get_ec_version_;
+ retain:		absentee_listen_,
+		exec_com, exec_com_, ec,
+		get_ec_version_,
+		find_ec;
+
+objectname:	abs_io_;
+ synonym:		ec_input_;
+ retain:		abs_io_attach, ec_input_attach;
+
+objectname:	abs_io_control;
+
+objectname:	abs_io_expand_;
+
+objectname:	abs_io_list_vars;
+
+objectname:	abs_io_put_chars;
+
+objectname:	abs_io_v1_get_line;
+
+objectname:	abs_io_v2_get_line;
+
+objectname:	convert_ec;
+ synonym:		cvec;
+ retain:		convert_ec, cvec;
+
+objectname:	signal_io_error_;
+
+objectname:	value_;
+ global:		retain;
+ delete:		value_, get_alloc, symbol_table;
+
+objectname:	value_defined;
+ synonym:		vdf;
+ retain:		value_defined, vdf;
+
+objectname:	value_delete;
+ synonym:		vdl;
+ retain:		value_delete, vdl;
+
+objectname:	value_get;
+ synonym:		vg;
+ retain:		value_get, vg;
+
+objectname:	value_list;
+ synonym:		vls;
+ retain:		value_list, vls;
+
+objectname:	value_path;
+ synonym:		vp;
+ retain:		value_path, vp;
+
+objectname:	value_set;
+ synonym:		vs;
+ retain:		value_set, vs;
+
+objectname:	value_set_path;
+ synonym:		vsp;
+ retain:		value_set_path, vsp;
+
+/* end; */

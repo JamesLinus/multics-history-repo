@@ -1,0 +1,104 @@
+/*  START OF:	rmdb_crossref_info.incl.pl1		  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  */
+
+/****^  HISTORY COMMENTS:
+  1) change(85-12-03,Spitzer), approve(85-12-03,MCR7311),
+     audit(86-09-15,Gilcrease), install(86-10-16,MR12.0-1187):
+     written.
+                                                   END HISTORY COMMENTS */
+
+/*DESCRIPTION
+  The following structures are the definition of the records with the keyed
+  vfile that is built during restructuring. This file serves as a crossreference
+  of unique attributes and domains used within the specified MRDS database. Each
+  object is a char (33); the first byte is set to an unprintable character so we
+  can use the index builtin to find a specific object.
+*/
+
+dcl crossref_info_record_ptr ptr;
+dcl crossref_info_record_count fixed bin (21);
+dcl 1 crossref_info_record based (crossref_info_record_ptr),
+     2 offset bit (18) unal,
+     2 pad bit (18) unal,
+     2 count fixed bin (21),
+     2 entry (crossref_info_record_count refer (crossref_info_record.count)) unaligned,
+      3 object_head char (1),
+      3 object char (32);
+
+dcl crossref_info_record_objects char (33*crossref_info_record.count)
+			   based (addr (crossref_info_record.entry(1)));
+dcl OBJECT_HEAD char (1) int static options (constant) init ("");
+
+dcl ATTRIBUTE_KEY_HEAD char (10) int static options (constant) init ("attribute:");
+dcl DOMAIN_KEY_HEAD char (7) int static options (constant) init ("domain:");
+dcl RELATION_KEY_HEAD char (9) int static options (constant) init ("relation:");
+
+/*DESCRIPTION
+  The following structures are used to contain sufficient crossreference
+  information for the delete_attribute and delete_domain requests. These
+  requests require a more complete view of a crossreference tree, associating
+  domains, attributes and relations in 2 directions.
+*/
+
+dcl domain_list_ptr ptr;
+dcl domain_list_count fixed bin;
+dcl domain_list_names char (33*domain_list.count) based (addr (domain_list.name(1)));
+dcl 1 domain_list based (domain_list_ptr),
+     2 count fixed bin,				/* number of domains in the list */
+     2 name (domain_list_count refer (domain_list.count))
+	  char (33) unaligned,			/* name of this domain */
+     2 attribute_list_ptr (domain_list_count refer (domain_list.count))
+		      ptr;			/* -> attribute_list structure */
+
+dcl attribute_list_ptr ptr;
+dcl attribute_list_count fixed bin;
+dcl attribute_list_names char (33*attribute_list.count) based (addr (attribute_list.name(1)));
+dcl 1 attribute_list based (attribute_list_ptr),
+     2 count fixed bin,				/* number of attributes in the list */
+     2 name (attribute_list_count refer (attribute_list.count))
+	  char (33) unaligned,			/* name of this attribute */
+     2 domain_info_ptr (attribute_list_count refer (attribute_list.count))
+		   bit (18) unal,			/* offset in db_model of the domain_info structure for this attribute */
+     2 attribute_ptr (attribute_list_count refer (attribute_list.count))
+		 ptr;				/* -> attribute structure */
+
+dcl relation_list_ptr ptr;
+dcl relation_list_count fixed bin;
+dcl relation_list_names char (33*relation_list.count) based (addr (relation_list.name (1)));
+dcl 1 relation_list based (relation_list_ptr),
+     2 count fixed bin,				/* number of relations that are to be touched in this operation */
+     2 name (relation_list_count refer (relation_list.count))
+	  char (33) unaligned,			/* name of this relation */
+     2 relation_ptr (relation_list_count refer (relation_list.count))
+		ptr;				/* -> relation structure */
+
+dcl relation_ptr ptr;
+dcl relation_attribute_count fixed bin;
+dcl relation_attribute_names char (33*relation.attribute_count) based (addr (relation.attribute_names (1)));
+dcl 1 relation based (relation_ptr),
+     2 name char (32),				/* name of the relation */
+     2 file_model_ptr ptr,				/* -> relation.m segment */
+     2 copy_file_model_ptr ptr,
+     2 attribute_count fixed bin,			/* number of attributes defined for this relation */
+     2 mbz fixed bin (35),
+     2 attribute (relation_attribute_count refer (relation.attribute_count)),
+      3 flags aligned,
+        4 delete bit (1) unaligned,			/* ON: delete this attribute */
+        4 new bit (1) unaligned,			/* ON: this attribute is added to the relation */
+        4 part_of_key bit (1) unaligned,                    /* ON: this attribute is part of the primary key */
+        4 to_be_deleted bit (1) unaligned,
+        4 pad bit (32) unaligned,
+      3 domain_info_ptr bit (18) aligned,		/* -> db_model domain_info structure */
+      3 attribute_info_ptr ptr,			/* -> file_model attribute_info structure */
+      3 value_ptr ptr,				/* if flags.new, this -> the value of the column to be stored */
+						/*   it must be of the correct data type as specified by the domain */
+     2 attribute_names (relation_attribute_count refer (relation.attribute_count))
+		   char (33) unaligned;
+
+dcl attribute_ptr ptr;
+dcl attribute_count fixed bin;
+dcl 1 attribute based (attribute_ptr),
+     2 count fixed bin,				/* number of relations this attribute is used in */
+     2 relation_idx (attribute_count refer (attribute.count))
+		fixed bin;			/* index into list of relation names */
+
+/*  END OF:	rmdb_crossref_info.incl.pl1		  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  */

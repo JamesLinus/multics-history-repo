@@ -1,0 +1,56 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1983 *
+   *                                                         *
+   *********************************************************** */
+
+
+/* Bindfile for: bound_ms_table_mgr_ -- multi-segment table manager */
+
+/* Created:  August 1983 by G. Palter */
+/* Modified: 1984-08-17 by E. Swenson for MSTB V3 conversion support. */
+
+
+Objectname:	bound_ms_table_mgr_;
+   Global:	   delete;
+   Perprocess_Static;
+
+   Addname:	   convert_v2_mstb_,
+		   display_mstb,
+		   ms_table_mgr_,
+		   ms_table_mgr_v2_,
+		   salvage_mstb;
+		
+
+   Order:		   ms_table_mgr_,
+		   mstb_checksum_,
+		   display_mstb,
+		   salvage_mstb,
+		   convert_v2_mstb_,
+		   ms_table_mgr_v2_;
+
+/* Instructions for individual components */
+
+objectname:	display_mstb;
+   retain:	   display_mstb;
+
+objectname:	ms_table_mgr_;
+   global:	   retain;
+   delete:	   ms_table_mgr_, symbol_table;
+
+objectname:	mstb_checksum_;
+   global:	   retain;
+
+objectname:	salvage_mstb;
+   retain:	   salvage_mstb;
+
+objectname:	convert_v2_mstb_;
+   retain:	   convert_v2_mstb_, default_convert_proc;
+		
+objectname:	ms_table_mgr_v2_;
+   global:	   retain;
+
+/* end; */
+
+
+

@@ -1,0 +1,52 @@
+/* Bind file for bound_gm_
+   modified for merge_mst replacing copy_mst, 11/22/76, B. Greenberg.
+   Modified 10/82 bim demise of merge_mst. 
+   */
+
+Objectname:	bound_gm_;
+
+Order:		mst_tools_,
+		generate_mst,
+		gm_data_,
+		gm_error_,
+		gm_util_,
+		gm_util1_,
+		gm_write_first_seg_,
+		gm_write_boot_program_,
+		print_gen_info_;
+
+Addname:		generate_mst, gm,
+		copy_mst,
+		excerpt_mst,
+		list_mst,
+		print_gen_info_;
+Global:		delete;
+
+objectname:	mst_tools_;
+ synonym:		copy_mst, list_mst, excerpt_mst;
+ retain:		copy_mst, list_mst, excerpt_mst;
+
+objectname:	generate_mst;
+ synonym: 	gm;
+ retain:		generate_mst, gm;
+
+objectname:	gm_data_;
+
+objectname:	gm_error_;
+
+objectname:	gm_util_;
+
+objectname:	gm_util1_;
+ retain:		close;
+
+objectname:	gm_write_first_seg_;
+
+objectname:	gm_write_boot_program_;
+
+objectname:	print_gen_info_;
+ retain:		print_gen_info_, component;
+
+/* End */
+
+
+

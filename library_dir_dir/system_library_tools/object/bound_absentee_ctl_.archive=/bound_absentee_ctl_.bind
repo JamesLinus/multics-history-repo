@@ -1,0 +1,35 @@
+/* ******************************************************
+   *                                                    *
+   *                                                    *
+   * Copyright (c) 1972 by Massachusetts Institute of   *
+   * Technology and Honeywell Information Systems, Inc. *
+   *                                                    *
+   *                                                    *
+   ****************************************************** */
+
+
+/* HISTORY COMMENTS:
+  1) change(82-03-07,Kittlitz), approve(), audit(), install():
+      Created by E.N. Kittlitz.  bound_user_control_ anti-trust consent decree.
+  2) change(86-01-31,Lippard), approve(85-12-30,MCR7326),
+     audit(86-10-27,GDixon), install(86-10-28,MR12.0-1200):
+      Modified by Jim Lippard to add asr_abs_command_server_.
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:	bound_absentee_ctl_;
+
+Addname:		absentee_user_manager_,
+		absentee_utility_,
+		asr_abs_command_server_,
+		available_slots_;
+
+Order:		absentee_user_manager_,
+		absentee_utility_,
+		asr_abs_command_server_,
+		available_slots_;
+
+Global:		retain;
+
+
+

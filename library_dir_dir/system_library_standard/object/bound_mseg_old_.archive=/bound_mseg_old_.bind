@@ -1,0 +1,56 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1985 *
+   *                                                         *
+   *********************************************************** */
+
+/* bound_mseg_old_ -- Support for upgrading old message segments to
+      the version supported by bound_mseg_ */
+
+/* Created:  May 1985 by Benson Margulies and Gary Palter */
+
+
+Objectname:	bound_mseg_old_;
+
+   Global:	   delete;
+   Perprocess_Static;
+
+   Addname:	   mseg_upgrade_from_v2_,
+		   mseg_upgrade_from_v3_,
+		   mseg_upgrade_from_v4_;
+
+   Order:		   mseg_upgrade_from_v2_,
+		   mseg_util_v2_,
+		   mseg_data_v2_,
+		   ptr_is_good_v2_,
+		   ms_salvager_v2_,
+		   ms_salv_util_v2_,
+		   mseg_upgrade_from_v3_,
+		   mseg_util_v3_,
+		   mseg_data_v3_,
+		   mseg_error_v3_,
+		   ms_salvager_v3_,
+		   ms_salv_util_v3_,
+		   mseg_upgrade_from_v4_,
+		   mseg_util_v4_,
+		   mseg_data_v4_,
+		   mseg_error_v4_,
+		   ms_salvager_v4_,
+		   ms_salv_util_v4_;
+
+
+/* Instructions for individual components */
+
+objectname:	mseg_upgrade_from_v2_;
+   retain:	   salvage, get_wakeup_state, read_message;
+
+objectname:	mseg_upgrade_from_v3_;
+   retain:	   salvage, get_wakeup_state, read_message;
+
+objectname:	mseg_upgrade_from_v4_;
+   retain:	   salvage, get_wakeup_state, read_message;
+
+/* end; */
+
+
+

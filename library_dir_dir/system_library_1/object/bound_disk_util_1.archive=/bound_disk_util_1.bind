@@ -1,0 +1,57 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(86-04-10,Fawcett), approve(86-04-10,MCR7383),
+     audit(86-05-13,Coppola), install(86-07-17,MR12.0-1097):
+     Add disk_name_pvtx.
+                                                   END HISTORY COMMENTS */
+
+
+/*	BINDFILE FOR bound_disk_util_1	*/
+/* created 09/09/75 by Bernard Greenberg for NSS	*/
+/* modified 03/11/80 by J. A. Bush to add disk_run entry */
+/* Modified 09/29/80 W. Olin Sibert to add partition_io */
+/* Modified 03/06/82 by J. Bongiovanni to add partition_io$find_partition,
+		 stock_man, init_volmap_seg, map_free_count  */
+/* Modified '82 to move in get_pvtx */
+/* Modified 01/13/84 by Keith Loepere for (read write)_disk_no_test for speed */
+/* Modified 84-01-18 BIM for get_pvtx$reset */
+/* Modified 84-04-06 Keith Loepere for find_partition_given_drive */
+/* Split into bound_disk_util_1 and bound_disk_util_2, 85-01-22, Keith Loepere. */
+/* Modified 86-01-28 R. A. Fawcett to add disk_name_pvtx */
+
+Objectname:	bound_disk_util_1;
+Order:		read_disk,
+		disk_run,
+		disk_name_pvtx,
+		find_partition,
+		stock_man;
+
+Global:		delete;
+
+No_Table;
+
+objectname:	read_disk;
+ synonym:		write_disk;
+ retain:		read_disk, write_disk, test_disk, init,
+		read_disk_no_test, write_disk_no_test;
+
+objectname:	disk_run;
+ retain:		disk_run;
+
+objectname:	disk_name_pvtx;
+ retain:		disk_name_pvtx, subsys_dev;
+
+objectname:	find_partition;
+ retain:		find_partition, given_drive;
+
+objectname:	stock_man;
+ retain:		allocate_record_stock,
+		free_record_stock,
+		allocate_vtoce_stock,
+		free_vtoce_stock;
+
+/*		END		*/
+
+
+

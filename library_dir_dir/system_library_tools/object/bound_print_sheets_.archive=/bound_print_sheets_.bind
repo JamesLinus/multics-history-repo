@@ -1,0 +1,35 @@
+/* bound_print_sheets_: Prints I/O daemon head/tail sheets */
+
+/* Created:  19 April 1973 by Robert S. Coren */
+/* Modified: August 1977 by J. C. Whitmore to add the set page length entries */
+/* Modified: January 1978 by J. C. Whitmore to add the separator and set_ctl entries to head_sheet_ */
+/* Modified: 8 April 1981 by G. A. Texada to retain the test entrypoint of head_sheet_ */
+/* Modified: 11 December 1981 by G. Palter to retain head_sheet_$init and tail_sheet_$init */
+
+
+Objectname:	bound_print_sheets_;
+
+  Global:		  delete;
+  No_Table;
+
+  Addname:	  head_sheet_,
+		  tail_sheet_;
+
+  Order:		  head_sheet_,
+		  tail_sheet_;
+
+
+/* Instructions for individual components */
+
+objectname:	head_sheet_;
+  global:		  retain;
+  delete:		  symbol_table;
+
+objectname:	tail_sheet_;
+  global:		  retain;
+  delete:		  symbol_table;
+
+/* end; */
+
+
+

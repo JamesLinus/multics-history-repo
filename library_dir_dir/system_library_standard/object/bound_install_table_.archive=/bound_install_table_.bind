@@ -1,0 +1,25 @@
+/* ******************************************************
+   *                                                    *
+   *                                                    *
+   * Copyright (c) 1972 by Massachusetts Institute of   *
+   * Technology and Honeywell Information Systems, Inc. *
+   *                                                    *
+   *                                                    *
+   ****************************************************** */
+
+/* Bindfile for bound_install_table_ BIM 1/82 */
+
+Objectname:	bound_install_table_;
+Addname:		install, install_ttt_;
+
+Order:		install, install_ttt_;
+
+Global:		delete;
+
+objectname:	install;
+    retain:	install;
+
+objectname:	install_ttt_;
+    retain:	install_ttt_;
+
+/* End */

@@ -1,0 +1,120 @@
+Objectname:	bound_vfile_;
+
+Addname:		vfile_,
+		vfile_status,vfs,
+		vfile_adjust,vfa,
+		vfile_copy_opening_,
+		record_stream_,
+		vfile_status_,
+		transaction_call_,
+		transaction_call,trc;
+
+Order:		fast_put,
+		open_uns_file,
+		open_blk_file,
+		open_seq_file,
+		find_key,
+		open_indx_file,
+		change_record_list,
+		change_index,
+		alloc_cb_file,
+		vfile_attach,
+		create_seg_ptrs,
+		create_position_stack,
+		restart,
+		check_file_version,
+		delete_old_subsets,
+		rs_open_str_in_,
+		rs_open_str_out_,
+		rs_open_seq_in_,
+		rs_open_seq_out_,
+		record_stream_attach_,
+		vfile_status_,
+		vfile_status,
+		vfile_adjust,
+		vfile_copy_opening_,
+		vfile_io_control,
+		transaction_call_,
+		transaction_call;
+
+Global:		delete;
+
+objectname:	vfile_attach;
+ retain:		vfile_attach;
+
+objectname:	fast_put;
+
+objectname:	open_uns_file;
+
+objectname:	open_seq_file;
+
+objectname:	open_blk_file;
+
+objectname:	alloc_cb_file;
+ synonym:		free_cb_file;
+
+objectname:	open_indx_file;
+
+objectname:	change_index;
+
+objectname:	find_key;
+
+objectname:	change_record_list;
+
+objectname:	create_position_stack;
+ synonym:  	extend_position_stack,
+	free_position_stack;
+
+objectname:	create_seg_ptrs;
+ synonym: 	free_seg_ptrs,
+	get_new_seg,
+	make_designator,
+	set_bitcounts,
+	get_ptr_and_offset,
+	get_ptr,
+	get_seg_ptr;
+
+objectname:	check_file_version;
+
+objectname:	restart;
+ synonym:		restart_at_open;
+
+objectname:	delete_old_subsets;
+
+objectname:	record_stream_attach_;
+ retain:		record_stream_attach;
+
+objectname:	rs_open_str_in_;
+
+objectname:	rs_open_str_out_;
+
+objectname:	rs_open_seq_in_;
+
+objectname:	rs_open_seq_out_;
+
+objectname:	vfile_status_;
+ retain:		vfile_status_,
+		seg;
+
+objectname:	vfile_status;
+ retain:		vfile_status,vfs;
+
+objectname:	vfile_adjust;
+ retain:		vfile_adjust,vfa;
+
+objectname:	vfile_copy_opening_;
+ retain:		vfile_copy_opening_;
+
+objectname:	vfile_io_control;
+
+objectname:	transaction_call_;
+retain:		assign,
+		checkpoint,
+		commit,
+		number,
+		rollback,
+		status,
+		transact;
+
+objectname:	transaction_call;
+ retain:		transaction_call,trc;

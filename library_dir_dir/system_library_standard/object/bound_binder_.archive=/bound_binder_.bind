@@ -1,0 +1,99 @@
+/* BINDFILE for bound_binder_
+   initially written 9 March 1971 by Dan Bricklin
+   updated 22 December 1971 be Mike Spier
+   updated December 1972 by M. Weaver
+   updated December 1976 by Noel I. Morris
+   updated Nov 1978 by David Spector
+   updated 02/13/81 W. Olin Sibert, to add bind_ interface, remove oldbind.
+   updated 11/14/84 by M. Sharpe to remove old_make_bindmap_
+   */
+
+
+/* HISTORY COMMENTS:
+  1) change(85-09-24,Elhard), approve(85-09-24,MCR7198),
+     audit(86-06-30,Weaver), install(86-07-16,MR12.0-1094):
+     Removed
+     old_rebuild_object_ and old_relocate_symbol_
+                                                   END HISTORY COMMENTS */
+
+Objectname:	bound_binder_;
+
+Global:		delete;
+
+Addname:		bind,
+		bd,
+		bind_,
+		binder_;
+
+Order:		bind,
+		bind_,
+		binder_,
+		bx_,
+		temp_mgr_,
+		dissect_object_,
+		rebuild_object_,
+		get_relinfo_,
+		decode_link_,
+		int_link_,
+		ext_link_,
+		regenerate_all_links_,
+		strm_hash_,
+		generate_def_,
+		hash_defs_,
+		make_defs_,
+		parse_bindfile_,
+		relocate_symbol_,
+		incorporate_options_,
+		make_bound_object_map_,
+		generate_first_ref_traps_,
+		make_bindmap_;
+
+objectname:	bind;
+synonym:		bd;
+retain:		bind,
+		bd;
+
+objectname:	bind_;
+ retain:		bind_;
+
+objectname:	binder_;
+ retain:		binder_;
+
+objectname:	bx_;
+
+objectname:	temp_mgr_;
+
+objectname:	dissect_object_;
+
+objectname:	rebuild_object_;
+
+objectname:	get_relinfo_;
+
+objectname:	decode_link_;
+
+objectname:	int_link_;
+
+objectname:	ext_link_;
+
+objectname:	strm_hash_;
+
+objectname:	generate_def_;
+
+objectname:	hash_defs_;
+
+objectname:	make_defs_;
+
+objectname:	parse_bindfile_;
+
+objectname:	incorporate_options_;
+
+objectname:	make_bindmap_;
+
+objectname:	make_bound_object_map_;
+
+objectname:	relocate_symbol_;
+
+objectname:	generate_first_ref_traps_;
+
+
+/*		END		*/

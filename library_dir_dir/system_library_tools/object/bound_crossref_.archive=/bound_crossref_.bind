@@ -1,0 +1,45 @@
+/* ******************************************************
+   *                                                    *
+   *                                                    *
+   * Copyright (c) 1972 by Massachusetts Institute of   *
+   * Technology and Honeywell Information Systems, Inc. *
+   *                                                    *
+   *                                                    *
+   ****************************************************** */
+
+		/* bound_crossref_.bind */
+		/* 04/21/76 by C. D. Tavares */
+		/* 2/82 BIM add peruse_crossref */
+
+Objectname:	bound_crossref_;
+
+Order:		cross_reference,
+		cref_analyze_,
+		cref_listman_,
+		cref_sort_,
+		cref_filegen_,
+		peruse_crossref;
+
+Addname:		cross_reference, cref,
+		peruse_crossref, pcref;
+
+Global:		delete;
+
+
+objectname:	cross_reference;
+ synonym: 	cref;
+ retain:		cross_reference, cref;
+
+objectname:	cref_analyze_;
+
+objectname:	cref_listman_;
+
+objectname:	cref_sort_;
+
+objectname:	cref_filegen_;
+
+objectname:	peruse_crossref;
+ synonym: 	pcref;
+ retain:		peruse_crossref, pcref;
+
+/* End */

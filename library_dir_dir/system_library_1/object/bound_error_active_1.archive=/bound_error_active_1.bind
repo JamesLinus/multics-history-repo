@@ -1,0 +1,28 @@
+/* *	71-06-01, C. Garman: ???
+   *	74-11-04, L. Scheffler: Added ring-1 syserr
+   *	75-11-01, Larry Johnson: Deleted ring-1 syserr, added 
+   *	   syserr_copy_paged and syserr_log_check.
+   * 	76-08-12, Noel I. Morris: Modified for reasons unknown
+   *	80-02-01, J. A. Bush: Modified for equally obscure reasons
+   *	84-10-17, WOS: Reorganized syserr stuff (syserr_copy, etc.)
+   *	85-01-22, Keith Loepere, split into bound_error_active_(1 2).
+   */   
+
+
+Objectname:	bound_error_active_1;
+Global:		delete;
+
+Order:		terminate_proc,
+		hardware_fault,
+		cache_tester;
+
+objectname:	terminate_proc;
+ retain:		terminate_proc, init_failure;
+
+objectname:	hardware_fault;
+ retain:		hardware_fault;
+
+objectname:	cache_tester;
+ retain:		cache_tester;
+
+/* End */

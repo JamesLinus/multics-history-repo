@@ -1,0 +1,557 @@
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) Honeywell Bull Inc., 1987                *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+/* HASP multiplexer:  This multiplexer processes most of the HASP RJE protocol in either host or workstation mode.
+   This multiplexer expects data from the user ring to be already compressed and converted to EBCDIC.
+   This procedure implements the privileged entries of the multiplexer; it will not be invoked at interrupt time
+   and needn't be wired.
+   */
+
+/* Created:  October 1979 by G. Palter */
+/* Modified: December 1980 by G. Palter as part of "loopback bug" fix */
+/* Modified: 24 July 1981 by G. Palter to implement SIGNON processing and metering */
+/* Modified: 28 December 1981 by G. Palter to zero saved meters space after allocating (not a zero-on-free area) */
+/* Modified: November 1984 by Robert Coren to use tty_area_manager entries to allocate and free saved meters */
+
+priv_hasp_mpx:
+     procedure ();
+
+	return;					/* not an entry */
+
+
+/* Parameters */
+
+dcl  P_hmd_ptr pointer parameter;			/* -> multiplexer data for this channel */
+dcl  P_code fixed binary (35) parameter;		/* status code */
+
+dcl  P_devx fixed binary parameter;			/* init_multiplexer:  LCT index of the major channel */
+dcl  P_miip pointer parameter;			/* init_multiplexer:  -> multiplexer initialization data */
+
+dcl  P_info_ptr pointer parameter;			/* priv_control, hpriv_control:  -> data for control order */
+dcl  P_order character (*) parameter;			/* priv_control, hpriv_control:  control order to execute */
+
+
+/* Remaining declarations */
+
+
+dcl  code fixed binary (35);
+
+dcl  devx fixed binary;				/* local copies */
+
+dcl  info_ptr pointer;
+dcl  order character (32);
+
+dcl  subchannel_name character (32);			/* name of sub-channel being examined sans multiplexer part */
+dcl  start_subchannel_name_idx fixed binary;		/* idx of first character in name specific to sub-channel */
+
+dcl (found_console,					/* ON => operator's console found in the sub-channels */
+     (found_readers,				/* ON => indicated card reader found */
+      found_printers, found_punches) dimension (8))
+	bit (1) aligned;
+
+dcl (device_type, device_number) fixed binary;		/* device type and number for this sub-channel */
+
+dcl  rcb_char character (1) unaligned;			/* RCB character for the current sub-channel */
+dcl 1 rcb unaligned based (addr (rcb_char)) like hasp_rcb_byte;
+
+dcl  idx fixed binary;
+
+dcl  initialized bit (1) aligned static initial ("0"b);	/* system wide constant:  ON => multiplexer wired and ready */
+
+dcl  NUL character (1) static options (constant) initial ("");   /* EBCDIC NUL character ("000"b3) */
+
+dcl  pds$processid bit (36) aligned external;
+
+dcl (error_table_$action_not_performed, error_table_$bad_channel, error_table_$bad_mpx_load_data,
+     error_table_$bigarg, error_table_$noalloc, error_table_$null_info_ptr, error_table_$undefined_order_request,
+     error_table_$unimplemented_version)
+	fixed binary (35) external;
+
+dcl (area, cleanup) condition;
+
+dcl  tty_area_manager$allocate entry (fixed bin, ptr);
+dcl  tty_area_manager$free entry (fixed bin, ptr);
+dcl  hasp_mpx$crash entry (pointer);
+dcl  hasp_mpx$dialup entry (pointer, fixed binary);
+dcl  hasp_mpx$system_initialize entry ();
+
+dcl (addr, binary, clock, currentsize, length, mod, null, rtrim, size, substr, verify) builtin;
+%page;
+/* Allocate and initialize the multiplexer database for a given major channel */
+
+init_multiplexer:
+     entry (P_devx, P_miip, P_hmd_ptr, P_code);
+
+	devx = P_devx;
+	miip = P_miip;
+	P_hmd_ptr = null ();			/* in case of failure */
+
+	ttybp = addr (tty_buf$);
+	lctp = tty_buf.lct_ptr;
+	lcntp = lct.lcnt_ptr;
+	hmd_ptr = null ();
+
+	hmd_n_subchannels = mux_init_info.no_channels;	/* to compute size (hmd) */
+	     if hmd_n_subchannels > 17 then do;		/* console, 8 readers, 8 printers/punches */
+		P_code = error_table_$bigarg;
+		return;
+	     end;
+
+	call tty_space_man$get_space (size (hmd), hmd_ptr);    /* make space for the multiplexer database */
+	     if hmd_ptr = null () then do;		/* no room */
+INITIALIZE_FAILS_NOALLOC:
+		P_code = error_table_$noalloc;
+		return;
+	     end;
+
+	hmd.saved_meters_ptr,			/* for cleanup/area handlers */
+	     hmd.subchannels(*).saved_meters_ptr = null ();
+
+	hmd.n_subchannels = hmd_n_subchannels;
+
+	on condition (cleanup)
+	     call release_mpx_storage ();
+
+	on condition (area)				/* can't allocate metering structures */
+	     begin;
+		call release_mpx_storage ();
+		go to INITIALIZE_FAILS_NOALLOC;
+	     end;
+
+	hmd.name = lcnt.names (devx);
+	hmd.devx = devx;
+
+	hmd.state = HMD_DOWN;			/* the multiplexer isn't up yet */
+
+	call tty_area_manager$allocate (size (hasp_mpx_meters), hmd.saved_meters_ptr);
+	hmd.saved_meters_ptr -> hasp_mpx_meters = 0;
+
+
+/* Initialize data for the individual sub-channels */
+
+	start_subchannel_name_idx = length (rtrim (hmd.name)) + 2;
+
+	found_console = "0"b;
+	found_readers (*),
+	     found_printers (*),
+	     found_punches (*) = ""b;
+
+	do idx = 1 to hmd.n_subchannels;
+
+	     subchannel_name = substr (mux_init_info.name (idx), start_subchannel_name_idx);
+
+	     call parse_subchannel_name ();		/* sets device_type & device_number */
+
+	     hste_ptr = addr (hmd.subchannels (idx));
+
+	     hste.name = subchannel_name;
+	     hste.subchannel_idx = idx;		/* needed in output processing */
+	     hste.device_type = device_type;
+	     hste.devx = mux_init_info.devx (idx);
+
+	     lctep = addr (lct.lcte_array (hste.devx));	/* place sub-channel index inot LCT for channel_manager */
+	     lcte.subchannel = idx;
+
+	     if (hste.device_type = HASP_CONSOLE) then	/* remember the console:  it is special */
+		hmd.console_hste_idx = idx;
+	     
+	     if (hste.device_type = HASP_PUNCH) then
+		hste.device_wab_idx = 9 - device_number;     /* for punch, wait-a-bits are backwards */
+	     else hste.device_wab_idx = device_number;
+
+	     rcb_char = NUL;			/* create the template RCB character */
+	     rcb.not_eob = "1"b;
+
+	     if (hste.device_type = HASP_CONSOLE)
+	     then do;				/* for console:  always stream 1, type is set on the fly */
+		rcb.stream = 1;
+		rcb.type = 0;
+	     end;
+
+	     else do;				/* other devices */
+		rcb.stream = mod (device_number, 8);	/* streams are number 1 ... 0 */
+		if (hste.device_type = HASP_READER) then
+		     rcb.type = HASP_RCB_TYPE_READER_INPUT;
+		else if (hste.device_type = HASP_PRINTER) then
+		     rcb.type = HASP_RCB_TYPE_PRINT_OUTPUT;
+		else if (hste.device_type = HASP_PUNCH) then
+		     rcb.type = HASP_RCB_TYPE_PUNCH_OUTPUT;
+		else go to BAD_CHANNEL;		/* shouldn't get here, but ... */
+	     end;
+
+	     hste.rcb = rcb_char;			/* RCB for this device has now been determined */
+
+	     call tty_area_manager$allocate (size (hasp_subchannel_meters), hste.saved_meters_ptr);
+	     hste.saved_meters_ptr -> hasp_subchannel_meters = 0;
+	end;
+
+	if ^found_console then go to BAD_CHANNEL;	/* no operator's console supplied for this multiplexer */
+
+
+	if ^initialized then do;
+	     call hasp_mpx$system_initialize ();
+	     initialized = "1"b;
+	end;
+
+	P_hmd_ptr = hmd_ptr;
+	P_code = 0;				/* success */
+
+	return;
+
+
+/* Transfer here when an error is found in the definition of one or more sub-channels */
+
+BAD_CHANNEL:
+	call release_mpx_storage ();
+
+	P_code = error_table_$bad_channel;
+	return;
+%page;
+/* Perform a privileged control operation on the multiplexer */
+
+priv_control:
+     entry (P_hmd_ptr, P_order, P_info_ptr, P_code);
+
+	hmd_ptr = P_hmd_ptr;
+	order = P_order;
+	info_ptr = P_info_ptr;
+	code = 0;
+
+
+	if (order = "copy_meters")
+	then do;
+
+/* Copy the current multiplexer meters for use with the -since_dialup option to channel_comm_meters */
+
+	     hmd.time_meters_copied = clock ();		/* needed to compute idle percentage */
+	     hmd.saved_meters_ptr -> hasp_mpx_meters = hmd.meters;
+	     call channel_manager$control (hmd.devx, order, info_ptr, code);
+	end;
+
+
+	else if (order = "get_meters")
+	then do;
+
+/* Return the current and saved multiplexer metering data */
+
+	     if (info_ptr = null ()) then		/* must have an info structure */
+		code = error_table_$null_info_ptr;
+
+	     else if info_ptr -> get_comm_meters_info.version ^= GET_COMM_METERS_INFO_VERSION_1 then
+		code = error_table_$unimplemented_version;
+
+	     else do;
+		hmmd_ptr = info_ptr -> get_comm_meters_info.subchan_ptr;
+		if hmmd_ptr ^= null () then		/* caller wants our meters */
+		     if hasp_mpx_meters_data.version ^= HASP_MPX_METERS_DATA_VERSION_1 then
+			code = error_table_$unimplemented_version;
+		     else do;
+			hasp_mpx_meters_data.time_mpx_booted = hmd.time_mpx_booted;
+			hasp_mpx_meters_data.time_meters_copied = hmd.time_meters_copied;
+			hasp_mpx_meters_data.idle_interval = hmd.transmit_timeout;
+			hasp_mpx_meters_data.current_meters = hmd.meters;
+			hasp_mpx_meters_data.saved_meters = hmd.saved_meters_ptr -> hasp_mpx_meters;
+			call channel_manager$control (hmd.devx, order, info_ptr, code);
+		     end;
+	     end;
+	end;
+
+	else code = error_table_$undefined_order_request;
+
+	P_code = code;
+
+	return;
+%page;
+/* Perform a highly privileged control operation on the multiplexer */
+
+hpriv_control:
+     entry (P_hmd_ptr, P_order, P_info_ptr, P_code);
+
+	hmd_ptr = P_hmd_ptr;
+	order = P_order;
+	code = 0;
+
+	if (order = "load_mpx")
+	then do;
+
+/* Bootload the multiplexer:  copy the load data (includes configuration information), determine the direction of each
+   sub-channel, validate that the load data is for this channel, and listen on the major channel for a dialup */
+
+	     if (P_info_ptr = null ()) then
+		code = error_table_$null_info_ptr;
+
+	     else if (hmd.state ^= HMD_DOWN) then	/* can't already be booting or booted */
+		code = error_table_$action_not_performed;
+
+	     else do;
+		hld_ptr = P_info_ptr;
+
+		if hasp_load_data.n_subchannels ^= hmd.n_subchannels then
+BAD_LOAD_DATA:	     code = error_table_$bad_mpx_load_data;
+
+		else do;				/* correct number of subchannels */
+		     hmd.configuration_data = hasp_load_data.configuration_data;
+
+		     hmd.loader_process_id = pds$processid;
+		     hmd.loader_event_channel = hasp_load_data.event_channel;
+
+		     hmd.send_output,		/* these flags are valid during life of a bootload */
+			hmd.flags.input_available = "0"b;
+
+		     hmd.output_chain_ptr,
+			hmd.input.first_bufferp, hmd.input.last_bufferp,
+			hmd.loopback.first_bufferp, hmd.loopback.last_bufferp,
+			hmd.output_block.first_bufferp, hmd.output_block.last_bufferp,
+			hmd.signon_data_ptr, hmd.minor_state_stack, hmd.loopback_block_chain_stack = null ();
+
+		     hmd.output_block.subchannel_idx, hmd.output_block.tally = 0;
+
+		     hmd.subchannels_for_output = 0;	/* empty the queue */
+		     hmd.meters = 0;		/* can't possibly have any metering data */
+
+		     do idx = 1 to hmd.n_subchannels;
+			hste_ptr = addr (hmd.subchannels (idx));
+			hste.meters = 0;		/* starting fresh */
+
+			if hasp_load_data.subchannels(idx).devx ^= hste.devx then
+			     go to BAD_LOAD_DATA;	/* not the right set of sub-channels */
+
+			if (hste.device_type = HASP_CONSOLE) then
+			     hste.direction = HSTE_INPUT_OUTPUT;
+			else if (hmd.type = HASP_HOST) then
+			     if (hste.device_type = HASP_READER) then
+				hste.direction = HSTE_INPUT_ONLY;
+			     else hste.direction = HSTE_OUTPUT_ONLY;
+			else if (hmd.type = HASP_WORKSTATION) then
+			     if (hste.device_type = HASP_READER) then
+				hste.direction = HSTE_OUTPUT_ONLY;
+			     else hste.direction = HSTE_INPUT_ONLY;
+			else go to BAD_LOAD_DATA;	/* multiplexer type is wrong(?) */
+		     end;
+
+		     call channel_manager$control (hmd.devx, "listen", null (), code);
+
+		     if code = 0 then		/* have successfully started to load it */
+			hmd.state = HMD_LOADING;
+		end;
+	     end;
+	end;
+
+	else code = error_table_$undefined_order_request; /* only "load_mpx" is supported now */
+
+
+	P_code = code;
+	return;
+%page;
+/* Permit dialups on a multiplexer's sub-channels */
+
+start:
+     entry (P_hmd_ptr, P_code);
+
+	hmd_ptr = P_hmd_ptr;
+
+	if hmd.state < HMD_LOADED then		/* device must be loaded or already started */
+	     P_code = error_table_$action_not_performed;
+
+	else do;
+	     P_code = 0;				/* always succeeds */
+	     hmd.state = HMD_STARTED;
+	     hmd.suspend_all_input = "0"b;		/* allow foreign side to send all the input it wants */
+	     hmd.suspend_all_output = "0"b;		/* allow local devices to send output */
+	     string (hmd.output_wabs) = (9)"1"b;
+	     if (hmd.minor_state < HMD_NORMAL) then	/* must send a SIGNON record: only console may dialup */
+		if (hmd.subchannels(hmd.console_hste_idx).state = HSTE_LISTENING) then
+		     call hasp_mpx$dialup (hmd_ptr, hmd.console_hste_idx);
+		else;				/* console isn't listening yet */
+	     else					/* dialup any sub-channels that are listening */
+	     do idx = 1 to hmd.n_subchannels;
+		if hmd.subchannels(idx).state = HSTE_LISTENING then
+		     call hasp_mpx$dialup (hmd_ptr, idx);
+	     end;
+	end;
+
+	return;
+
+
+
+/* Forbid further dialups on a sub-channel */
+
+stop:
+     entry (P_hmd_ptr, P_code);
+
+	hmd_ptr = P_hmd_ptr;
+
+	if hmd.state = HMD_STARTED then		/* if it was started, it isn't now */
+	     hmd.state = HMD_LOADED;
+
+	P_code = 0;
+	return;
+%page;
+/* Shutdown the multiplexer:  equivalent to a crash */
+
+shutdown:
+     entry (P_hmd_ptr, P_code);
+
+	hmd_ptr = P_hmd_ptr;
+
+	if hmd.state > HMD_DOWN then			/* channel might be dialed up:  hangup */
+	     call channel_manager$control (hmd.devx, "hangup", null (), (0));
+
+	call hasp_mpx$crash (hmd_ptr);		/* do the dirty work */
+
+	P_code = 0;
+	return;
+
+
+
+/* Terminate the multiplexer database for a given major channel */
+
+terminate_multiplexer:
+     entry (P_hmd_ptr, P_code);
+
+	hmd_ptr = P_hmd_ptr;
+
+	call release_mpx_storage ();
+
+	P_hmd_ptr = null ();
+	P_code = 0;
+
+	return;
+
+
+
+/* Free all storage allocated by this module for a HASP multiplexer */
+
+release_mpx_storage:
+	procedure ();
+
+dcl  idx fixed binary;
+
+	     if hmd_ptr ^= null () then do;		/* used in cleanup/area handlers */
+
+		if hmd.saved_meters_ptr ^= null () then
+		     call tty_area_manager$free (size (hasp_mpx_meters), hmd.saved_meters_ptr);
+
+		do idx = 1 to hmd.n_subchannels;
+		     if hmd.subchannels(idx).saved_meters_ptr ^= null () then
+			call tty_area_manager$free (size (hasp_subchannel_meters), hmd.subchannels(idx).saved_meters_ptr);
+		end;
+
+		call tty_space_man$free_space (currentsize (hmd), hmd_ptr);
+	     end;
+
+	     return;
+
+	end release_mpx_storage;
+%page;
+/* Parse a sub-channel name:  validate that the channel name is legal and not a duplicate */
+
+parse_subchannel_name:
+	procedure ();
+
+dcl (name_part, number_part) character (3) varying;
+dcl  name_lth fixed binary;
+
+	     name_lth = length (rtrim (subchannel_name));
+		if (name_lth < 3) | (name_lth > 6) then go to BAD_CHANNEL;
+
+	     name_part = substr (subchannel_name, 1, 3);
+
+	     if name_lth > 3 then			/* seems to have a device number */
+		number_part = substr (subchannel_name, 4, (name_lth - 3));
+	     else number_part = "";
+
+	     if (name_part ^= "opr") & (name_part ^= "rdr") & (name_part ^= "prt") & (name_part ^= "pun") then
+		go to BAD_CHANNEL;			/* unknown device type */
+
+
+/* Determine device number */
+
+	     if (name_part = "opr") then		/* the "operator's" console */
+		if length (number_part) ^= 0 then	/* can't have a number */
+		     go to BAD_CHANNEL;
+		else device_number = 0;		/* operator's console always has device number of 0 */
+
+	     else do;				/* reader/printer/punch */
+		if length (number_part) = 0 then	/* must have device number */
+		     go to BAD_CHANNEL;
+		if verify (number_part, "0123456789") ^= 0 then go to BAD_CHANNEL;
+		device_number = binary (number_part, 17, 0);
+		if (device_number < 1) | (device_number > 8) then go to BAD_CHANNEL;
+	     end;
+
+
+/* Determine device type and whether this is a duplicate */
+
+	     if (name_part = "opr") then
+		if found_console then go to BAD_CHANNEL;
+		else do;
+		     found_console = "1"b;
+		     device_type = HASP_CONSOLE;
+		end;
+
+	     else if (name_part = "rdr") then
+		if found_readers (device_number) then go to BAD_CHANNEL;
+		else do;
+		     found_readers (device_number) = "1"b;
+		     device_type = HASP_READER;
+		end;
+
+	     else if (name_part = "prt") then
+		if found_printers (device_number) then
+		     go to BAD_CHANNEL;
+		else if found_punches (9-device_number) then
+		     go to BAD_CHANNEL;
+		else do;
+		     found_printers (device_number) = "1"b;
+		     device_type = HASP_PRINTER;
+		end;
+
+	     else if (name_part = "pun") then		/* last possibility */
+		if found_punches (device_number) then
+		     go to BAD_CHANNEL;
+		else if found_printers (9-device_number) then
+		     go to BAD_CHANNEL;
+		else do;
+		     found_punches (device_number) = "1"b;
+		     device_type = HASP_PUNCH;
+		end;
+
+	     return;
+
+	end parse_subchannel_name;
+%page;
+%include hasp_load_data;
+%page;
+%include hasp_mpx_data;
+%page;
+%include hasp_mpx_meters;
+%page;
+%include hasp_subchannel_meters;
+%page;
+%include hasp_rcb_byte;
+%page;
+%include mux_init_info;
+%page;
+%include tty_buf;
+%page;
+%include lct;
+%page;
+%include mcs_interrupt_info;
+%page;
+%include channel_manager_dcls;
+
+%include tty_space_man_dcls;
+%page;
+%include get_comm_meters_info;
+
+     end priv_hasp_mpx;

@@ -1,0 +1,44 @@
+          /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+          /*                                                                   */
+          /* Name: bound_conversion_rtns_                                      */
+          /*                                                                   */
+          /* Created: July 20, 1973 by C. L. Wong - segments are               */
+          /*      convert_date_to_binary_, cv_float_, decode_clock_value_      */
+	/* Modified:  October 5, 1976 by G. C. Dixon - modify	         */
+	/*       decode_clock_value_, add encode_clock_value_ & time_table_. */
+	/* Modified:  October 25, 1976 by G. C. Dixon - add cv_ptr_ and      */
+	/*	cv_entry_ subroutines.			         */
+	/* Modified:  August 5, 1977 by M. B. Weaver to add 	         */
+	/*	convert_new_oncode_.			         */
+	/* Modified:  August 18, 1983 by K. Loepere to delete	         */
+	/*	encode_clock_value_ and cv_float_ which where moved to     */
+	/*	bound_library_1_				         */
+	/* Modified:  March 1984 by K. Loepere to move 		         */
+	/*	convert_date_to_binary_ to bound_library_1_	         */
+          /*                                                                   */
+          /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+
+Objectname:         bound_conversion_rtns_;
+
+Global:             delete;
+
+Order:		cv_ptr_,
+		cv_entry_,
+		convert_new_oncode_;
+
+Addname:            convert_new_oncode_,
+		cv_entry_,
+		cv_ptr_;
+
+objectname:	convert_new_oncode_;
+ retain:		convert_new_oncode_;
+
+objectname:	cv_entry_;
+ retain:		cv_entry_;
+
+objectname:	cv_ptr_;
+ retain:		cv_ptr_, terminate;
+
+
+   /*  END  */

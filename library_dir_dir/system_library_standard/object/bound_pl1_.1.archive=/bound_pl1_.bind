@@ -1,0 +1,299 @@
+/* ********************************************
+   *                                          *
+   * Copyright, (C) Honeywell Bull Inc., 1988 *
+   *                                          *
+   ******************************************** */
+
+
+
+/* HISTORY COMMENTS:
+  1) change(88-01-29,RWaters), approve(88-01-29,MCR7724), audit(88-02-05,Huen),
+     install(88-02-16,MR12.2-1024):
+     Added constant_token and defer_constant_token_list.
+                                                   END HISTORY COMMENTS */
+
+
+/*	Bindfile for bound_pl1_.
+
+	Created on April 1, 1977 by G. D. Chang.
+
+	to incorporate bound_parse_, bound_lang_util_, bound_semant_, and bound_cg_
+	into one single segment.
+							*/
+
+/*	Modified: 31 March 1980 by PCK to add expand_by_name 	*/
+/*	Modified: 24 July 1980 by M. N. Davidoff to retain pl1_version entrypoints. */
+/*	Modified: 24 Jan 1988 by RW to add constant_token and
+	defer_constant_token_list */
+
+Objectname:	bound_pl1_;
+
+Global:		delete;
+
+Addname:		v2pl1,
+		pl1,
+		pl1_stat_,
+		cg_static_,
+		instruction_info_,
+		lang_util_;
+
+Order:		create_reference,
+		create_token,
+		bindec,
+		create_identifier,
+		create_list,
+		create_statement,
+		create_operator,
+		create_symbol,
+		copy_expression,
+		create_label,
+		free_node,
+		create_cross_reference,
+		declare_constant,
+		get_size,
+		create_storage,
+		share_expression,
+		declare_temporary,
+		convert,
+		declare_descriptor,
+		compare_expression,
+		token_to_binary,
+		constant_token,
+		create_bound,
+		create_array,
+		get_array_size,
+		pl1_signal_catcher,
+		create_block,
+		gen_pl1_symbol,
+		name_assign,
+		generate_definition,
+		compile_link,
+		gen_pl1_linkage,
+		assign_storage,
+		initialize_ext_static,
+		initialize_int_static,
+		declare_integer,
+		declare_pointer,
+		sym_sort_alphabetic,
+		binoct,
+		pl1_print,
+		display_pl1_text,
+		display_text,
+		error_,
+		reserve,
+		pl1_stat_,
+		tree_manager,
+		merge_attributes,
+		create_context,
+		mst,
+		optimizer,
+		adjust_count,
+		lex,
+		v2pl1,
+		pl1_version,
+		scan_token_table,
+		reference_parse,
+		procedure_parse,
+		expression_parse,
+		statement_type,
+		statement_parse,
+		declare_label,
+		do_parse,
+		if_parse,
+		context,
+		parse,
+		declare_parse,
+		process_entry,
+		attribute_parse,
+		descriptor_parse,
+		on_parse,
+		pl1_symbol_print,
+		evaluate,
+		default_parse,
+		io_statement_parse,
+		format_list_parse,
+		data_list_parse,
+		semantic_translator,
+		propagate_bit,
+		lookup,
+		function,
+		simplify_offset,
+		expression_semantics,
+		operator_semantics,
+		check_star_extents,
+		compare_declaration,
+		do_semantics,
+		constant_length,
+		pl1_data,
+		builtin,
+		offset_adder,
+		match_arguments,
+		subscripter,
+		declare,
+		validate,
+		context_processor,
+		expand_initial,
+		declare_structure,
+		simplify_expression,
+		make_non_quick,
+		fill_refer,
+		cg_stat,
+		state_man,
+		copy_temp,
+		need_temp,
+		get_reference,
+		store_bit_address,
+		opcode_info,
+		assign_info,
+		adjust_ref_count,
+		c_a,
+		stack_temp,
+		compile_block,
+		load,
+		store,
+		call_op,
+		compile_statement,
+		prepare_operand,
+		m_a,
+		base_man,
+		compile_tree,
+		expmac,
+		instruction_info,
+		macro_table,
+		pl1_nodes_template_,
+		compile_exp,
+		assign_op,
+		jump_op,
+		set_indicators,
+		eval_exp,
+		aq_man,
+		base_to_core,
+		pointer_builtins,
+		compile_entry,
+		code_generator,
+		make_mod,
+		arith_data,
+		arith_op,
+		make_both_addressable,
+		move_data,
+		xr_man,
+		generate_constant,
+		power_of_two,
+		compare_ptrs,
+		long_op,
+		load_size,
+		optimize_if,
+		combine_tests,
+		ctl_char,
+		e_v,
+		string_op,
+		get_variable,
+		save_value,
+		fixed_to_float,
+		inline_operation,
+		length_op,
+		check_o_and_s,
+		get_single_ref,
+		string_temp,
+		cat_op,
+		constant_zero,
+		expmac_test,
+		min_max,
+		complex_stuff,
+		exp_op,
+		io_op,
+		get_imaginary,
+		decimal_op,
+		convert_chars,
+		cg_error,
+		create_default,
+		refer_extent,
+		declare_picture,
+		declare_picture_temp,
+		decbin,
+		parse_error,
+		decode_node_id,
+		pl1_error_print,
+		binary_to_octal_string,
+		error,
+		display_pl1_map,
+		compile_formats,
+		copy_unique_expression,
+		prepare_symbol_table,
+		alloc_semantics,
+		expand_by_name,
+		expand_assign,
+		expand_infix,
+		expand_prefix,
+		expand_primitive,
+		io_data_list_semantics,
+		io_semantics,
+		defined_reference,
+		generic_selector,
+		lang_util_;
+
+objectname:	v2pl1;
+	synonym:	pl1;
+	retain:	v2pl1,
+		pl1,
+		times,
+		blast,
+		clean_up;
+
+objectname:	pl1_stat_;
+	global:	retain;
+
+objectname:	binary_to_octal_string;
+	synonym:	binary_to_octal_var_string;
+
+objectname:	decode_node_id;
+	synonym:	decode_source_id;
+
+objectname:	tree_manager;
+	synonym:	tree_manager_;
+
+objectname:	macro_table;
+	synonym:	macro_table_;
+
+objectname:	instruction_info;
+	synonym:	instruction_info_;
+	retain:	instruction_info;
+
+objectname:	convert_chars;
+	synonym:	convert_arithmetic,
+		gen_arithmetic_call,
+		gen_arithmetic_builtin,
+		picture_op;
+
+objectname:	cg_stat;
+	synonym:	cg_static_;
+	global:	retain;
+
+objectname:	code_generator;
+	synonym:	code_gen_;
+
+objectname:	fixed_to_float;
+	synonym:	float_to_fixed;
+
+objectname:	length_op;
+	synonym:	assign_desc_op;
+
+objectname:	constant_token;
+	synonym:	defer_constant_token_list;
+
+objectname:	make_both_addressable;
+	synonym:	make_n_addressable;
+
+objectname:	lang_util_;
+	retain:	binoct,
+		bindec,
+		vs,
+		decode_node_id;
+
+objectname:	pl1_version;
+  global:		retain;
+
+/* End */
+
+
+

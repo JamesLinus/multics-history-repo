@@ -1,0 +1,37 @@
+/* Bindfile for bound_iom_support. */
+/* Modified April 1984 by Chris Jones to add init and release entries to 
+iom_overhead. */
+/* Modified November 1984 by M. Pandolf to add init_without_assign entry to iom_overhead and to add iom_switches */
+
+Objectname:	bound_iom_support;
+Global:		delete;
+
+Order:		iom_connect,
+		iom_switches,
+		io_manager,
+		iom_assign,
+		iom_error,
+		iom_overhead,
+		iom_reset,
+		iom_unassign;
+
+objectname:	iom_connect;
+ retain:		connect_and_identify;
+
+objectname:	iom_switches;
+ retain:		validate;
+
+objectname:	io_manager;
+ global:		 retain;
+ delete:		 symbol_table;
+
+objectname:	iom_error;
+ retain:		 invalid_interrupt;
+
+objectname:	iom_overhead;
+ retain:		 init, init_without_assign, release, system_fault, special_status;
+
+/* End; */
+
+
+

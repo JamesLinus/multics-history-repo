@@ -1,0 +1,89 @@
+/* ******************************************************
+   *                                                    *
+   *                                                    *
+   * Copyright (c) 1972 by Massachusetts Institute of   *
+   * Technology and Honeywell Information Systems, Inc. *
+   *                                                    *
+   *                                                    *
+   ****************************************************** */
+
+/* Bind file for bound_io_tools_ */
+
+/* Written March 1977 by Larry Johnson */
+/*  Modified by J. A. Bush in August 1977 to add format_disk_pack */
+/* Last modified: 06/07/80, W. Olin Sibert, to add ips_mask_commands. */
+/* Last modified December 1980, Rich Coppola, to add exdim_ and analyze_detail_stat_ */
+/* Last modified July 1981 by Rich Coppola to remove exdim_ */
+/* Modified January 1982 by C. Hornig to add analyze_detail_stat_ and status tables */
+
+Objectname:	bound_io_tools_;
+
+Order:		test_dcw,
+		test_tape,
+		ips_mask_commands,
+		format_disk_pack,
+		exercise_disk,
+		analyze_detail_stat_,
+		disk_status_table_,
+		opc_status_table_,
+		tape_status_table_,
+		io_error_summary;
+
+Addname:		test_dcw,
+		test_tape,
+		get_ips_mask,
+		set_ips_mask,
+		reset_ips_mask,
+		format_disk_pack,
+		fdp,
+		exercise_disk,
+		analyze_detail_stat_,
+		disk_status_table_,
+		opc_status_table_,
+		tape_status_table_,
+		io_error_summary;
+
+Global:		delete;
+
+objectname:	test_dcw;
+ retain:		test_dcw;
+
+objectname:	test_tape;
+ retain:		test_tape;
+
+objectname:	ips_mask_commands;
+ retain:		get_ips_mask,
+		set_ips_mask,
+		reset_ips_mask;
+ synonym: 	get_ips_mask,
+		set_ips_mask,
+		reset_ips_mask;
+
+objectname:	exercise_disk;
+ retain:		exercise_disk;
+
+objectname:	format_disk_pack;
+ synonym:		fdp;
+ retain:		format_disk_pack, fdp;
+
+objectname:	analyze_detail_stat_;
+ retain:		analyze_detail_stat_,
+		rs,
+		rsnnl;
+
+objectname:	disk_status_table_;
+ retain:		disk_status_table_;
+
+objectname:	opc_status_table_;
+ retain:		opc_status_table_;
+
+objectname:	tape_status_table_;
+ retain:		tape_status_table_;
+
+objectname:	io_error_summary;
+ retain:		io_error_summary;
+
+/* End of bind file for bound_io_tools_ */
+
+
+

@@ -1,0 +1,79 @@
+/* *********************************************************
+   *                                                       *
+   * Copyright, (C) BULL HN Information Systems Inc., 1989 *
+   *                                                       *
+   ********************************************************* */
+
+
+
+/* HISTORY COMMENTS:
+  1) change(89-07-10,RWaters), approve(89-07-10,MCR8118), audit(89-07-20,Vu),
+     install(89-07-31,MR12.3-1066):
+     Deleted plio_more_info add name.
+                                                   END HISTORY COMMENTS */
+
+
+
+/* Modified 6 November 1980 by M. N. Davidoff to add display_file_value_ to Addname statement.
+ * Modified 12 July 1989 RWaters deleted plio_more_info add name
+*/
+Objectname:	bound_plio2_;
+
+Order:		plio2_open_,
+		plio2_signal_,
+		display_pl1io_error,
+		plio2_fl_,
+		plio2_data_,
+		plio2_dump_,
+		plio2_debug_,
+		plio2_octptr_,
+		plio2_recio_,
+		plio2_sym_to_desc,
+		plio2_put_util_,
+		plio2_ldo_,
+		plio2_pve_,
+		plio2_pdt_,
+		put_data_var_all_,
+		put_data_block_all_,
+		plio2_get_util_,
+		plio2_gdt_,
+		plio2_ldi_,
+		plio2_gvl_,
+		plio2_gvd_,
+		plio2_qge_,
+		assign_type_d,
+		assign_type_p,
+		put_copy_,
+		decode_oldesc_,
+		plio2_resig_,
+		plio2_dnd_,
+		pl1_io_,
+		display_file_value_;
+
+Global:		retain;
+
+Addname:		plio2_,
+		plio2_signal_,
+		plio2_recio_,
+		plio2_data_,
+		display_pl1io_error,
+		dpe,
+		pl1_io_,
+		display_file_value_;
+
+objectname:	plio2_dnd_;
+  synonym:	dnd;
+
+objectname:	plio2_octptr_;
+  synonym:	octptr;
+
+objectname:	plio2_data_;
+  synonym:	ctl_char;
+
+objectname:	pl1_io_;
+ retain:		error_code, get_iocb_ptr;
+
+/* End */
+
+
+

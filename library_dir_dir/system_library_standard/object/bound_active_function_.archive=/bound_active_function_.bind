@@ -1,0 +1,201 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+   *                                                         *
+   *********************************************************** */
+
+
+/* HISTORY COMMENTS:
+  1) change(86-01-30,KFleming), approve(86-01-30,MCR7333),
+     audit(86-08-05,Lippard), install(86-08-06,MR12.0-1116):
+     Modified the entry for entries to include 'exists.' Added object_segments
+     (osegs) and nonobject_segments (nosegs).
+  2) change(86-11-12,GDixon), approve(86-11-24,MCR7579),
+     audit(86-11-17,Lippard), install(86-12-01,MR12.0-1229):
+     Added object_files and object_msfs entrypoints, renamed osegs to obsegs.
+  3) change(88-06-01,TLNguyen), approve(88-06-01,MCR7839),
+     audit(88-06-03,Lippard), install(88-07-05,MR12.2-1054):
+     Remove working_dir (wd) entrypoint.  See the MTB 775 in the
+     >udd>m>mtbs directory for more detail as the result of satisfying
+     the SCP6361.
+                                                   END HISTORY COMMENTS */
+
+
+/* bound_active_function_
+
+   This bound segment contains commonly used active functions.
+
+   Created:  Feb, 1971 by D. Bricklin - initial components: pd (wd).
+   Modified: Nov, 1971 by C. D. Tavares - add get_pathname (gpn).
+   Modified: Dec, 1971 by G. C. Dixon - add date_time.
+   Modified: May 18, 1973 by R. E. Mullen - add files.
+   Modified: July 16, 1973 by C. L. Wong - add home_dir.
+   Modified: December 6, 1976 by G. C. Dixon - add underline and equal_name.
+   Modified: September 14, 1977 by P. Green - add severity.
+   Modified: June 9, 1978 by O. Sibert - add dwd, move home_dir to process_dir
+	procedure, and fix bug in equal_name.
+   Modified: February 1979 by Michael R. Jordan - replace files with entries.
+   Modified: 03/27/80 S. Herbst - add long_year.
+   Modified: 29 December 1980 by M. N. Davidoff - add select.
+   Modified: 8 May 1982 by B. Margolin - add path and friends (from
+	bound_full_cp_).
+   Modified: 9 March 1983 by R. Harvey - added entry shortest_path to path
+   Modified: 10 Feb 1984 by J A Falksen - moved date functions, i.e. date_time, etc.,
+	to bound_time_rtns_.
+*/
+
+Objectname:	bound_active_function_;
+
+Global:		delete;
+
+Order:		process_dir,
+		get_pathname,
+		entries,
+		path,
+		equal_name,
+		underline,
+		contents,
+		severity,
+		select;
+
+Addname:		branches,
+		component,
+		contents,
+		default_wdir, dwd,
+		directories, dirs,
+		directory, dir,
+		entries,
+		entry,
+		entry_path,
+		equal_name, enm,
+		exists,
+		files,
+		home_dir, hd,
+		get_pathname, gpn,
+		is_component_pathname, icpn,
+		links,
+		master_directories, mdirs,
+		msfs,
+		nonbranches,
+		nondirectories, nondirs,
+		nonfiles,
+		nonlinks,
+		nonmaster_directories, nmdirs,
+		nonmsfs,
+		nonnull_links, nnlinks,
+		nonobject_files, nobfiles, 
+		nonobject_msfs, nobmsfs, 
+		nonobject_segments, nobsegs,
+		nonsegments, nonsegs,
+		nonzero_files, nzfiles,
+		nonzero_msfs, nzmsfs,
+		nonzero_segments, nzsegs,
+		null_links, nlinks, 
+		object_files, obfiles,
+		object_msfs, obmsfs, 
+		object_segments, obsegs,
+		path,
+		process_dir, pd,
+		segments, segs,
+		select,
+		severity,
+		shortest_path,
+		strip,
+		strip_component, spc,
+		strip_entry, spe,
+		suffix,
+		underline,
+		unique,
+		zero_segments, zsegs;
+
+objectname:	equal_name;
+ synonym:		equal_name, enm;
+  retain:		equal_name, enm;
+
+objectname:	entries;
+ synonym:		branches, 		nonbranches, 
+		directories, dirs, 		nondirectories, nondirs,
+		exists, 
+		files, 			nonfiles,  
+		links,  			nonlinks,  
+		master_directories, mdirs, 	nonmaster_directories,
+					  nmdirs, 
+		msfs,  			nonmsfs,  
+		null_links, nlinks, 	nonnull_links, nnlinks,
+		object_files, obfiles,  	nonobject_files, nobfiles, 
+		object_msfs, obmsfs,	nonobject_msfs, nobmsfs,
+		object_segments, obsegs, 	nonobject_segments, nobsegs,
+		segments, segs, 		nonsegments, nonsegs, 
+					nonzero_files, nzfiles,
+					nonzero_msfs, nzmsfs,
+		zero_segments, zsegs, 	nonzero_segments, nzsegs;
+ retain:		branches, 		nonbranches, 
+		directories, dirs, 		nondirectories, nondirs,
+		entries,
+		exists, 
+		files, 			nonfiles,  
+		links,  			nonlinks,  
+		master_directories, mdirs, 	nonmaster_directories,
+					  nmdirs, 
+		msfs,  			nonmsfs,  
+		null_links, nlinks, 	nonnull_links, nnlinks,
+		object_files, obfiles,  	nonobject_files, nobfiles, 
+		object_msfs, obmsfs,	nonobject_msfs, nobmsfs,
+		object_segments, obsegs, 	nonobject_segments, nobsegs,
+		segments, segs, 		nonsegments, nonsegs, 
+					nonzero_files, nzfiles,
+					nonzero_msfs, nzmsfs,
+		zero_segments, zsegs, 	nonzero_segments, nzsegs;
+
+objectname:	get_pathname;
+ synonym:		gpn;
+ retain:		get_pathname, gpn;
+
+objectname:	process_dir;
+ synonym:		process_dir, pd,
+		home_dir, hd,
+		default_wdir, dwd;
+ retain:		process_dir, pd,
+		home_dir, hd,
+		default_wdir, dwd;
+
+objectname:	severity;
+ retain:		severity;
+
+objectname:	underline;
+  retain:		underline;
+
+objectname:	contents;
+ retain:		contents;
+
+objectname:	select;
+ retain:		select;
+
+objectname:	path;
+ synonym:		component,
+		directory, dir,
+		entry,
+		entry_path,
+		is_component_pathname, icpn,
+		path,
+		shortest_path,
+		strip,
+		strip_component, spc,
+		strip_entry, spe,
+		suffix,
+		unique;
+ retain:		component,
+		directory, dir,
+		entry,
+		entry_path,
+		is_component_pathname, icpn,
+		path,
+		shortest_path,
+		strip,
+		strip_component, spc,
+		strip_entry, spe,
+		suffix,
+		unique;
+
+
+/* END */

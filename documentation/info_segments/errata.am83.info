@@ -1,0 +1,14 @@
+11/30/89  AM83 (Multics PL/I Reference Manual)
+          Errata Information for MR12.3
+
+
+pg 8-33:  for the "String Constant Literals" section, change the
+     first sentence of rule number 3 from
+
+     3.  A replication factor is a parenthesized integer literal
+         whose value is greater than zero.
+
+    to
+
+     3.  A replication factor is a parenthesized integer literal
+         or named constant whose value is greater than zero.

@@ -1,0 +1,1082 @@
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) Honeywell Bull Inc., 1987                *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(87-07-09,LJAdams), approve(87-07-09,MCR7742),
+     audit(87-07-23,Gilcrease), install(87-08-04,MR12.1-1055):
+     Added options for DSA.
+                                                   END HISTORY COMMENTS */
+
+
+/* format: style4,delnl,insnl,^ifthendo */
+set_tty:
+stty:
+     proc;
+
+/*  This command can be used to set the user's terminal type, terminal i/o modes, or both.
+   *   The -print option may be used to ascertain the type and modes. When a type is specified,
+   *   the default modes for that type are turned on; when -reset is specified, all default
+   *   modes are turned on and all other modes are turned off. The -modes option
+   *   is used to turn on or off explicitly specified modes.
+   *
+   *    modified by Robert Coren 8/4/76 to add delay and editing characters stuff
+   *    modified by J. Stern 6/3/77 for new orders: set_term_type, set_default_modes, send_initial_string
+   *    modified by Robert Coren 4/25/78 to add -frame and -print_frame
+   *    modified by Robert Coren 8/14/79 to add flow control options
+   *    modified by G. Palter 11/12/80 to use a larger mode string
+   *    modified by Robert Coren 10/8/84 to set flow-control and framing characters before modes
+   *    modified by Roger Negaret 05/20/85 to add some options meaningful on a DSA connection.
+   *    modified by Robert Coren 06/16/86 to deal with unimplmented_version errors for editing_chars.
+*/
+
+
+/* ENTRIES */
+
+dcl  cu_$arg_count entry returns (fixed bin);
+dcl  cu_$arg_ptr entry (fixed bin, ptr, fixed bin, fixed bin (35));
+dcl  cv_dec_check_ entry (char (*), fixed bin (35)) returns (fixed bin);
+dcl  com_err_ entry options (variable);
+dcl  ioa_ entry options (variable);
+dcl  iox_$control entry (ptr, char (*), ptr, fixed bin (35));
+dcl  iox_$modes entry (ptr, char (*), char (*), fixed bin (35));
+dcl  iox_$look_iocb entry (char (*), ptr, fixed bin (35));
+
+
+/* EXTERNAL STATIC */
+
+dcl  iox_$user_io ptr ext static;
+
+dcl  error_table_$action_not_performed fixed bin(35) ext static;
+dcl  error_table_$bad_mode fixed bin (35) ext static;
+dcl  error_table_$badopt fixed bin (35) ext static;
+dcl  error_table_$bigarg fixed bin (35) ext static;
+dcl  error_table_$inconsistent fixed bin (35) ext static;
+dcl  error_table_$noarg fixed bin (35) ext static;
+dcl  error_table_$smallarg fixed bin (35) ext static;
+dcl  error_table_$undefined_order_request fixed bin(35) ext static;
+dcl  error_table_$unimplemented_version fixed bin (35) ext static;
+dcl  error_table_$unsupported_operation fixed bin (35) ext static;
+
+
+/* INTERNAL STATIC */
+
+dcl  printable_ctl_char (0:31) char (2)
+	init ("^@", "^A", "^B", "^C", "^D", "^E", "^F", "^G", "^H", "^I", "^J", "^K", "^L", "^M", "^N", "^O", "^P",
+	"^Q", "^R", "^S", "^T", "^U", "^V", "^W", "^X", "^Y", "^Z", "^[", "^\", "^]", "^^", "^_");
+dcl  cmd_name char (8) int static options (constant) init ("set_tty");
+dcl  max_tty_line_type fixed bin int static init (20);
+dcl  NUL char (1) int static options (constant) init (""); /* \000 */
+
+dcl  1 delay internal static aligned,
+       2 version fixed bin,
+       2 default fixed bin,
+       2 values like input_delays;
+
+
+/* AUTOMATIC */
+
+dcl  network_type fixed bin;
+dcl  editing_chars_version fixed bin;
+dcl  tab_int fixed bin;
+dcl  line_ind char (2) var;
+dcl  page_ind char (4) var;
+dcl  (tab_int_switch, line_ind_switch, page_ind_switch) bit (1);
+						/* flags indicating which args specified */
+
+dcl  iarg fixed bin;
+dcl  nargs fixed bin;
+dcl  iocbp ptr;
+dcl  code fixed bin (35);
+dcl  input_modes char (512);
+dcl  (reset_switch, type_switch, modes_switch, tabs_switch, initial_string_switch, set_frame_switch, print_frame_switch,
+     all_switch, set_edit_switch, print_edit_switch, set_delay_switch, set_ifc_switch, set_osr_switch, set_oea_switch,
+     set_bsize_switch, print_delay_switch, print_switch, brief_switch) bit (1);
+						/* flags indicating which args specified */
+dcl  standard_line_type bit (1);			/* "1"b -> standard_line_type */
+dcl  position fixed bin;
+dcl  next_comma fixed bin;
+dcl  unchanged_delays bit (6);
+dcl  typename char (32);
+dcl  i fixed bin;
+dcl  out_modes char (512);				/* modes returned by iox_$modes */
+
+dcl  1 t_info aligned like terminal_info;		/* info structure for terminal_info order */
+
+dcl  1 stt_info aligned like set_term_type_info;		/* info structure for set_term_type order */
+
+
+dcl  1 input_delays aligned,				/* supplied values for delay setting */
+       2 vert_nl fixed bin,
+       2 horz_nl float bin,
+       2 const_tab fixed bin,
+       2 var_tab float bin,
+       2 backspace fixed bin,
+       2 vt_ff fixed bin;
+
+
+dcl  1 editing_chars aligned,				/* if version 2 then length of chars is 2 (MCS) */
+						/* if version 3 then length of chars is 3 (DSA) */
+       2 version fixed bin,
+       2 chars char (3) unaligned;
+
+dcl  1 auto_ifc aligned like input_flow_control_info;
+dcl  1 auto_ofc aligned like output_flow_control_info;
+
+dcl  framing_chars char (2) aligned;
+
+
+
+/* BASED */
+
+dcl  based_float (6) float bin based;
+dcl  based_fixed (6) fixed bin based;
+
+
+/* ARGUMENT STUFF */
+
+dcl  argptr ptr;
+dcl  arglen fixed bin;
+dcl  arg char (arglen) based (argptr);
+
+dcl  rank builtin;
+dcl  null builtin;
+dcl  conversion condition;
+
+%include terminal_info;
+%include set_term_type_info;
+%include flow_control_info;
+%include net_event_message;
+%include tty_attach_data_;
+%include iocb;
+
+/* parse arguments */
+
+	nargs = cu_$arg_count ();
+	if nargs = 0				/* no arguments, tell user what to do */
+	then do;
+	     call com_err_ (error_table_$noarg, cmd_name, "Usage: set_tty -control_args");
+	     return;
+	end;
+
+	tab_int_switch, line_ind_switch, page_ind_switch = "0"b;
+
+	reset_switch, modes_switch, tabs_switch, initial_string_switch, print_switch, set_edit_switch,
+	     print_edit_switch, set_delay_switch, print_delay_switch, set_frame_switch, print_frame_switch, all_switch,
+	     set_ifc_switch, set_osr_switch, set_oea_switch, set_bsize_switch, type_switch, brief_switch = "0"b;
+						/* initially nothing specified */
+	editing_chars_version = 0;			/* uninitialized, might have to test */
+
+	standard_line_type = "1"b;
+	iocbp = iox_$user_io;			/* default, may be overridden by "-switch" */
+
+	do iarg = 1 to nargs;
+	     call cu_$arg_ptr (iarg, argptr, arglen, code);
+	     if substr (arg, 1, 1) = "-"		/* must be control argument */
+	     then do;
+
+/* START DSA */
+		if arg = "-tab_interval" | arg = "-ti"
+		then do;
+		     tab_int_switch = "1"b;
+		     call get_next_arg;		/* and increment iarg */
+		     if code ^= 0
+		     then return;
+
+		     tab_int = cv_dec_check_ (arg, code);
+		     if code ^= 0 | tab_int > 256
+		     then do;
+			call com_err_ (code, cmd_name, "Bad tabulation interval: ^a (max is 256).", arg);
+			return;
+		     end;
+		end;
+
+		else if arg = "-no_tab_interval" | arg = "-nti"
+		then do;
+		     tab_int_switch = "1"b;
+		     tab_int = 0;
+		end;
+
+		else if arg = "-line_indicator" | arg = "-li"
+		then do;
+		     line_ind_switch = "1"b;
+		     call get_next_arg;		/* and increment iarg */
+		     if code ^= 0
+		     then return;
+
+		     if arglen > 2
+		     then do;
+			call com_err_ (error_table_$bigarg, cmd_name, "^a (max length is 2).", arg);
+			return;
+		     end;
+
+		     line_ind = arg;
+		end;
+
+		else if arg = "-no_line_indicator" | arg = "-nli"
+		then do;
+		     line_ind_switch = "1"b;
+		     line_ind = "";
+		end;
+
+		else if arg = "-page_indicator" | arg = "-pi"
+		then do;
+		     page_ind_switch = "1"b;
+		     call get_next_arg;		/* and increment iarg */
+		     if code ^= 0
+		     then return;
+
+		     if arglen > 4
+		     then do;
+			call com_err_ (error_table_$bigarg, cmd_name, "^a (Max length is 4).", arg);
+			return;
+		     end;
+
+		     page_ind = arg;
+		end;
+
+		else if arg = "-no_page_indicator" | arg = "-npi"
+		then do;
+		     page_ind_switch = "1"b;
+		     page_ind = "";
+		end;
+
+/* END DSA */
+
+		else if arg = "-reset" | arg = "-rs"
+		then reset_switch = "1"b;
+
+		else if arg = "-terminal_type" | arg = "-ttp"
+		then go to type_arg;
+
+		else if arg = "-type" | arg = "-tp" | arg = "-device" | arg = "-dv"
+		then do;
+type_arg:
+		     type_switch = "1"b;
+		     call get_next_arg;		/* NOTE: this bumps iarg and gets next argument */
+		     if code ^= 0
+		     then return;			/* get_next_arg prints error message if required */
+
+
+/* make name be upper case */
+		     typename = translate (arg, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz");
+
+		end;
+
+		else if arg = "-modes" | arg = "-md"
+		then do;
+		     modes_switch = "1"b;
+		     call get_next_arg;		/* thereby bumping iarg */
+		     if code ^= 0
+		     then return;
+		     input_modes = arg;
+		end;
+
+		else if arg = "-io_switch" | arg = "-is"
+		then do;
+		     call get_next_arg;		/* which bumps iarg */
+		     if code ^= 0
+		     then return;
+
+		     call iox_$look_iocb (arg, iocbp, code);
+						/* get iocb for specified switch */
+		     if code ^= 0			/* couldn't get it */
+		     then do;
+			call com_err_ (code, cmd_name, "Could not find iocb for ^a", arg);
+			return;
+		     end;
+		end;
+
+		else if arg = "-tabs"
+		then initial_string_switch, tabs_switch = "1"b;
+
+		else if arg = "-initial_string" | arg = "-istr"
+		then initial_string_switch = "1"b;
+
+		else if arg = "-edit" | arg = "-ed"
+		then do;
+		     set_edit_switch = "1"b;
+		     call get_next_arg;		/* and increment iarg */
+		     if code ^= 0
+		     then return;
+
+		     if arglen > 3
+		     then do;
+			call com_err_ (error_table_$bigarg, cmd_name, "^a", arg);
+			return;
+		     end;
+
+		     editing_chars.chars = "";
+		     editing_chars.chars = arg;
+		end;
+
+		else if arg = "-frame" | arg = "-fr"
+		then do;
+		     set_frame_switch = "1"b;
+		     call get_next_arg;
+		     if code ^= 0
+		     then return;
+		     call check_two_chars;
+		     if code ^= 0
+		     then return;
+
+		     framing_chars = arg;
+		end;
+
+		else if arg = "-delay" | arg = "-dly"
+		then do;
+		     set_delay_switch = "1"b;
+		     call get_next_arg;
+		     if code ^= 0
+		     then return;
+
+		     if arg = "default"		/* wants tty DIM to decide */
+		     then delay.default = 1;
+
+		     else do;
+			unchanged_delays = "111111"b; /* initially not changing any */
+			position = 1;
+
+			do i = 1 to 6 while (position <= arglen);
+			     next_comma = index (substr (arg, position), ",");
+			     if next_comma = 0	/* no more commas */
+			     then next_comma = arglen - position + 2;
+						/* use whole thing */
+
+			     if next_comma > 1	/* value is really there */
+			     then do;
+				substr (unchanged_delays, i, 1) = "0"b;
+						/* we're changing this one */
+				if i = 2 | i = 4	/* this is one of the floating ones */
+				then do;
+				     on conversion go to bad_value;
+				     addr (input_delays) -> based_float (i) =
+					float (substr (arg, position, next_comma - 1));
+				     revert conversion;
+				end;
+
+				else do;
+				     addr (input_delays) -> based_fixed (i) =
+					cv_dec_check_ (substr (arg, position, next_comma - 1), code);
+				     if code ^= 0
+				     then go to bad_value;
+				end;
+			     end;
+
+			     position = position + next_comma;
+			end;
+
+			if i > 6 & position <= arglen + 1
+			then do;
+			     call com_err_ (0, cmd_name, "More than 6 delay values specified.  ^a", arg);
+			     return;
+			end;
+
+			delay.default = 0;
+		     end;
+
+		     delay.version = 1;
+		end;
+
+		else if arg = "-input_flow_control" | arg = "-ifc"
+		then do;
+		     set_ifc_switch = "1"b;
+		     call get_next_arg;
+		     if code ^= 0
+		     then return;
+		     if arglen > 2			/* can't be */
+		     then do;
+			call com_err_ (error_table_$bigarg, cmd_name, "^a", arg);
+			return;
+		     end;
+
+		     else if arglen = 2
+		     then do;
+			if substr (arg, 2, 1) = NUL
+			then auto_ifc.suspend_seq.count, auto_ifc.resume_seq.count = 0;
+			else do;
+			     auto_ifc.suspend_seq.count = 1;
+			     substr (auto_ifc.suspend_seq.chars, 1, 1) = substr (arg, 1, 1);
+			     auto_ifc.resume_seq.count = 1;
+			     substr (auto_ifc.resume_seq.chars, 1, 1) = substr (arg, 2, 1);
+			end;
+			auto_ifc.timeout = "0"b;
+		     end;
+
+		     else if arglen = 1
+		     then do;
+			auto_ifc.suspend_seq.count = 0;
+			if arg = NUL
+			then do;
+			     auto_ifc.resume_seq.count = 0;
+			     auto_ifc.timeout = "0"b;
+			end;
+
+			else do;
+			     auto_ifc.resume_seq.count = 1;
+			     substr (auto_ifc.resume_seq.chars, 1, 1) = arg;
+			     auto_ifc.timeout = "1"b; /* this follows from lack of suspend char */
+			end;
+		     end;
+
+		     else do;
+			call com_err_ (0, cmd_name,
+			     "Null character string specified for input flow control character.");
+			return;
+		     end;
+		end;
+
+		else if arg = "-output_suspend_resume" | arg = "-osr"
+		then do;
+		     set_osr_switch = "1"b;
+		     call get_next_arg;
+		     if code ^= 0
+		     then return;
+		     call check_two_chars;
+		     if code ^= 0
+		     then return;
+
+		     if substr (arg, 1, 1) = NUL	/* no characters */
+		     then auto_ofc.suspend_or_etb_seq.count, auto_ofc.resume_or_ack_seq.count = 0;
+		     else do;
+			auto_ofc.suspend_or_etb_seq.count = 1;
+			auto_ofc.resume_or_ack_seq.count = 1;
+			substr (auto_ofc.suspend_or_etb_seq.chars, 1, 1) = substr (arg, 1, 1);
+			substr (auto_ofc.resume_or_ack_seq.chars, 1, 1) = substr (arg, 2, 1);
+		     end;
+		end;
+
+		else if arg = "-output_etb_ack" | arg = "-oea"
+		then do;
+		     set_oea_switch = "1"b;
+		     call get_next_arg;
+		     if code ^= 0
+		     then return;
+		     call check_two_chars;
+		     if code ^= 0
+		     then return;
+
+		     if substr (arg, 1, 1) = NUL	/* no characters */
+		     then auto_ofc.suspend_or_etb_seq.count, auto_ofc.resume_or_ack_seq.count = 0;
+		     else do;
+			auto_ofc.suspend_or_etb_seq.count = 1;
+			auto_ofc.resume_or_ack_seq.count = 1;
+			substr (auto_ofc.suspend_or_etb_seq.chars, 1, 1) = substr (arg, 1, 1);
+			substr (auto_ofc.resume_or_ack_seq.chars, 1, 1) = substr (arg, 2, 1);
+		     end;
+		end;
+
+		else if arg = "-buffer_size" | arg = "-bsize"
+		then do;
+		     set_bsize_switch = "1"b;
+		     call get_next_arg;
+		     if code ^= 0
+		     then return;
+
+		     auto_ofc.buffer_size = cv_dec_check_ (arg, code);
+		     if code ^= 0 | auto_ofc.buffer_size <= 0
+		     then do;
+			call com_err_ (0, cmd_name, "^a is not a valid buffer size.", arg);
+			return;
+		     end;
+		end;
+
+		else if arg = "-print" | arg = "-pr"
+		then print_switch = "1"b;
+
+		else if arg = "-brief" | arg = "-bf"
+		then brief_switch = "1"b;
+
+		else if arg = "-print_edit" | arg = "-pr_ed"
+		then print_edit_switch = "1"b;
+
+		else if arg = "-print_delay" | arg = "-pr_dly"
+		then print_delay_switch = "1"b;
+
+		else if arg = "-print_frame" | arg = "-pr_fr"
+		then print_frame_switch = "1"b;
+
+		else if arg = "-a" | arg = "-all"
+		then print_switch, print_edit_switch, print_delay_switch, print_frame_switch, all_switch = "1"b;
+
+		else go to bad_arg;
+	     end;
+
+	     else do;				/* arg doesn't begin with "-" */
+bad_arg:
+		call com_err_ (error_table_$badopt, cmd_name, "^a", arg);
+		return;
+	     end;
+
+	end /* end of argument parsing */;
+
+	if brief_switch & ^print_switch
+	then do;
+	     call com_err_ (error_table_$inconsistent, cmd_name, "-brief and not -print");
+	     return;
+	end;
+
+/* Get the network id;          */
+/* by default we are in MCS NET */
+
+	call iox_$control (iocbp, "get_network_type", addr (network_type), code);
+	if code = error_table_$undefined_order_request
+	then do;
+	     network_type = MCS_NETWORK_TYPE;
+	     code = 0;
+	end;
+          else if code = 0
+          then do;
+	      if network_type ^= MCS_NETWORK_TYPE &
+                   network_type ^= DSA_NETWORK_TYPE &
+                   network_type ^= MOWSE_NETWORK_TYPE
+                then do;
+	         call com_err_ (error_table_$action_not_performed, cmd_name, "Invalid network type.");
+	         return;
+	      end;
+	end;
+          else do;
+	   call com_err_ (0, cmd_name, "Unable to get network_type.");
+	   return;
+	end;
+       
+
+	t_info.version = terminal_info_version;
+	call iox_$control (iocbp, "terminal_info", addr (t_info), code);
+	if code ^= 0
+	then go to error;
+
+	if t_info.line_type < 0 | t_info.line_type > max_tty_line_type
+						/* not a recognizable TTY line type */
+	then standard_line_type = "0"b;		/* must not be standard_line_type */
+
+	if type_switch
+	then do;					/* handle type argument */
+	     stt_info.version = stti_version_1;
+	     stt_info.name = typename;
+	     string (stt_info.flags) = ""b;
+	     stt_info.flags.send_initial_string = standard_line_type;
+	     stt_info.flags.set_modes = "1"b;
+	     call iox_$control (iocbp, "set_term_type", addr (stt_info), code);
+	     if code ^= 0
+	     then go to error;
+	end;
+
+	else typename = t_info.term_type;		/* remember unchanged terminal type name */
+
+	if reset_switch
+	then do;
+	     call iox_$control (iocbp, "set_default_modes", null, code);
+	     if code ^= 0
+	     then go to error;
+	end;
+
+	if tab_int_switch
+	then do;
+	     /*** set the tabulation interval */
+	     /*** Only valid in DSA           */
+	     if network_type ^= DSA_NETWORK_TYPE
+	     then call com_err_ (error_table_$unsupported_operation, cmd_name);
+	     else do;
+
+		call iox_$control (iocbp, "set_tabulation", addr (tab_int), code);
+
+		if code ^= 0
+		then do;
+		     call com_err_ (code, cmd_name, "Tabulation interval not set.");
+		     tab_int_switch = "0"b;		/* so if "print_all" we'll have to get it */
+		end;
+	     end;
+	end;
+
+	if line_ind_switch
+	then do;
+	     /*** set the line indicator */
+	     /*** Only valid in DSA      */
+	     if network_type ^= DSA_NETWORK_TYPE
+	     then call com_err_ (error_table_$unsupported_operation, cmd_name);
+	     else do;
+
+		call iox_$control (iocbp, "set_line_indicator", addr (line_ind), code);
+
+		if code ^= 0
+		then do;
+		     call com_err_ (code, cmd_name, "Line indicator not set.");
+		     line_ind_switch = "0"b;		/* so if "print_all" we'll have to get it */
+		end;
+	     end;
+	end;
+
+	if page_ind_switch
+	then do;
+	     /*** set the page indicator */
+	     /*** Only valid in DSA      */
+	     if network_type ^= DSA_NETWORK_TYPE
+	     then call com_err_ (error_table_$unsupported_operation, cmd_name);
+	     else do;
+
+		call iox_$control (iocbp, "set_page_indicator", addr (page_ind), code);
+
+		if code ^= 0
+		then do;
+		     call com_err_ (code, cmd_name, "Page indicator not set.");
+		     page_ind_switch = "0"b;		/* so if "print_all" we'll have to get it */
+		end;
+	     end;
+	end;
+
+/* Set various mode-related characters before the modes themselves */
+
+	if set_ifc_switch
+	then do;
+	     /*** set the input flow control characters */
+	     /*** Only valid in MCS                     */
+	     if network_type ^= MCS_NETWORK_TYPE
+	     then call com_err_ (error_table_$unsupported_operation, cmd_name);
+	     else do;
+
+		call iox_$control (iocbp, "input_flow_control_chars", addr (auto_ifc), code);
+		if code ^= 0
+		then do;
+		     set_ifc_switch = "0"b;
+		     call com_err_ (code, cmd_name, "Input flow control characters not set.");
+		end;
+	     end;
+	end;
+
+	if set_oea_switch | set_bsize_switch
+	then do;
+	     /*** set the output block control or size */
+	     /*** Only valid in MCS                    */
+	     if network_type ^= MCS_NETWORK_TYPE
+	     then call com_err_ (error_table_$unsupported_operation, cmd_name);
+	     else do;
+
+		if set_osr_switch			/* this is invalid combination */
+		then do;
+		     call com_err_ (error_table_$inconsistent, cmd_name, "No output flow controls set.");
+		     set_osr_switch = "0"b;		/* make sure error message is true */
+		end;
+
+		else do;
+		     auto_ofc.block_acknowledge = (auto_ofc.suspend_or_etb_seq.count ^= 0);
+		     auto_ofc.suspend_resume = "0"b;
+		     auto_ofc.mbz = "0"b;
+		     if ^set_bsize_switch		/* chars only, buffer size already set (or set later) */
+		     then auto_ofc.buffer_size = 0;
+		     else if ^set_oea_switch
+		     then do;
+			unspec (auto_ofc.suspend_or_etb_seq) = "0"b;
+			unspec (auto_ofc.resume_or_ack_seq) = "0"b;
+		     end;
+
+		     call iox_$control (iocbp, "output_flow_control_chars", addr (auto_ofc), code);
+		     if code ^= 0
+		     then do;
+			set_oea_switch, set_bsize_switch = "0"b;
+			call com_err_ (code, cmd_name, "Output block control and/or size not set.");
+		     end;
+		end;
+	     end;
+	end;
+
+	if set_osr_switch
+	then do;
+	     /*** set output suspend/resume characters */
+	     /*** Only valid in MCS                    */
+	     if network_type ^= MCS_NETWORK_TYPE
+	     then call com_err_ (error_table_$unsupported_operation, cmd_name);
+	     else do;
+
+		auto_ofc.suspend_resume = (auto_ofc.suspend_or_etb_seq.count ^= 0);
+		auto_ofc.block_acknowledge = "0"b;
+		auto_ofc.mbz = "0"b;
+		call iox_$control (iocbp, "output_flow_control_chars", addr (auto_ofc), code);
+		if code ^= 0
+		then do;
+		     set_osr_switch = "0"b;
+		     call com_err_ (code, cmd_name, "Output suspend/resume characters not set.");
+		end;
+	     end;
+	end;
+
+	if set_frame_switch & standard_line_type
+	then do;
+	     /*** set framing characters */
+	     /*** Only valid in MCS      */
+	     if network_type ^= MCS_NETWORK_TYPE
+	     then call com_err_ (error_table_$unsupported_operation, cmd_name);
+	     else do;
+
+		call iox_$control (iocbp, "set_framing_chars", addr (framing_chars), code);
+		if code ^= 0
+		then do;
+		     call com_err_ (code, cmd_name, "Framing characters not set.");
+		     set_frame_switch = "0"b;		/* so if "print_frame" we'll get them from ring 0 */
+		end;
+	     end;
+	end;
+
+	if modes_switch
+	then do;
+	     /*** whether we already set modes or not, we will make */
+	     /*** a call for what the user specified explicitly     */
+
+	     call iox_$modes (iocbp, input_modes, out_modes, code);
+	     if code ^= 0
+	     then if code = error_table_$bad_mode & standard_line_type
+		then do;
+		     call com_err_ (code, cmd_name, "^a", out_modes);
+		     return;
+		end;
+		else go to error;
+	end;
+
+	if initial_string_switch
+	then do;					/* set the tabs if possible */
+	     call iox_$control (iocbp, "send_initial_string", null, code);
+	     if code ^= 0
+	     then call com_err_ (code, cmd_name, "^[Tabs not set.^;Initial string not sent.^]", tabs_switch);
+	end;
+
+	if set_edit_switch
+	then do;
+	     /*** MCS: set erase and kill characters            */
+	     /*** DSA: set erase, kill and redisplay characters */
+						/* Note, however, that even over a DSA network we may have an I/O module
+						   that doesn't understand version 3 structure, in which case
+						   we will retry with version 2 */
+
+	     if network_type = DSA_NETWORK_TYPE
+	     then editing_chars.version, editing_chars_version = 3;
+	     else editing_chars.version, editing_chars_version = 2;
+RETRY_SET_EDIT:
+	     call iox_$control (iocbp, "set_editing_chars", addr (editing_chars), code);
+
+	     if code ^= 0
+	     then do;
+		if code = error_table_$unimplemented_version & editing_chars_version = 3
+		then do;
+		     editing_chars.version, editing_chars_version = 2;
+		     go to RETRY_SET_EDIT;
+		end;
+
+		call com_err_ (code, cmd_name, "Editing characters not set.");
+		set_edit_switch = "0"b;		/* so if "print_edit" we'll call ring 0 to get them */
+	     end;
+	end;
+
+	if set_delay_switch & standard_line_type
+	then do;
+	     /*** set delay timings */
+	     /*** Only valid in MCS */
+	     if network_type ^= MCS_NETWORK_TYPE
+	     then call com_err_ (error_table_$unsupported_operation, cmd_name);
+	     else do;
+
+		if delay.default = 0		/* we're supplying them */
+		then do;
+		     if unchanged_delays		/* have to get old ones */
+		     then do;
+			call iox_$control (iocbp, "get_delay", addr (delay), code);
+			if code ^= 0
+			then go to not_set;
+
+			do i = 1 to 6;
+			     if ^substr (unchanged_delays, i, 1)
+			     then addr (delay.values) -> based_fixed (i) = addr (input_delays) -> based_fixed (i);
+			end;
+		     end;
+
+		     else delay.values = input_delays;	/* we have them all */
+		end;
+
+		call iox_$control (iocbp, "set_delay", addr (delay), code);
+
+		if code ^= 0
+		then do;
+not_set:
+		     call com_err_ (code, cmd_name, "Delays not set.");
+		     set_delay_switch = "0"b;		/* in case we're printing them */
+		end;
+	     end;
+	end;
+
+	if print_switch
+	then do;
+	     /*** user wants to know what happened */
+
+	     call iox_$modes (iocbp, "", out_modes, code);/* find out what the modes are now */
+	     if brief_switch
+	     then					/* user wants short modes string */
+		call print_bf (out_modes);
+	     else call ioa_ ("Type: ^a^/Modes: ^a", typename, out_modes);
+	end;
+
+	if print_edit_switch
+	then do;
+	     /*** wants to know his editing characters */
+
+	     if set_edit_switch			/* we already know them */
+		& index (editing_chars.chars, " ") = 0	/* didn't default either one */
+	     then code = 0;
+	     else do;
+
+		editing_chars.chars = "";
+
+		if editing_chars_version ^= 0
+		then editing_chars.version = editing_chars_version;
+						/* we've already figured this out, possibly by trial and error */
+
+		else if network_type = DSA_NETWORK_TYPE
+		then editing_chars.version, editing_chars_version = 3;
+		else				/* MCS_NETWORK_TYPE */
+		     editing_chars.version, editing_chars_version = 2;
+
+RETRY_GET_EDIT:
+		call iox_$control (iocbp, "get_editing_chars", addr (editing_chars), code);
+	     end;
+
+	     if code = 0
+	     then do;
+		if editing_chars_version = 3 & network_type = DSA_NETWORK_TYPE
+		then call ioa_ ("Erase: ^a,  Kill: ^a,  Redisplay: ^a, Quote (unchangeable): \",
+			cv_edit_char (substr (editing_chars.chars, 1, 1)),
+			cv_edit_char (substr (editing_chars.chars, 2, 1)),
+			cv_edit_char (substr (editing_chars.chars, 3, 1)));
+		else call ioa_ ("Erase: ^a,  Kill: ^a", cv_edit_char (substr (editing_chars.chars, 1, 1)),
+			cv_edit_char (substr (editing_chars.chars, 2, 1)));
+	     end;
+
+	     else do;				/* if we hadn't done a set, this might the first time we learned we had the wrong version */
+		if code = error_table_$unimplemented_version & editing_chars_version = 3
+		then do;
+		     editing_chars.version, editing_chars_version = 2;
+		     go to RETRY_GET_EDIT;
+		end;
+
+		call com_err_ (code, cmd_name, "Cannot print editing characters.");
+	     end;
+	end;
+
+	if all_switch
+	then do;
+
+	     /*** DSA specific */
+
+	     if network_type = DSA_NETWORK_TYPE
+	     then do;
+
+		if tab_int_switch			/* we already know it */
+		then code = 0;
+		else call iox_$control (iocbp, "get_tabulation", addr (tab_int), code);
+
+		if code = 0
+		then call ioa_ ("Tab interval  : ^i", tab_int);
+		else call com_err_ (code, cmd_name, "Cannot print tab interval.");
+
+		if line_ind_switch			/* we already know it */
+		then code = 0;
+		else call iox_$control (iocbp, "get_line_indicator", addr (line_ind), code);
+
+		if code = 0
+		then call ioa_ ("Line indicator: ^a", line_ind);
+		else call com_err_ (code, cmd_name, "Cannot print line indicator.");
+
+		if page_ind_switch			/* we already know it */
+		then code = 0;
+		else call iox_$control (iocbp, "get_page_indicator", addr (page_ind), code);
+
+		if code = 0
+		then call ioa_ ("Page indicator: ^a", page_ind);
+		else call com_err_ (code, cmd_name, "Cannot print page indicator.");
+
+	     end;
+	end;
+
+	/*** MCS	or MOWSE  specific */
+	if network_type = MCS_NETWORK_TYPE | network_type = MOWSE_NETWORK_TYPE
+	then do;
+
+	     if print_frame_switch & standard_line_type
+	     then do;
+		if set_frame_switch			/* we already know the framing chars */
+		then code = 0;
+		else call iox_$control (iocbp, "get_framing_chars", addr (framing_chars), code);
+
+		if code = 0
+		then call ioa_ ("Frame_begin: ^a, Frame_end: ^a", substr (framing_chars, 1, 1),
+			substr (framing_chars, 2, 1));
+
+		else call com_err_ (code, cmd_name, "Cannot print framing characters.");
+	     end;
+
+	     if print_delay_switch & standard_line_type	/* he wants to know delay times */
+	     then do;
+		if set_delay_switch & delay.default = 0
+		then code = 0;			/* they're what you said */
+		else do;
+		     delay.version = 1;
+		     call iox_$control (iocbp, "get_delay", addr (delay), code);
+		end;
+
+		if code = 0
+		then call ioa_ (
+			"Delays: vert_nl ^d, horz_nl ^6.3f, const_tab ^d, var_tab ^6.3f, backspace ^d, vt_ff ^d",
+			delay.values.vert_nl, delay.values.horz_nl, delay.values.const_tab, delay.values.var_tab,
+			delay.values.backspace, delay.values.vt_ff);
+		else call com_err_ (code, cmd_name, "Cannot print delay values.");
+	     end;
+
+	     if all_switch & standard_line_type
+	     then do;
+		code = 0;
+		if ^set_ifc_switch
+		then do;
+		     call iox_$control (iocbp, "get_ifc_info", addr (auto_ifc), code);
+		     if code ^= 0
+		     then call com_err_ (code, cmd_name, "Cannot print input flow control information.");
+		end;
+
+		if code = 0
+		then if auto_ifc.resume_seq.count ^= 0
+		     then if auto_ifc.suspend_seq.count = 0
+			then call ioa_ ("input resume: ^a, timeout",
+				substr (auto_ifc.resume_seq.chars, 1, auto_ifc.resume_seq.count));
+			else call ioa_ ("input suspend: ^a; input resume: ^a",
+				substr (auto_ifc.suspend_seq.chars, 1, auto_ifc.suspend_seq.count),
+				substr (auto_ifc.resume_seq.chars, 1, auto_ifc.resume_seq.count));
+
+		code = 0;
+		if ^(set_osr_switch | (set_oea_switch & set_bsize_switch))
+						/* some output flow control we didn't set */
+		then do;
+		     call iox_$control (iocbp, "get_ofc_info", addr (auto_ofc), code);
+		     if code ^= 0
+		     then call com_err_ (code, cmd_name, "Cannot print output flow control information.");
+		end;
+
+		if code = 0
+		then if auto_ofc.suspend_resume
+		     then call ioa_ ("output suspend: ^a; output resume: ^a",
+			     substr (auto_ofc.suspend_or_etb_seq.chars, 1, auto_ofc.suspend_or_etb_seq.count),
+			     substr (auto_ofc.resume_or_ack_seq.chars, 1, auto_ofc.resume_or_ack_seq.count));
+
+		     else if auto_ofc.block_acknowledge
+		     then call ioa_ ("output end_of_block: ^a; acknowledge: ^a, buffer size = ^d",
+			     substr (auto_ofc.suspend_or_etb_seq.chars, 1, auto_ofc.suspend_or_etb_seq.count),
+			     substr (auto_ofc.resume_or_ack_seq.chars, 1, auto_ofc.resume_or_ack_seq.count),
+			     auto_ofc.buffer_size);
+	     end;
+	end;
+
+	else do;					/* DSA_NETWORK_TYPE */
+	     if (print_frame_switch | print_delay_switch) & ^all_switch
+	     then call com_err_ (error_table_$unsupported_operation, "-print_frame or print_delay");
+	end;
+	return;					/* all done */
+
+
+error:						/* here if something went mysteriously wrong */
+	call com_err_ (code, cmd_name);
+	return;
+
+bad_value:
+	call com_err_ (0, cmd_name, "^a is not a valid delay value.", substr (arg, position, next_comma - 1));
+	return;
+
+cv_edit_char:
+     proc (edit_char) returns (char (2) var);
+
+/* convert an editing character in a form understandable by the user */
+
+dcl  edit_char char (1);
+dcl  rk fixed bin;
+
+	rk = rank (edit_char);
+
+	if rk < 32
+	then return (printable_ctl_char (rk));
+	else return (edit_char);
+
+     end;
+
+
+get_next_arg:
+     proc;
+
+/*  This internal procedure is used to get the second argument of a pair */
+
+	iarg = iarg + 1;
+	call cu_$arg_ptr (iarg, argptr, arglen, code);
+	if code ^= 0
+	then call com_err_ (code, cmd_name);
+	return;
+     end;
+
+
+check_two_chars:
+     proc;
+
+/* This internal procedure checks to make sure that an argument is exactly 2 chars long */
+
+	if arglen ^= 2
+	then do;
+	     if arglen > 2
+	     then code = error_table_$bigarg;
+	     else code = error_table_$smallarg;
+	     call com_err_ (code, cmd_name, "^a", arg);
+	end;
+     end;
+
+print_bf:
+     proc (sstr);
+
+dcl  sstr char (*),
+     tstr char (256) varying,
+     sidx fixed bin,
+     (notidx, comidx) fixed bin;
+
+	tstr = "";
+	sidx = 1;
+	comidx = 1;
+	notidx = index (sstr, "^");
+	do while (notidx ^= 0);
+	     if notidx > 1
+	     then do;
+		tstr = tstr || substr (sstr, sidx, notidx - 1);
+		sidx = sidx + notidx;
+	     end;
+	     comidx = index (substr (sstr, sidx), ",");
+	     if comidx = 0
+	     then notidx = 0;			/* terminate loop */
+	     else do;
+		sidx = sidx + comidx;
+		notidx = index (substr (sstr, sidx), "^");
+	     end;
+	end;
+	if comidx ^= 0
+	then					/* some left, copy it */
+	     tstr = tstr || substr (sstr, sidx);
+	else if length (tstr) > 0
+	then substr (tstr, length (tstr), 1) = ".";
+	call ioa_ ("Type: ^a^/Modes: ^a", typename, tstr);
+	return;
+     end;
+
+
+
+     end /* set_tty */;
+
+
+

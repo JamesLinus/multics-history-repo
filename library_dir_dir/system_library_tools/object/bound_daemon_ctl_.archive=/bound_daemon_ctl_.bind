@@ -1,0 +1,18 @@
+/* Created 82-03-07  E. N. Kittlitz.  from bound_user_control_ */
+
+Objectname:	bound_daemon_ctl_;
+
+Addname:		daemon_user_manager_;
+
+Order:		daemon_user_manager_;
+
+Global:		delete;
+
+objectname:	daemon_user_manager_;
+    retain:	init,
+    		login,
+		login_,
+		logout,
+		logout_source_no_access_check;
+
+/* End */

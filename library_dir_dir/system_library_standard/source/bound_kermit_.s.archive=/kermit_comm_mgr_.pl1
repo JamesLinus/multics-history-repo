@@ -1,0 +1,329 @@
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) Honeywell Bull Inc., 1988                *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1984 *
+        *                                                         *
+        *********************************************************** */
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(87-11-24,Huen), approve(87-11-24,MCR7803), audit(87-12-07,RWaters),
+     install(88-09-16,MR12.2-1113):
+     Fix kermit error 11 and 13.
+                                                   END HISTORY COMMENTS */
+
+
+kermit_comm_mgr_: proc;
+  
+  /********************************************************************/
+  /*							*/
+  /*n	kermit_comm_mgr_					*/
+  /*							*/
+  /*d	The communications manager is used to setup the state of	*/
+  /*d	the file transfer communications line prior to the start	*/
+  /*d	of a file transfer and to reset it on completion so that	*/
+  /*d	normal command communications can occur.		*/
+  /*							*/
+  /*l	Written:	84-10-25	by Dean Elhard			*/
+  /*m     Modified: 86-10-09  by Don Kozlowski - Use "transfer_mode   */
+  /*m			_set" flag to prevent any lost of the   */
+  /*m			initial line. (kermit 13)		*/
+  /*m	Modified: 86-10-21  by Don Kozlowski - Use "blk_xfer" flag 	*/
+  /*m			if not using "iox_$user_io" (kermit 11)	*/
+  /*m	Modified: 86-10-22  by Don Kozlowski - Add "^breakall" flag.*/
+  /*m			Set "^breakall" flag whenever "blk_xfer"*/
+  /*m			flag is set. (kermit 11)		*/
+  /*							*/
+  /********************************************************************/
+  
+  /* constants */
+  
+  dcl true		bit (1) static options (constant) init ("1"b);
+  dcl false		bit (1) static options (constant) init ("0"b);
+  
+  dcl Constant_modes	char (80) static options (constant)
+	init ("blk_xfer,^breakall,rawi,rawo,^echoplex,wake_tbl,^lfecho,ctl_char,^replay,^polite");
+  dcl X25_modes		char (26) static options (constant)
+	init ("rawi,rawo,^echoplex,lfecho");
+  
+  dcl Eight_bit_byte_size	fixed bin (8) static options (constant) init (8);
+  
+  dcl No_parity		char (1) static options (constant) init ("N");
+  dcl Mark_parity		char (1) static options (constant) init ("M");
+  dcl Space_parity		char (1) static options (constant) init ("S");
+  dcl Odd_parity		char (1) static options (constant) init ("O");
+  
+  dcl No_frame_begin	char (1) static options (constant) init("");
+  
+  /* parameters */
+  
+  dcl A_infop		ptr parameter;
+  dcl A_code		fixed bin (35) parameter;
+  
+  /* procedures */
+  
+  dcl iox_$control		entry (ptr, char(*), ptr, fixed bin(35));
+  dcl iox_$modes		entry (ptr, char(*), char(*), fixed bin(35));
+  
+  /* external */
+  
+  dcl kermit_et_$cannot_initialize_line
+			external fixed bin (35);
+  
+  /* based */
+  
+  dcl 01 info		aligned like kermit_info based (A_infop);
+  dcl 01 comm_info		aligned like kermit_comm_info
+			     based (info.comm_infop);
+  
+  /* structures */
+  
+  dcl 01 break_info		aligned like swt_info;
+  dcl 01 framing_chars	aligned,
+       02 frame_begin	char (1) unaligned,
+       02 frame_end		char (1) unaligned;
+  dcl 01 ft_modes		aligned,
+       02 eol_char		char (1) unaligned,
+       02 parity		char (1) unaligned;
+  dcl 01 delays		aligned like delay_struc;
+
+  /* automatic */
+  
+  dcl line_byte_size	fixed bin (8) unaligned;
+  dcl new_modes		char (512);
+  dcl t_selector (1:2)	fixed bin;
+  dcl p_selector (1:1)	fixed bin;
+  dcl special_modes		char (32) varying;
+  
+  /* builtin */
+  
+  dcl addr		builtin;
+  dcl null		builtin;
+  dcl rank		builtin;
+  
+  /* include files */
+  
+
+%include kermit_dcls;
+
+%include kermit_info;
+
+%include kermit_mode_info;
+
+%include set_wakeup_table_info;
+
+%include tty_convert;
+
+  return;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *   */
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *   */
+
+
+set_line_modes: entry (A_infop,	/* subsystem info pointer	*/
+		   A_code);	/* error code		*/
+  
+  /********************************************************************/
+  /*							*/
+  /*n	Name:	kermit_comm_mgr_$set_line_modes	external	*/
+  /*i	Input:	info_ptr					*/
+  /*f	Function: Sets up the communications channel for file	*/
+  /*f		transfer.					*/
+  /*o	Output:	error_code				*/
+  /*							*/
+  /*l	Written:	84-10-25	by Dean Elhard			*/
+  /*l	Modified:	84-10-27	by Dean Elhard to add X.25 support	*/
+  /*							*/
+  /********************************************************************/
+  
+  /* If transfer modes are currently set, then return                 */
+
+  if comm_info.transfer_modes_set then return;
+
+
+  /* get the prevailing kermit modes				*/
+  
+  t_selector (1) = I_eol_char;
+  t_selector (2) = G_parity;
+  
+  call kermit_mode_mgr_$retrieve (A_infop, Temporary, t_selector,
+				addr (ft_modes), A_code);
+  
+  p_selector (1) = Line_byte_size;
+  
+  call kermit_mode_mgr_$retrieve (A_infop, Permanent, p_selector,
+				addr (line_byte_size), A_code);
+  
+  /* determine what tty_ modes to use for the file transfer		*/
+  
+  if line_byte_size = Eight_bit_byte_size
+    then special_modes = "no_outp,8bit,";
+  else if ft_modes.parity = Mark_parity |
+	ft_modes.parity = Space_parity |
+	ft_modes.parity = No_parity
+    then special_modes = "no_outp,";
+  else if ft_modes.parity = Odd_parity
+    then special_modes = "^no_outp,oddp,";
+    else special_modes = "^no_outp,^oddp,";
+  
+  new_modes = special_modes || Constant_modes;
+  
+  /* determine what framing characters to use			*/
+  
+  framing_chars.frame_begin = No_frame_begin;
+  framing_chars.frame_end = ft_modes.eol_char;
+  
+  /* determine what break characters to use			*/
+  				
+  break_info.version = swt_info_version_1;
+  break_info.new_table.wake_map (*) = false;
+  break_info.new_table.mbz = ""b;
+  break_info.old_table.wake_map (*) = false;
+  break_info.old_table.mbz = ""b;
+  
+  break_info.new_table.wake_map (rank (ft_modes.eol_char)) = true;
+
+  /* set the delays to zero					*/
+  
+  delays.version = DELAY_VERSION;
+  delays.default = 0;
+  delays.vert_nl = 0;
+  delays.horz_nl = 0;
+  delays.const_tab = 0;
+  delays.var_tab = 0.0;
+  delays.backspace = 0;
+  delays.vt_ff = 0;
+  
+  /* get the old framing chars from tty_			*/
+  
+  call iox_$control (comm_info.ft_iocbp, "get_framing_chars",
+		addr (comm_info.old_framing_chars), A_code);
+  if A_code = 0
+       then do;         /* get the old delay values	      */
+       comm_info.old_delays.version = DELAY_VERSION;
+       call iox_$control (comm_info.ft_iocbp, "get_delay",
+	  	addr (comm_info.old_delays), A_code);
+       end;
+
+  if A_code = 0
+    then do;      /* set the new framing chars		*/
+       call iox_$control (comm_info.ft_iocbp, "set_framing_chars",
+	  	addr (framing_chars), A_code);
+       end;
+
+  if A_code = 0
+    then do;       /* set the new wakeup table and get the old one	*/
+       call iox_$control (comm_info.ft_iocbp, "set_wakeup_table",
+	  	addr (break_info), A_code);
+       end;
+
+  if A_code = 0
+    then do; /* copy out the old wakeup table for later reference   */
+       comm_info.old_wake_table = break_info.old_table;
+       end;
+
+  	       /* set the new modes				*/
+  call iox_$modes (comm_info.ft_iocbp, new_modes,
+       comm_info.old_modes, A_code);
+
+  /* if that failed, try setting up an X.25 connection		*/
+  
+  if A_code ^= 0
+    then call iox_$modes (comm_info.ft_iocbp, X25_modes,
+		comm_info.old_modes, A_code);
+    else call iox_$control (comm_info.ft_iocbp, "set_delay",
+		addr (delays), A_code);
+
+  if A_code ^= 0
+    then A_code = kermit_et_$cannot_initialize_line;
+    
+  comm_info.transfer_modes_set = "1"b;
+
+  return;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *   */
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *   */
+
+
+reset_line_modes: entry (A_infop,	/* subsystem info pointer	*/
+		     A_code);	/* error code		*/
+  
+  /********************************************************************/
+  /*							*/
+  /*n	Name:	kermit_comm_mgr_$reset_line_modes	external	*/
+  /*i	Input:	info_ptr					*/
+  /*f	Function:	Resets the communications environment for a	*/
+  /*f		user interface.				*/
+  /*o	Output:	error_code				*/
+  /*							*/
+  /*l	Written:	84-10-25	by Dean Elhard			*/
+  /*							*/
+  /********************************************************************/
+  
+  /* If transfer modes are currently reset, then return. Else reset  */
+
+  if ^comm_info.transfer_modes_set then return;
+  else comm_info.transfer_modes_set = "0"b;
+
+  /* reset the prevailing tty_ modes				*/
+  
+  call iox_$modes (comm_info.ft_iocbp, comm_info.old_modes, (""), A_code);
+  if A_code ^= 0
+    then return;
+  
+  /* reset the framing characters				*/
+    
+  call iox_$control (comm_info.ft_iocbp, "set_framing_chars",
+		addr (comm_info.old_framing_chars), A_code);
+  if A_code ^= 0
+    then return;
+    
+  /* reset the wakeup table					*/
+  
+  break_info.version = swt_info_version_1;
+  break_info.new_table = comm_info.old_wake_table;
+  break_info.old_table.mbz = ""b;
+  
+  call iox_$control (comm_info.ft_iocbp, "set_wakeup_table",
+		addr (break_info), A_code);
+  
+  /* reset the delays					*/
+  
+  call iox_$control (comm_info.ft_iocbp, "set_delay",
+		addr (comm_info.old_delays), A_code);
+		
+  return;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *   */
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *   */
+
+
+flush_input: entry (A_infop,		/* subsystem info pointer	*/
+	          A_code);		/* error code		*/
+  
+  /********************************************************************/
+  /*							*/
+  /*n	Name:	kermit_comm_mgr_$flush_input		external	*/
+  /*i	Input:	info_ptr					*/
+  /*f	Function: Flushes all pending input from the communications	*/
+  /*f		channel.					*/
+  /*o	Output:	error_code				*/
+  /*							*/
+  /*	Written:	84-10-25	by Dean Elhard			*/
+  /*							*/
+  /********************************************************************/
+  
+  call iox_$control (comm_info.ft_iocbp, "resetread", null, A_code);
+  
+  return;
+  
+end kermit_comm_mgr_;
+
+
+
+

@@ -1,0 +1,29 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(86-07-07,Elhard), approve(86-07-07,MCR7284),
+     audit(86-07-23,JRGray), install(86-08-06,MR12.0-1119):
+     added synonym statement for runoff and rf.
+                                                   END HISTORY COMMENTS */
+
+
+/*  Bind control file for runoff (bound_runoff_).
+/*  Only command entry point and DIM transfer vector are retained.
+/*  Last modified on 06/14/74 at 02:06:05 by R F Mabee.  */
+
+Objectname:	bound_runoff_;
+Addname:		runoff, runoff_, rf;
+Global:		delete;
+Order:		runoff_driver, runoff_mr0, runoff_mr1, runoff_mr2,
+		runoff_mr3, runoff_mr4, runoff_mr5, runoff_mr6,
+		runoff_mr7, runoff_mr8, runoff_mr9,
+		runoff_dim, runoff_;
+
+objectname:	runoff_driver;
+  synonym:	runoff, rf;
+  retain:		runoff, rf;
+
+objectname:	runoff_;
+  retain:		runoff_module;
+
+/*  End of bind control file for bound_runoff_. */

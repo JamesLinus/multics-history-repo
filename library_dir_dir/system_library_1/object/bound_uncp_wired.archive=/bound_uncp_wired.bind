@@ -1,0 +1,45 @@
+/* ********************************************
+   *                                          *
+   * Copyright, (C) Honeywell Bull Inc., 1988 *
+   *                                          *
+   ******************************************** */
+
+
+/* HISTORY COMMENTS:
+  1) change(88-06-20,Berno), approve(88-07-13,MCR7928),
+     audit(88-06-20,Parisek), install(88-07-19,MR12.2-1061):
+     Created for implementing the UNCP multiplexer interface for the DSA
+     gateway.
+                                                   END HISTORY COMMENTS */
+
+/*  Created 10/16/79 by Robert Fournier to add uncp modules  */
+/*  Modified for MR11 in Sept 85. */
+
+Objectname:	bound_uncp_wired;
+Global:		delete;
+
+Order:		uncp,
+		uncp_multiplexer,
+		uncp_boot_interrupt,
+		uncp_util;
+
+objectname:	uncp;
+ retain:		interrupt;
+
+objectname:	uncp_multiplexer;
+ retain:		init_multiplexer,terminate_multiplexer,
+		start,stop,shutdown,read,write,control,
+		check_modes,set_modes,get_modes,
+		fnp_lock, fnp_unlock, assign, unassign,
+		priv_control,hpriv_control;
+
+objectname:	uncp_boot_interrupt;
+
+objectname:	uncp_util;
+ retain:		load, fdump, fill_page_table,
+		free_page_table;
+
+/* End */
+
+
+

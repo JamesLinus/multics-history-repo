@@ -1,0 +1,304 @@
+/* This segment is in collection 1, and is therefore initially wired. */
+/* However, it is later partially unwired. */
+
+/* modified RE Mullen Nov 73 to swap v1pl1/v2pl1 operators */
+/* modified by Bill Silver - Dec 73 - to add  oc_trans_output_ */
+/* Modified 4/9/74 by S.Webber to contain EIS operators and utility routines */
+/* Modified 3/27/75 by R.Barnes to contain record_io_utility routine */
+/* Modified 07/02/75 by Grace Ackerman-Lewis to add signal_ and condition_ */
+/* Modified 03/03/76 by R. Schoeman to add fort_math_ops_ and put_field_ */
+/* Modified 05/11/76 by R. Schoeman to add put_format_ for quick stream io */
+/* Modified 10/11/76 by R. Schoeman to add bn_format and to fix put_format_ related bugs */
+/* 06/15/77 by M. Weaver to delete signal stuff and static handlers  */
+/* 06/01/80 by P. B. Kelley to add tape_checksum_ (previously in bound_init_1 and bound_tape_mult_) */
+/* Modified: 9 October 1980 by G. Palter to add char_bit_offset_fcns_ */
+/* Modified: 28 July 1981 by P. Krupp to add protection notice */
+/* Modified: November 1981 by C. Hornig to retain synonyms */
+/* Modified: 6 May 1982 by M. Weaver to make perprocess static */
+/* Modified 7/82 BIM to add config_ */
+/* Modified: 12 October 1982 by G. Palter to add mvt_ */
+/* Modified 8/82 BIM to add a number of things from bound_sss_active_
+	           needed in the bootload command environment */
+/* Modified 12/82 BIM/CAH to split out bound_library_1_ */
+/* Modified 1/83 BIM/Palter to add mlr_ */
+/* Modified 1/82 BIM to rename to bound_library_wired_ */
+/* Modified 84-01-11 BIM to add pc_check_tables_, the first piece of page 
+	  control in the user ring. (see MCR 1000.) */
+/* Modified 84-09-06 GJohnson to add config_, moved from here 
+	bound_library_1_ */
+/* Modified 84-11-13 by H. Hoover to add 'bfp_to_hfp_' and 'hfp_to_bfp_'. */
+/* Modified 85-02-13 by M. Mabey to add double_arc_sine_ */
+/* Modified 85-03-10 by M. Mabey to add principal_angle_, double_principal_angle_
+	and double_tangent_ */
+
+/* HISTORY COMMENTS:
+  1) change(85-09-19,Coren), approve(85-09-19,MCR7266),
+     audit(85-09-24,Margolin), install(86-02-20,MR12.0-1023):
+     Add ioa_$general_rs_control_string.
+  2) change(86-05-18,GDixon), approve(86-05-18,MCR7357),
+     audit(86-06-16,Farley), install(86-07-17,MR12.0-1097):
+     Add find_bit_ and find_char_ subroutines, which replace tct_.
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:	bound_library_wired_;
+Global:		delete;
+Addname;
+Perprocess_Static;
+
+Order:		PNOTICE_exec,
+		clock_,
+		config_,
+		formline_,
+		pc_check_tables_, /* look, ma, page control in the user ring */
+		oc_trans_output_,
+		wired_utility_,
+		char_bit_offset_fcns_,
+		mvt_,
+		mrl_,
+		find_bit_, 
+		find_char_, 
+		ioa_,
+		template_area_header,
+		alloc_,
+		pl1_operators_,	/* The rest of the segment is unwired */
+		any_to_any_,
+		dec_ops_,
+		cplx_dec_ops_,
+		record_io_,
+                    put_field_,
+		put_format_,
+		math_routines_,
+		square_root_,
+		double_square_root_,
+		sine_,
+		double_sine_,
+		tangent_,
+		double_tangent_,
+		logarithm_,
+		double_logarithm_,
+		exponential_,
+		double_exponential_,
+		arc_tangent_,
+		double_arc_tangent_,
+		arc_sine_,
+		double_arc_sine_,
+		integer_power_integer_,
+		power_integer_,
+		power_,
+		math_constants_,
+		call_math_error_,
+                    fort_math_ops_,
+		bfp_to_hfp_,
+		hfp_to_bfp_,
+		principal_angle_,
+		double_principal_angle_,
+		math_routines_end_;
+
+objectname:	PNOTICE_exec;
+
+objectname:	clock_;
+ retain:		clock_;
+
+objectname:	config_;
+ synonym:		config,
+		find, find_2, find_periph, find_peripheral, find_parm;
+ retain:		find, find_2, find_periph, find_peripheral, find_parm,
+		update, init_card, clear, find_table,
+		replace, add, delete;
+
+objectname:	formline_;
+ retain:		formline_,
+		switch;
+
+objectname:	pc_check_tables_;
+ retain:		pc_check_tables_;
+
+objectname:	oc_trans_output_;
+ retain:		oc_trans_output_;
+
+objectname:	wired_utility_;
+ synonym:		get_ring_, arg_count_, arg_list_ptr_,
+ 		caller, ldac, stacq, all_rings_util_;
+ retain:		caller, get_sp, get_ring_, arg_count_, arg_list_ptr_,
+		grow_stack_frame, shrink_stack_frame,
+		ldac, stacq;
+
+objectname:	ioa_;
+ retain:		ioa_,
+		nnl,
+		general_rs,
+		general_rs_control_string,
+		ioa_stream,
+		ioa_stream_nnl,
+		ioa_switch,
+		ioa_switch_nnl,
+		rs,
+		rsnnl,
+		rsnp,
+		rsnpnnl;
+
+objectname:	char_bit_offset_fcns_;
+ synonym:		char_offset_, add_char_offset_, set_char_offset_,
+		bit_offset_, add_bit_offset_, set_bit_offset_;
+ retain:		char_offset_, add_char_offset_, set_char_offset_,
+		bit_offset_, add_bit_offset_, set_bit_offset_;
+
+objectname:	mvt_;
+ retain:		mvt_, make_translation_table;
+
+objectname:	mrl_;
+ synonym:		mlr_;
+ retain:		mrl_, mlr_;
+
+objectname:	find_bit_;
+  retain:		first_off, first_on, last_off, last_on;
+		
+objectname:	find_char_;
+  retain:		first_in_list,
+		first_in_table,
+		first_not_in_list,
+		last_in_list,
+		last_in_table,
+		last_not_in_list,
+		make_table_of_chars_in_list,
+		make_table_of_chars_not_in_list,
+		not_ascii_table,
+		translate_first_in_table,
+		translate_last_in_table;
+
+objectname:	template_area_header;
+
+objectname:	alloc_;
+ synonym:		area_, freen_, area_assign_,
+		old_alloc_, old_freen_, old_area_;
+ retain:		alloc_, area_, freen_, area_assign_,
+		old_alloc_, old_area_, old_freen_,
+		storage_, redef, extend, no_freeing;
+
+objectname:	pl1_operators_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	any_to_any_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	dec_ops_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	cplx_dec_ops_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	record_io_;
+
+objectname:	put_field_;
+
+objectname:	put_format_;
+
+objectname:	math_routines_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	square_root_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	double_square_root_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	sine_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	double_sine_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	tangent_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	double_tangent_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	logarithm_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	double_logarithm_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	exponential_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	double_exponential_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	arc_tangent_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	double_arc_tangent_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	arc_sine_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	double_arc_sine_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	integer_power_integer_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	power_integer_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	power_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	math_constants_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	call_math_error_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	fort_math_ops_;
+
+objectname:	bfp_to_hfp_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	hfp_to_bfp_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	principal_angle_;
+ delete:		symbol_table;
+
+objectname:	double_principal_angle_;
+ delete:		symbol_table;
+
+objectname:	math_routines_end_;
+ global:		retain;
+ delete:		symbol_table;
+
+/* END */
+
+
+

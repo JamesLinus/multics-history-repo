@@ -1,0 +1,70 @@
+/* Bind file for bound_debug_fnp_ */
+
+/* Written February 1977 by Larry Johnson */
+
+Objectname:	bound_debug_fnp_;
+
+Order:		debug_fnp,
+		db_fnp_buffer_status_,
+		db_fnp_break_,
+		db_fnp_call_trace_,
+		db_fnp_convert_address_,
+		db_fnp_disp_cmd_,
+		db_fnp_display_,
+		db_fnp_dumps_,
+		db_fnp_edit_inst_,
+		db_fnp_env_,
+		db_fnp_eval_,
+		db_fnp_memory_,
+		db_fnp_opblock_util_,
+		db_fnp_opblocks_,
+		db_fnp_opcodes_,
+		db_fnp_reader_,
+		db_fnp_scheduler_,
+		db_fnp_sym_util_,
+		db_fnp_symbols_,
+		db_fnp_trace_,
+		db_fnp_util_;
+
+Addname:		debug_fnp,
+		db_fnp,
+		db_fnp_display_,
+		db_fnp_dump_symbols,
+		db_fnp_eval_,
+		db_fnp_memory_,
+		db_fnp_opblock_util_,
+		db_fnp_sym_util_,
+		db_fnp_symbols_;
+
+Global:		delete;
+
+
+objectname:	debug_fnp;
+ retain:		debug_fnp, db_fnp;
+
+objectname:	db_fnp_display_;
+ retain:		db_fnp_display_;
+
+objectname:	db_fnp_eval_;
+ retain:		db_fnp_eval_;
+
+objectname:	db_fnp_memory_;
+ retain:		fetch, store;
+
+objectname:	db_fnp_opblock_util_;
+ retain:		get_name;
+
+objectname:	db_fnp_scheduler_;
+
+objectname:	db_fnp_sym_util_;
+ synonym:		db_fnp_dump_symbols;
+ retain:		lookup_member, db_fnp_dump_symbols;
+
+objectname:	db_fnp_symbols_;
+ retain:		db_fnp_symbols_;
+ global:		no_link;
+
+/* End bind file for bound_debug_fnp_ */
+
+
+

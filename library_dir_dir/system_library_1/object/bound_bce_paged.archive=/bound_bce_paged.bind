@@ -1,0 +1,102 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1985 *
+   *                                                         *
+   *********************************************************** */
+
+
+/* HISTORY COMMENTS:
+  1) change(85-09-11,Farley), approve(85-09-11,MCR6979),
+     audit(86-02-28,Coppola), install(86-03-21,MR12.0-1033):
+     Add bce_lock_mca for
+     IMU support.
+  2) change(86-04-10,Fawcett), approve(86-04-10,MCR7220),
+     audit(86-05-09,Farley), install(86-07-17,MR12.0-1097):
+     Add bce_copy_disk and bce_parse_disk_spec.
+                                                   END HISTORY COMMENTS */
+
+/* Bindfile for bound_bce_paged, things that can wait until collection 1.5 to
+be used. */
+
+/* Written by Allen Ball October of 1984. */
+/* Moved in some things from bound_bce_wired, Keith Loepere, January 1985. */
+/* Modified to remove bce/Multics dual objects, Keith Loepere, March 1985. */
+/* Added support for pack copy, Keith Loepere, March 1985. */
+/* Modified to add bce_lock_mca, Paul Farley, May 1985. */
+
+Objectname:	bound_bce_paged;
+
+Global:		retain;
+Order:		bce_alert,
+		bce_appending_simulation,
+		bce_copy_disk,
+		bce_parse_disk_spec,
+		bce_test_disk,
+		bce_display_disk_label,
+		bce_get_flagbox,
+		bce_lock_mca,
+		bce_query_af,
+		bce_ready,
+		bce_severity,
+		bce_shutdown_state,
+		bce_state,
+		bootload_fs_cmds_,
+		bootload_qedx,
+		config_deck_edit_,
+		init_clocks;
+
+objectname:	bce_alert;
+   delete:	symbol_table;
+
+objectname:	bce_appending_simulation;
+   delete:	symbol_table;
+
+objectname:	bce_copy_disk;
+   delete:	symbol_table;
+
+objectname:	bce_display_disk_label;
+   delete:	symbol_table;
+
+objectname:	bce_get_flagbox;
+   synonym:	bce_set_flagbox;
+   delete:	symbol_table;
+
+objectname:	bce_lock_mca;
+   synonym:	bce_unlock_mca;
+   delete:	symbol_table;
+
+objectname:	bce_parse_disk_spec;
+   global:	delete;
+
+objectname:	bce_query_af;
+   synonym:	bce_response_af;
+   delete:	symbol_table;
+
+objectname:	bce_ready;
+   delete:	symbol_table;
+
+objectname:	bce_severity;
+   delete:	symbol_table;
+
+objectname:	bce_shutdown_state;
+   delete:	symbol_table;
+
+objectname:	bce_state;
+   delete:	symbol_table;
+
+objectname:	bce_test_disk;
+   delete:	symbol_table;
+
+objectname:	bootload_fs_cmds_;
+   delete:	symbol_table;
+
+objectname:	bootload_qedx;
+   delete:	symbol_table;
+
+objectname:	config_deck_edit_;
+   delete:	symbol_table;
+
+objectname:	init_clocks;
+   delete:	symbol_table;
+
+/* end of bindfile for bound_bce_paged. */

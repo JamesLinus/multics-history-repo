@@ -1,0 +1,12 @@
+Objectname:	bound_kermit_;
+Addname:		kermit;
+Global:		delete;
+Order:		kermit, kermit_comm_mgr_, kermit_et_,
+		kermit_get_filenames_, kermit_log_mgr_, kermit_mode_mgr_,
+		kermit_pad_, kermit_receive_, kermit_receive_request_,
+		kermit_remote_requests_, kermit_requests_, kermit_send_,
+		kermit_send_request_, kermit_server_,
+		kermit_server_request_, kermit_xfer_modes_;
+
+objectname:	kermit;
+retain:		kermit;

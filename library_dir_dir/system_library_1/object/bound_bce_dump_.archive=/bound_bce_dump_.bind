@@ -1,0 +1,16 @@
+/* Bindfile for: bound_bce_dump_ -- bce's dumper and sstnt creator */
+
+/* Keith Loepere, August 1984 */
+
+Objectname:	bound_bce_dump_;
+Global:		delete;
+
+Order:		bce_dump,
+		bce_create_sstnt;
+
+objectname:	bce_dump;
+   retain:	bce_dump, severity;
+
+objectname:	bce_create_sstnt;
+
+/* end; */

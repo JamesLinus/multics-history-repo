@@ -1,0 +1,45 @@
+/* Origins lost in antiquity */
+/* Modified June 1983 by Chris Jones for IOI rewrite */
+/* Canonicalize entry added by Chris Jones, January 1984 */
+/* page-table-filler retained by BIM, 1984-09-25 */
+
+Objectname:	bound_io_wired;
+Global:		delete;
+
+Order:		io_chnl_util,
+		io_error,
+		ioi_masked,
+		ioi_page_table,
+		ioi_wire,
+		io_log_status_info,
+		trace;
+
+objectname:	io_chnl_util;
+  retain:		canonicalize_chanid, iom_to_name, name_to_iom;
+
+objectname:	io_error;
+ retain:		bad_addr,
+		bad_chx;
+
+objectname:	ioi_masked;
+ retain:		timer, getwork_channel, getwork_device, interrupt,
+		reset_device, flush_status, quiesce_channel,
+		online_device_count;
+
+objectname:	ioi_wire;
+ retain:		wire, unwire;
+
+objectname:	ioi_page_table;
+ retain:		get, init, ptx_to_ptp, put, fill;
+
+objectname:	io_log_status_info;
+ retain:		io_log_status_info;
+
+objectname:	trace;
+ synonym:		system_trace;
+ retain:		trace, system_trace;
+
+/* End */
+
+
+

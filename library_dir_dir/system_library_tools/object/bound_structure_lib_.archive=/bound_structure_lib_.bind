@@ -1,0 +1,27 @@
+Objectname:	bound_structure_lib_;
+
+Addname:		structure_library_1_,
+		structure_library_2_,
+		structure_library_3_,
+		structure_library_4_,
+		structure_library_5_,
+		structure_library_6_;
+
+Global:		delete;
+
+objectname:	structure_library_1_;
+
+objectname:	structure_library_2_;
+
+objectname:	structure_library_3_;
+
+objectname:	structure_library_4_;
+
+objectname:	structure_library_5_;
+
+objectname:	structure_library_6_;
+
+/*		END		*/
+
+
+

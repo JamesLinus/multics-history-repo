@@ -1,0 +1,32 @@
+/* Bindfile for bound_checker_ */
+
+Objectname:	bound_checker_;
+Global:		delete;
+
+Order:		check_mst, checker_init_meters_, checker_data_,
+		checker_load_MST_, checker_crossref_,
+		checker_print_,
+		template_slt_,
+		sslt_init_, sslt_manager_, tape_reader_,
+		compare_mst;
+
+Addname:		check_mst, compare_mst;
+
+objectname:	check_mst;
+  retain:		check_mst;
+
+objectname:	compare_mst;
+  retain:		compare_mst;
+
+objectname:	checker_load_MST_;
+objectname:	checker_crossref_;
+objectname:	checker_print_;
+objectname:	checker_init_meters_;
+objectname:	checker_data_;
+objectname:	template_slt_;
+objectname:	sslt_init_;
+objectname:	sslt_manager_;
+objectname:	tape_reader_;
+
+
+

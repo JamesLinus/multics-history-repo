@@ -1,0 +1,105 @@
+/* *	BOUND_TUNING_
+   *
+   *	This segment contains the commands used to tune the system, change
+   *	operational parameters, and examine the current tuning parameters.
+   *
+   *	This is part of the familiy of metering/analysis bound segments:
+   *	   bound_metering_cmds_	bound_meter_util_
+   *	   bound_comm_meters_	bound_tuning_
+   *	   bound_system_test_	bound_hc_display_
+   *	   bound_hardcore_db_
+   *
+   *	Reorganized to be this way, 04/11/81, W. Olin Sibert
+   *      Added convert_configuration_deck and friends, 02/01/84, Keith Loepere
+   *      Added check_sst_size and check_tc_data_size, 07/19/84, Art Beattie
+   *	Added tune_disk, 08/21/84, Chris Jones
+   *	Moved dual bce/Multics objects into hardcore, 3/8/85, Keith Loepere.
+   */
+
+Objectname:         bound_tuning_;
+Global:		delete;
+
+Addname:            change_tuning_parameters, ctp,
+                    print_tuning_parameters, ptp,
+                    define_work_classes, dwc,
+                    set_work_class, swc,
+		set_proc_required, sprq,
+		list_proc_required,
+                    tune_work_class, twc,
+		tune_disk,
+                    poll_mos_memory,
+                    set_mos_polling_time,
+                    print_configuration_deck, pcd,
+		compare_configuration_deck,
+		convert_configuration_deck,
+		check_sst_size,
+		check_tc_data_size;
+
+Order:		change_tuning_parameters,
+		print_tuning_parameters,
+		define_work_classes,
+		set_work_class,
+		set_proc_required,
+		tune_work_class,
+		poll_mos_memory,
+		set_mos_polling_time,
+		tune_disk,
+		print_configuration_deck,
+		compare_configuration_deck,
+		convert_configuration_deck,
+		check_sst_size,
+		check_tc_data_size;
+
+objectname:	change_tuning_parameters;
+ synonym: 	ctp;
+ retain:		change_tuning_parameters, ctp;
+
+objectname:	print_tuning_parameters;
+ synonym: 	ptp;
+ retain:		print_tuning_parameters, ptp;
+
+objectname:	define_work_classes;
+ synonym: 	dwc;
+ retain:		define_work_classes, dwc;
+
+objectname:	set_work_class;
+ synonym: 	swc;
+ retain:		set_work_class, swc;
+
+objectname:	set_proc_required;
+ synonym:		sprq;
+ retain:		set_proc_required, sprq, list_proc_required;
+
+objectname:	tune_work_class;
+ synonym: 	twc;
+ retain:		tune_work_class, twc;
+
+objectname:	poll_mos_memory;
+ retain:		poll_mos_memory;
+
+objectname:	set_mos_polling_time;
+ retain:		set_mos_polling_time;
+
+objectname:	tune_disk;
+ retain:		tune_disk;
+
+objectname:	print_configuration_deck;
+ synonym: 	pcd;
+ retain:		print_configuration_deck, pcd;
+
+objectname:	compare_configuration_deck;
+ retain:		compare_configuration_deck;
+
+objectname:	convert_configuration_deck;
+ retain:		convert_configuration_deck;
+
+objectname:	check_sst_size;
+ retain:		check_sst_size;
+
+objectname:	check_tc_data_size;
+ retain:		check_tc_data_size;
+
+/*		END		*/
+
+
+

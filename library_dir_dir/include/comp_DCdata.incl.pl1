@@ -1,0 +1,119 @@
+/* BEGIN INCLUDE FILE ..... comp_DCdata.incl.pl1 ..... 11/16/78 J Falksen
+   Modified: ??/81 - EJW - Addded type_wait
+   Modified:  4/83 - EJW - Added type_un(strt stop), reorganized file.
+*/
+
+/* format: style2,ind3,ll79,dclind4,idind15,comcol41,linecom */
+
+     dcl DCxx_p	    ptr;		/* for qualification of embedded     */
+				/*  control strings		       */
+				/* an embedded control string	       */
+     dcl 1 dcxx	    unal based (DCxx_p),
+	 2 mark	    char (1) unal,	/* control marker -	DC1 (\021)       */
+	 2 ctl,
+	   3 type	    bit (3) unal,	/* 000- device/writer control        */
+				/* 001-                              */
+				/* 010- literal data	       */
+				/* 011- family/member/size data      */
+				/* 100- shift		       */
+				/* 101-			       */
+				/* 110- vector		       */
+				/* 111- zero-offset vector	       */
+	   3 fill1    bit (1) unal,
+	   3 Xctl	    bit (2) unal,	/* 00- no X value present	       */
+				/* 01- short X value	       */
+				/* 10- long X value		       */
+	   3 fill2    bit (1) unal,
+	   3 Yctl	    bit (2) unal,	/* 00- no Y value present	       */
+				/* 01- short Y value present	       */
+				/* 10- long Y value present	       */
+	 2 leng	    fixed bin (9) unal unsigned,
+				/* # of remaining bytes  */
+	 2 etc;			/* the rest of the control bytes */
+				/* device/writer controls */
+     dcl 1 dcctl	    unal based (DCxx_p),
+	 2 mark	    char (1) unal,
+	 2 type	    char (1) unal,	/* control type */
+				/* leng is always 0 for these */
+	 2 leng	    fixed bin (9) unal unsigned;
+     dcl (
+         wait_signal    init (""),	/* = 021001000 */
+         unstart_signal init (""),	/* = 021002000 */
+         unstop_signal  init ("")	/* = 021003000 */
+         )	    char (3) static options (constant);
+				/* the "literal" control string      */
+     dcl 1 dclit	    unal based (DCxx_p),
+	 2 mark	    char (1) unal,
+	 2 type	    char (1) unal,	/* control type */
+	 2 leng	    fixed bin (9) unal unsigned,
+				/* width in milli-points of literal  */
+	 2 width	    fixed bin (31) unal,
+				/* actual literal, max length 509    */
+	 2 data	    char (dclit.leng - 4);
+				/* long (31 bits) values */
+     dcl 1 dclong_val   unal based (DCxx_p),
+	 2 mark	    char (1) unal,
+	 2 type	    char (1) unal,	/* control type */
+	 2 leng	    fixed bin (9) unal unsigned,
+	 (
+	 2 v1	    fixed bin (31), /* long value		       */
+	 2 v2	    fixed bin (31)	/* long value		       */
+	 )	    unal;
+     dcl (
+         dclong_len	    init (8),	/* 2 long values */
+         dclong1_len    init (4)	/* 1 long value */
+         )	    fixed bin static options (constant);
+				/* short (17 bit) values */
+     dcl 1 dcshort_val  unal based (DCxx_p),
+	 2 mark	    char (1) unal,
+	 2 type	    char (1) unal,	/* control type */
+	 2 leng	    fixed bin (9) unal unsigned,
+	 (
+	 2 v1	    fixed bin,	/* short value		       */
+	 2 v2	    fixed bin	/* short value		       */
+	 )	    unal;
+     dcl (
+         dcshort_len    init (4),	/* 2 short values */
+         dcshort1_len   init (2)	/* 1 short value */
+         )	    fixed bin static options (constant);
+				/* a font change string */
+     dcl 1 dcfs	    unal based (DCxx_p),
+	 2 mark	    char (1) unal,	/* font/size data		       */
+	 2 type	    char (1) unal,	/* control type */
+	 2 leng	    fixed bin (9) unal unsigned,
+				/* fnttbldata index */
+	 2 f	    fixed bin (9) unal unsigned,
+				/* point size in milli-points	       */
+	 2 p	    fixed bin (31) unal;
+     dcl dcfs_len	    fixed bin init (5) static options (constant);
+
+     dcl (			/* symbolic definitions of DC types  */
+         type_wait	    init (""),	/* writer wait */
+         type_unstart   init (""),	/* underscore start */
+         type_unstop    init (""),	/* underscore stop */
+         type_lit	    init (""),	/* literal data		       */
+         type_font	    init ("@"),	/* family/member/size data	       */
+				/* SHIFTS -		       */
+         type_sy	    init (""),	/* -- no x, short y		       */
+         type_sly	    init (""),	/* -- no x, long y		       */
+         type_sx	    init (""),	/* -- short x, no y		       */
+         type_sxy	    init ("	"),	/* -- short x, short y	       */
+         type_slx	    init (""),	/* -- long x, no y		       */
+         type_slxly	    init (""),	/* -- long x, long y	       */
+				/* VECTORS		       */
+         type_vy	    init (""),	/* -- no x, short y		       */
+         type_vly	    init (""),	/* -- no x, long y		       */
+         type_vx	    init (""),	/* -- short x, no y		       */
+         type_vxy	    init ("	"),	/* -- short x, short y	       */
+         type_vlx	    init (""),	/* -- long x, no y		       */
+         type_vlxly	    init (""),	/* -- long x, long y	       */
+				/* ZERO-OFFSET VECTORS-	       */
+         type_v0y	    init ("A"),	/* -- no x, short y		       */
+         type_v0ly	    init ("B"),	/* -- no x, long y		       */
+         type_v0x	    init ("H"),	/* -- short x, no y		       */
+         type_v0xy	    init ("I"),	/* -- short x, short y 	       */
+         type_v0lx	    init ("P"),	/* -- long x, no y		       */
+         type_v0lxly    init ("R")	/* -- long x, long y	       */
+         )	    char (1) unal int static options (constant);
+
+/* END INCLUDE FILE ..... comp_DCdata.incl.pl1 ..... */

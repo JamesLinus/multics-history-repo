@@ -1,0 +1,278 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(88-05-26,Lippard), approve(88-05-02,MCR7881),
+     audit(88-06-16,Fawcett), install(88-08-02,MR12.2-1074):
+     Added set$audit_flag_path.
+                                                   END HISTORY COMMENTS */
+
+
+/* Bindfile for bound_file_system.  Those modules that are (primarily)
+called by the user through gates or via faults to operate on file system
+objects. */
+
+/* Written October 1984 by Keith Loepere.  Formed from bound_file_system,
+   bound_priv_procs and bound_system_faults. */
+/* Modified 1985-02-21 by E. Swenson to add ringbr_$get_ring_brackets_ptr
+   and status_$get_user_access_modes_ptr entrypoints. */
+/* Modified 1985-02-27 by Keith Loepere to move get_pathname_ into
+   bound_dir_control. */
+/* Modified 1985-03-05 by Melanie Weaver to remove rest_of_datmk_ and
+   datmk_util_ */
+/* Modified 1985-03-22 by M. Pandolf to add status_$get_access_info entries */
+/* Modified 1985-04-01 by Keith Loepere to improve ordering */
+/* Modified 1985-05-08 by EJ Sharpe to change delentry$priv_duid to duid_mdir_priv,
+   to change status_$get_mdir_status_uid to status_$get_mdir_status_uid_priv,
+   and to add entries: delentry$duid_mdir; status_$get_mdir_status_priv;
+   uid_path_util$decode_uidpath_priv; and uid_path_util$decode_uidpath_raw */
+
+Objectname:	bound_file_system;
+Global:		delete;
+Order:		truncate,
+		terminate_,
+		delentry,
+		del_dir_tree,
+
+		quota,
+		append,
+		make_seg,
+		makestack,
+
+		initiate_,
+		fs_search,
+		link_man,
+		link_snap,
+
+		status_,
+		set,
+		asd_,
+		chname,
+		fs_get,
+		ringbr_,
+		star_,
+		fs_move,
+
+		initiate_search_rules,
+		trap_caller_caller_,
+		acl,
+		list_inacl_all,
+
+		set_stack_ptr,
+		get_defname_,
+		stack_oob_handler,
+
+		access_class_check,
+		reclassify,
+
+		hc_page_trace,
+
+		copy_fdump,
+		correct_qused,
+		demand_deactivate,
+		ips_,
+		kst_info,
+		level_0_,
+		other_process_info,
+		proc_info,
+		quota_util,
+		ring0_init,
+		ring_0_peek,
+		set_disk_table_loc,
+		set_kst_attributes,
+		set_privileges,
+		set_sons_lvid,
+		shutdown,
+		tc_shutdown,
+		template_address_space,
+		uid_path_util,
+		vacate_pv;
+
+objectname:	access_class_check;
+ retain:		access_class_check, aim_check_soos;
+
+objectname:	acl;
+ retain:		a1add, aadd, adelete, alist, areplace;
+
+objectname:	append;
+ retain:		admin_create_branch_, branch, branchx, create_branch_, 
+		link, master_dir, retv;
+
+objectname:	asd_;
+ retain:		add_dentries, add_identries, add_isentries, add_sentries,
+		del_dentries, del_identries, del_isentries, del_sentries, 
+		list_dall, list_idall, list_isall, list_sall, 
+		r_list_dall, r_list_idall, r_list_isall, r_list_sall,
+		replace_dall, replace_idall, replace_isall, replace_sall;
+
+objectname:	chname;
+ retain:		cfile, cseg, retv;
+
+objectname:	copy_fdump;
+ retain:		copy_fdump, get_erf_no, set_erf_no;
+
+objectname:	correct_qused;
+ retain:		correct_dir_qused, correct_qused, correct_seg_qused;
+
+objectname:	del_dir_tree;
+ retain:		del_dir_tree, retv;
+
+objectname:	delentry;
+ retain:		dfile, dseg, duid_mdir, duid_mdir_priv, retv, salv_delete_branch;
+
+objectname:	demand_deactivate;
+ retain:		demand_deactivate, force;
+
+objectname:	fs_get;
+ retain:		access_modes, brackets, dir_name, 
+		ex_mode_name, get_link_target, mode, path_name, 
+		ref_name, search_rules, seg_ptr, trans_sw;
+
+objectname:	fs_move;
+ retain:		ffile, fseg;
+
+objectname:	fs_search;
+ retain:		get_wdir, set_wdir;
+
+objectname:	get_defname_;
+ retain:		get_defname_;
+
+objectname:	hc_page_trace;
+ retain:		get_page_trace, get_signal, set_signal;
+
+objectname:	initiate_;
+ synonym:		initiate, initiate_count;
+ retain:		initiate, initiate_, initiate_count, get_segment_ptr_path,
+		priv_init, priv_init_count;
+
+objectname:	initiate_search_rules;
+ retain:		initiate_search_rules, get_system_rules, set_system_rules;
+
+objectname:	ips_;
+ retain:		get_ips_mask, mask_ips, reset_ips_mask,
+		set_automatic_ips_mask, set_ips_mask, unmask_ips;
+
+objectname:	kst_info;
+ retain:		get_uid, high_low_seg_count;
+
+objectname:	level_0_;
+ retain:		add_acl_entries, add_dir_acl_entries, 
+		delentry_file,
+		delete_acl_entries, delete_dir_acl_entries, 
+		replace_acl, replace_dir_acl, 
+		set_dir_ring_brackets, set_ring_brackets;
+
+objectname:	link_man;
+ retain:		assign_linkage, combine_linkage,
+		get_lp, grow_lot, set_lp;
+
+objectname:	link_snap;
+ retain:		link_fault, link_force, make_entry, make_ptr;
+
+objectname:	list_inacl_all;
+ retain:		list_inacl_all;
+
+objectname:	make_seg;
+ retain:		make_seg;
+
+objectname:	makestack;
+ retain:		makestack;
+
+objectname:	other_process_info;
+ retain:		get_privileges;
+
+objectname:	proc_info;
+ retain:		authorization, get_initial_ring, proc_info, set_mask_ring;
+
+objectname:	quota;
+ delete:		quota;
+ retain:		dqlong_reset, dqmove, dqread, dqrestor, dqset, mdir_set, 
+		priv_dqread, priv_qread, qget, qlong_reset, qmove, 
+		qread, qreload, qreset, qrestor, qset;
+
+objectname:	quota_util;
+ retain:		restore_quota, suspend_quota;
+
+objectname:	reclassify;
+ retain:		branch, node, sys_seg, sys_seg_priv;
+
+objectname:	ring0_init;
+delete:		ring0_init;
+ retain:		initiate, initiate_count, 
+		terminate_noname, terminate_seg;
+
+objectname:	ring_0_peek;
+ retain:		message, patch, ring_0_peek, vtoce_peek;
+
+objectname:	ringbr_;
+ retain:		get, get_dir, set, set_dir, get_ring_brackets_seg;
+
+objectname:	set;
+ delete:		set;
+ retain:		audit_flag_path, auth, backup_dump_time, backup_times, bc,
+		bc_auth_path, bc_seg, bc_seg_priv, change_bc_path, 
+		change_bc_ptr, copysw, damaged_sw_path, damaged_sw_ptr, 
+		dates, dnzp_sw_path, dnzp_sw_ptr, entry_bound_path,
+		entry_bound_ptr, max_length_path, max_length_priv,
+		max_length_ptr, safety_sw_path, safety_sw_ptr, 
+		set_for_reloader, synchronized_sw, volume_dump_switches;
+
+objectname:	set_disk_table_loc;
+ retain:		set_disk_table_loc;
+
+objectname:	set_kst_attributes;
+ retain:		set_kst_attributes, highly_privileged;
+
+objectname:	set_privileges;
+ global:		retain;
+ delete:		set_privileges;
+
+objectname:	set_sons_lvid;
+ retain:		set_pdir_sons_lvid, set_rpv, set_sons_lvid;
+
+objectname:	set_stack_ptr;
+ retain:		set_stack_ptr;
+
+objectname:	shutdown;
+ retain:		shutdown;
+
+objectname:	stack_oob_handler;
+ retain:		stack_oob_handler;
+
+objectname:	star_;
+ retain:		dir_list_, list_, list_dir, list_dir_fast, list_priv, 
+		star_, star_priv;
+
+objectname:	status_;
+ retain:		get_access_class, get_access_class_ptr, get_author, 
+		get_bc_author, get_dates, get_dates_ptr, get_max_length, 
+		get_max_length_ptr, get_mdir_status, get_mdir_status_priv,
+		get_mdir_status_uid_priv,
+		get_safety_sw, get_safety_sw_ptr, get_seg_usage, 
+		get_seg_usage_ptr, get_uid_file, get_user_access_modes, 
+		get_user_access_modes_seg, get_user_effmode,
+		get_user_raw_mode, get_volume_dump_switches,
+		get_volume_dump_switches_ptr, long, minf, mins, status_,
+		get_access_info, get_access_info_seg,
+		status_for_backup;
+
+objectname:	tc_shutdown;
+
+objectname:	template_address_space;
+
+objectname:	terminate_;
+ retain:		name, noname, tefile, terminate_, teseg;
+
+objectname:	trap_caller_caller_;
+ retain:		trap_caller_caller_;
+
+objectname:	truncate;
+ retain:		trfile, trseg;
+
+objectname:	uid_path_util;
+ retain:		decode_uidpath, decode_uidpath_priv, decode_uidpath_raw, get, get_uidpath;
+
+objectname:	vacate_pv;
+ retain:		move_seg_file, move_seg_seg, stop_vacate, vacate_pv;
+
+
+

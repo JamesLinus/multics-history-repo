@@ -1,0 +1,37 @@
+/*  created by M J Grady 19 August 1972 */
+/*  modified November 1976 by M. Weaver to retain set_system_free_area_  */
+/*   modified May 1977 by Dave Vinograd  */
+/* modified June 1977 by M. Weaver to delete get_system_free_area_ and get_temp_segments_ */
+/* modified May 1982 by Lindsey Spratt to add the msf_get_ptr entrypoint
+to msf_manager_. */
+
+Objectname:	bound_fsim_;
+ Global:		delete;
+
+ Force_Order:		file_,
+		file,
+		file_util,
+		msf_manager_,
+		make_msf_;
+
+objectname:	file_;
+ retain:		filemodule,
+		file_module;
+
+objectname:	msf_manager_;
+ retain:		open,
+		get_ptr,
+		msf_get_ptr,
+		adjust,
+		close,
+		acl_add,
+		acl_delete,
+		acl_list,
+		acl_replace;
+
+objectname:	make_msf_;
+ synonym:		unmake_msf_;
+ retain:		make_msf_,
+		unmake_msf_;
+
+/* end */

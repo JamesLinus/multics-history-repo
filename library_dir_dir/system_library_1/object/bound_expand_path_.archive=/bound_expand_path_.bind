@@ -1,0 +1,24 @@
+/* bound_expand_path_       08/05/76  Bernard Greenberg */
+/* Modified 770628 by PG to make absolute_pathname_ separate */
+/* Modified 790829 by PG for archive pathname entries */
+
+Objectname:	bound_expand_path_;
+
+Global:		delete;
+
+Order:		expand_pathname_,
+		absolute_pathname_;
+
+objectname:	expand_pathname_;
+ synonym:		expand_path_;
+ retain:		add_suffix,
+		component,
+		component_add_suffix,
+		expand_path_,
+		expand_pathname_;
+
+objectname:	absolute_pathname_;
+ retain:		absolute_pathname_,
+		add_suffix;
+
+/* end */

@@ -1,0 +1,34 @@
+/* bindfile for bound_dir_info_ */
+
+Objectname:	bound_dir_info_;
+
+Global:		delete;
+
+Addname:		comp_dir_info,
+		rebuild_dir,
+		list_dir_info,
+                    list_dir_info_,
+		save_dir_info;
+
+Order:		comp_dir_info,
+		rebuild_dir,
+		list_dir_info,
+		list_dir_info_,
+		save_dir_info;
+
+objectname:	comp_dir_info;
+ retain:		comp_dir_info;
+
+objectname:	rebuild_dir;
+ retain:		rebuild_dir;
+
+objectname:	list_dir_info;
+ retain:		list_dir_info;
+
+objectname:	list_dir_info_;
+ retain:		list_dir_info_;
+
+objectname:	save_dir_info;
+ retain:		save_dir_info;
+
+/* end */

@@ -1,0 +1,412 @@
+/* Bindfile for bound_math_ (PL/I-FORTRAN runtime functions).
+   Modified: July 17, 1973 by C. L. Wong - add random_
+   Modified: 5 Sept 1973, DSLevin - add cfmp_, cfdp_, cxp2_, catan_, catanh_,
+	dcabs_, dcfmp_, dcfdp_, dcxp1_, dcxp2_, dcsqrt_, dcexp_, dclog_,
+	dcsin_, dccos_, dctan_, dcsinh_, dccosh_, dctanh_, dcasin_, dcacos_,
+	dcasinh_, dcacosh_, dcatan_, dcatanh_.
+   Modified: 6 March 1980, C R Davis - add fort_index_.
+   Modified: 27 May 1982, T Oke - add fort_math_builtins_ (abs_, aimag_, aint_,
+		amod_, anint_, conjg_, dabs_, ddim_, dim_, dint_, dnint_,
+		dprod_, dsign_, iabs_, idim_, idnint_, isign_, len_, mod_,
+		nint_, sign_)
+   Modified: 26 July 1983, t. Oke - moved out dmod_ and fort_math_builtins_.
+
+*/
+
+Objectname:	bound_math_;
+
+Order:		asin_,
+		asinh_,
+		atan2_,
+		cabs_,
+		casin_,
+		catan_,
+		cexp_,
+		cfdp_,
+		cfmp_,
+		clog_,
+		code_,
+		csin_,
+		csqrt_,
+		cxp1_,
+		cxp12_,
+		cxp2_,
+		dasin_,
+		dasinh_,
+		datan2_,
+		dcabs_,
+		dcasin_,
+		dcatan_,
+		dcexp_,
+		dcfdp_,
+		dcfmp_,
+		dclog_,
+		dcsin_,
+		dcsqrt_,
+		dcxp1_,
+		dcxp12_,
+		dcxp2_,
+		derf_,
+		dexerfc_,
+		dexp_,
+		diexp_,
+		dlog_,
+		dsin_,
+		dsinh_,
+		dsqrt_,
+		dtan_,
+		dtanh_,
+		dxp1_,
+		dxp12_,
+		dxp2_,
+		erf_,
+		exerfc_,
+		exp_,
+		iexp_,
+		fort_index_,
+		log_,
+		random_,
+		round_,
+		sin_,
+		sinh_,
+		sqrt_,
+		tan_,
+		tanh_,
+		xp2_,
+		xp22_,
+		xp3_;
+
+Addname:		acos_,
+		acosd_,
+		acosh_,
+		adexp_,
+		asin_,
+		asind_,
+		asinh_,
+		atan2_,
+		atan_,
+		atand2_,
+		atand_,
+		atanh_,
+		cabs_,
+		cacos_,
+		cacosh_,
+		casin_,
+		casinh_,
+		catan_,
+		catanh_,
+		ccos_,
+		ccosh_,
+		cexp_,
+		cfdp_,
+		cfmp_,
+		clog_,
+		code_,
+		cos_,
+		cosd_,
+		cosh_,
+		csin_,
+		csinh_,
+		csqrt_,
+		ctan_,
+		ctanh_,
+		cxp1_,
+		cxp12_,
+		cxp2_,
+          	dacos_,
+		dacosd_,
+		dacosh_,
+		dasin_,
+		dasind_,
+		dasinh_,
+		datan2_,
+		datan_,
+		datand2_,
+		datand_,
+		datanh_,
+		dcabs_,
+		dcacos_,
+		dcacosh_,
+		dcasin_,
+		dcasinh_,
+		dcatan_,
+		dcatanh_,
+		dccos_,
+		dccosh_,
+		dcexp_,
+		dcfdp_,
+		dcfmp_,
+		dclog_,
+		dcos_,
+		dcosd_,
+		dcosh_,
+		dcsin_,
+		dcsinh_,
+		dcsqrt_,
+		dctan_,
+		dctanh_,
+		dcxp1_,
+		dcxp12_,
+		dcxp2_,
+		derf_,
+		derfc_,
+		dexerfc_,
+		dexp_,
+		diexp_,
+		dlog10_,
+		dlog2_,
+		dlog_,
+		dlone_,
+		dsin_,
+		dsind_,
+		dsinh_,
+		dsqrt_,
+		dtan_,
+		dtand_,
+		dtanh_,
+		dxp1_,
+		dxp12_,
+		dxp2_,
+		erf_,
+		erfc_,
+		exerfc_,
+		exp_,
+		expon_,
+		fort_index_,
+		iexp_,
+		log10_,
+		log2_,
+		log_,
+		lone_,
+		random_,
+		round_,
+		sin_,
+		sind_,
+		sinh_,
+		sqrt_,
+		tan_,
+		tand_,
+		tanh_,
+		xp2_,
+		xp22_,
+		xp3_;
+
+objectname:	asin_;
+ synonym: 	acos_, asind_, acosd_, atan_, atand_;
+ retain:		asin_, acos_, asind_, acosd_, atan_, atand_;
+
+objectname:	asinh_;
+ synonym: 	acosh_;
+ retain:		asinh_, acosh_;
+
+objectname:	atan2_;
+ synonym: 	atand2_;
+ retain:		atan2_, atand2_;		/* Entry point "atan_" duplicated from "asin_" */
+
+objectname:	cabs_;
+ retain:		cabs_;
+
+objectname:	casin_;
+ synonym: 	cacos_, casinh_, cacosh_;
+ retain:		casin_, cacos_, casinh_, cacosh_;
+
+objectname:	catan_;
+ synonym:		catanh_;
+ retain:		catan_, catanh_;
+
+objectname:	cexp_;
+ retain:		cexp_;
+
+objectname:	cfdp_;
+ retain:		cfdp_;
+
+objectname:	cfmp_;
+ retain:		cfmp_;
+
+objectname:	clog_;
+ retain:		clog_;
+
+objectname:	code_;
+ retain:		code_;
+
+objectname:	csin_;
+ synonym: 	ccos_, ctan_, csinh_, ccosh_, ctanh_;
+ retain:		csin_, ccos_, ctan_, csinh_, ccosh_, ctanh_;
+
+objectname:	csqrt_;
+ retain:		csqrt_;
+
+objectname:	cxp1_;
+ retain:		cxp1_;
+
+objectname:	cxp12_;
+ retain:		cxp12_;
+
+objectname:	cxp2_;
+ retain:		cxp2_;
+
+objectname:	dasin_;
+ synonym: 	dacos_, dasind_, dacosd_, datan_, datand_;
+ retain:		dasin_, dacos_, dasind_, dacosd_, datan_, datand_;
+
+objectname:	dasinh_;
+ synonym: 	dacosh_;
+ retain:		dasinh_, dacosh_;
+
+objectname:	datan2_;
+ synonym: 	datand2_;
+ retain:		datan2_, datand2_;		/* ... "datan_" ... "dasin_" */
+
+objectname:	dcabs_;
+ retain:		dcabs_;
+
+objectname:	dcasin_;
+ synonym:		dcacos_, dcasinh_, dcacosh_;
+ retain:		dcasin_, dcacos_, dcasinh_, dcacosh_;
+
+objectname:	dcatan_;
+ synonym:		dcatanh_;
+ retain:		dcatan_, dcatanh_;
+
+objectname:	dcexp_;
+ retain:		dcexp_;
+
+objectname:	dcfdp_;
+ retain:		dcfdp_;
+
+objectname:	dcfmp_;
+ retain:		dcfmp_;
+
+objectname:	dclog_;
+ retain:		dclog_;
+
+objectname:	dcsin_;
+ synonym:		dccos_, dctan_, dcsinh_, dccosh_, dctanh_;
+ retain:		dcsin_, dccos_, dctan_, dcsinh_, dccosh_, dctanh_;
+
+objectname:	dcsqrt_;
+ retain:		dcsqrt_;
+
+objectname:	dcxp1_;
+ retain:		dcxp1_;
+
+objectname:	dcxp12_;
+ retain:		dcxp12_;
+
+objectname:	dcxp2_;
+ retain:		dcxp2_;
+
+objectname:	derf_;
+ synonym: 	derfc_;
+ retain:		derf_, derfc_;
+
+objectname:	dexerfc_;
+ retain:		dexerfc_;
+
+objectname:	dexp_;
+ retain:		dexp_;
+
+objectname:	diexp_;
+ retain:		diexp_;
+
+objectname:	dlog_;
+ synonym: 	dlog2_, dlog10_, dlone_, datanh_;
+ retain:		dlog_, dlog2_, dlog10_, dlone_, datanh_;
+
+objectname:	dsin_;
+ synonym: 	dcos_, dsind_, dcosd_;
+ retain:		dsin_, dcos_, dsind_, dcosd_;
+
+objectname:	dsinh_;
+ synonym: 	dcosh_;
+ retain:		dsinh_, dcosh_;
+
+objectname:	dsqrt_;
+ retain:		dsqrt_;
+
+objectname:	dtan_;
+ synonym: 	dtand_;
+ retain:		dtan_, dtand_;
+
+objectname:	dtanh_;
+ retain:		dtanh_;
+
+objectname:	dxp1_;
+ retain:		dxp1_;
+
+objectname:	dxp12_;
+ retain:		dxp12_;
+
+objectname:	dxp2_;
+ retain:		dxp2_;
+
+objectname:	erf_;
+ synonym: 	erfc_;
+ retain:		erf_, erfc_;
+
+objectname:	exerfc_;
+ retain:		exerfc_;
+
+objectname:	exp_;
+ retain:		exp_;
+
+objectname:	fort_index_;
+ retain:		fort_index_;
+
+objectname:	iexp_;
+ retain:		iexp_;
+
+objectname:	log_;
+ synonym: 	log2_, log10_, lone_, atanh_;
+ retain:		log_, log2_, log10_, lone_, atanh_;
+
+objectname:         random_;
+ retain:		normal,
+                    normal_ant,
+                    normal_ant_seq,
+                    normal_seq,
+                    uniform,
+                    uniform_ant,
+                    uniform_seq,
+                    uniform_ant_seq,
+                    get_seed,
+                    set_seed,
+                    exponential,
+                    exponential_seq,
+		random_;
+
+objectname:	round_;
+ synonym: 	expon_, adexp_;
+ retain:		round_, expon_, adexp_;
+
+objectname:	sin_;
+ synonym: 	cos_, sind_, cosd_;
+ retain:		sin_, cos_, sind_, cosd_;
+
+objectname:	sinh_;
+ synonym: 	cosh_;
+ retain:		sinh_, cosh_;
+
+objectname:	sqrt_;
+ retain:		sqrt_;
+
+objectname:	tan_;
+ synonym: 	tand_;
+ retain:		tan_, tand_;
+
+objectname:	tanh_;
+ retain:		tanh_;
+
+objectname:	xp2_;
+ retain:		xp2_;
+
+objectname:	xp22_;
+ retain:		xp22_;
+
+objectname:	xp3_;
+ retain:		xp3_;
+
+/* End */
+
+
+

@@ -1,0 +1,74 @@
+/*
+   Modified Sept 13 1973 by R.B.Snyder.
+   Modified May 30 1975 by B. Greenberg.
+   Modified April 1, 1975 by Robert Coren
+   Modified May 1977 by Larry Johnson for format_fnp_trace_msg_
+   Modified Dec 1979 by J. A. Bush to retain get_dump_ptrs_$dump_dir
+   */
+
+Order:		od355_msgs,
+		online_355_dump_,
+		format_355_dump_line_,
+		format_fnp_trace_msg_,
+		online_dump_fnp,
+		get_dump_ptrs_,
+		od_stack_,
+		copy_dump_seg_,
+		online_dump,
+		od_print_,
+		format_dump_line_,
+		print_dump_seg_name_,
+		get_ast_name_;
+
+Objectname:	bound_od_;
+Addname:		copy_dump_seg_,
+		get_ast_name_,
+		od_stack_,
+		get_dump_ptrs_,
+		online_355_dump_,
+		online_dump_fnp, od_fnp,
+		format_fnp_trace_msg_,
+		od355_msgs,
+		online_dump, od, od_cleanup, online_dump_355, od_355;
+
+Global:		delete;
+
+objectname:	od355_msgs;
+  retain:		trace_modtab, die_list;
+
+objectname:	online_355_dump_;
+ retain:		online_355_dump_;
+
+objectname:	format_355_dump_line_;
+
+objectname:	format_fnp_trace_msg_;
+  retain:		format_fnp_trace_msg_;
+
+objectname:	online_dump_fnp;
+ synonym:	od_fnp;
+ retain:		online_dump_fnp, od_fnp;
+
+objectname:	get_dump_ptrs_;
+ retain:		get_dump_ptrs_, dump_dir;
+
+objectname:	od_stack_;
+ retain:		od_stack_;
+
+objectname:	copy_dump_seg_;
+ retain:		copy_dump_seg_;
+
+objectname:	online_dump;
+ synonym: 	od, od_cleanup, online_dump_355, od_355;
+ retain:		online_dump, od, od_cleanup, online_dump_355, od_355;
+
+objectname:	od_print_;
+ retain:		op_finish;		/* Like od_cleanup, but no detach */
+
+objectname:	format_dump_line_;
+
+objectname:	print_dump_seg_name_;
+
+objectname:	get_ast_name_;
+ retain:	get_ast_name_;
+
+/* End */

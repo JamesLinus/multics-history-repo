@@ -1,0 +1,105 @@
+/* HISTORY COMMENTS:
+  1) change(85-09-30,LJAdams), approve(85-09-30,MCR7150),
+     audit(86-02-07,Wallman), install(86-02-13,MR12.0-1017):
+     Changed to retain entry point for pnotice_language_info_ for use with
+     hcom programs.
+  2) change(85-09-30,LJAdams), approve(85-09-30,MCR7150),
+     audit(86-02-19,Gilcrease), install(86-02-19,MR12.0-1021):
+     Changed to retain entry point for pnotice_language_info_ for use
+     with hcom programs.
+  3) change(85-11-06,LJAdams), approve(85-11-06,MCR7278),
+     audit(86-02-19,Gilcrease), install(86-02-19,MR12.0-1021):
+     Combining the history comment programs and the pnotice programs into a
+     single bound unit for installation.
+  4) change(86-05-12,LJAdams), approve(86-05-12,MCR7393),
+     audit(86-06-05,Gilcrease), install(86-06-05,MR12.0-1071):
+     Moved PNOTICE_extensions to the 1st position in the Order statement.
+     display_psp will not work if this isnt first.
+  5) change(86-11-05,LJAdams), approve(86-11-05,MCR7526),
+     audit(86-11-05,GDixon), install(86-11-12,MR12.0-1213):
+     Retained entry bound for hcom_cfix_validate_.
+                                                   END HISTORY COMMENTS */
+
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+	/*									*/
+	/* Name:	        bound_pnotice_.bind						*/
+	/* Function:      bindfile for protection notice software.				*/
+	/*									*/
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+
+
+
+Objectname:	bound_pnotice_;
+
+Global:		delete;
+
+Addname:		hcom, history_comment, 
+		hcom_command_query_, 
+		hcom_default_validate_, 
+		display_psp,
+		describe_psp,
+		add_pnotice, display_pnotice, 
+	          generate_pnotice,
+		list_pnotice_names,
+		parse_pnotice_info_,
+		pnotice_language_info_,
+		pnotice_mrl_,
+		pnotice_mlr_,
+		pnotice_paths_;
+
+/* NOTE:	PNOTICE_extensions must be the first unit in the Order statement */
+Order:		PNOTICE_extensions,
+		hcom, 
+		hcom_process_path_, 
+		hcom_process_seg_, 
+                    hcom_parse_, 
+		hcom_command_query_, 
+		hcom_default_validate_, 
+		hcom_cfix_validate_, 
+		pnotice_language_info_, 
+		display_psp,
+		add_pnotice,
+		generate_pnotice,
+		list_pnotice_names,
+		parse_pnotice_info_,
+		pnotice_mlr_,
+		pnotice_paths_;
+
+objectname:	hcom;
+ synonym:		history_comment;
+ retain:		hcom, 
+		history_comment;
+
+
+objectname:	hcom_command_query_;
+  retain:		hcom_command_query_;
+
+objectname:	hcom_default_validate_;
+  retain:		hcom_default_validate_;
+
+objectname:	hcom_cfix_validate_;
+  retain:		hcom_cfix_validate_;
+
+objectname:	pnotice_language_info_;
+  retain:		languages;
+
+objectname:	display_psp;
+  retain:		display_psp, describe_psp;
+
+objectname:	add_pnotice;
+  retain:		add_pnotice, display_pnotice;
+
+objectname:	generate_pnotice;
+  retain:		generate_pnotice;
+
+objectname:	list_pnotice_names;
+  retain:		list_pnotice_names;
+
+objectname:	pnotice_mlr_;
+  retain:		pnotice_mlr_, pnotice_mrl_;
+
+objectname:	pnotice_paths_;
+  retain:		pnotice_paths_;
+
+/* end; */
+

@@ -1,0 +1,43 @@
+/* Bindfile for bound_log_active_ which used to be bound_log_wired_,
+not to be confused with the old bound_log_active_, which is now
+bound_log_support_. */
+
+Objectname:	bound_log_active_;
+
+Global:		delete;
+
+objectname:	log_data_;
+  global:		retain;
+  delete:		symbol_table;
+
+objectname:	log_initialize_;
+  retain:		log_initialize_;
+
+objectname:	log_name_;
+  retain:		name,
+		starname,
+		time;
+
+objectname:	log_position_;
+  retain:		find_time,
+		find_sequence,
+		next_message,
+		prev_message;
+
+objectname:	log_segment_;
+  retain:		create_message,
+		create_message_number,
+		finish_message,
+		get_service_bit,
+		place_in_service,
+		remove_from_service,
+		last_message_info,
+		initialize_sequence;
+
+objectname:	log_wakeup_;
+  retain:		register,
+		deregister,
+		discard_all,
+		send_wakeups;
+
+/*		END		*/

@@ -1,0 +1,88 @@
+/* Bind file for bound_card_dims_
+   Created 8/13/75 by Noel I. Morris
+  Modified 3/7/78 by J. C. Whitmore to add card_util_ as part of new mcc_dim upper-lower case conversion
+*/
+
+Objectname:	bound_card_dims_;
+
+Addname:		check_cd,
+		cpz,
+		cpz_status_table_,
+		crz,
+		crz_status_table_,
+		flipper_, flipper,
+		mcc_, mcc,
+		raw_, raw,
+		viipunch_, viipunch,
+		card_util_;
+
+Order:		card_dim,
+		crz,
+		cpz,
+		crzcpz_dim,
+		crz_status_table_,
+		cpz_status_table_,
+		mcc_,
+		mcc_dim,
+		card_util_,
+		card_codes_,
+		viipunch_,
+		viipunch_dim,
+		check_cd,
+		raw_,
+		raw_dim,
+		fliptab,
+		flipper_,
+		flipper_dim;
+
+Global:		delete;
+
+objectname:	crz;
+ retain:		crzmodule;
+
+objectname:	cpz;
+ retain:		cpzmodule;
+
+objectname:	crzcpz_dim;
+ synonym:		crz_dim, cpz_dim;
+
+objectname:	crz_status_table_;
+ retain:		crz_status_table_;
+
+objectname:	cpz_status_table_;
+ retain:		cpz_status_table_;
+
+objectname:	mcc_;
+ synonym: 	mcc;
+ retain:		mcc_module, mccmodule;
+
+objectname:	mcc_dim;
+
+objectname:	card_util_;
+ retain:		modes, translate, test_mode;
+
+objectname:	card_codes_;
+
+objectname:	viipunch_;
+ synonym: 	viipunch;
+ retain:		viipunch_module, viipunchmodule;
+
+objectname:	viipunch_dim;
+
+objectname:	check_cd;
+
+objectname:	raw_;
+ synonym: 	raw;
+ retain:		raw_module, rawmodule;
+
+objectname:	raw_dim;
+
+objectname:	fliptab;
+
+objectname:	flipper_;
+ synonym: 	flipper;
+ retain:		flipper_module, flippermodule;
+
+objectname:	flipper_dim;
+
+/* End */

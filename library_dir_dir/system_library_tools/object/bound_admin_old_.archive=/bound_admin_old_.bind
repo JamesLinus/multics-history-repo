@@ -1,0 +1,92 @@
+/* obsolete and one-shot admin programs.	10/2/72 THVV */
+/* Modified 750417 by PG to add format_sc1
+   Modified 750605 by PG to add format_answer_table 
+   Modified Sept 1976 by T. Casey to add convert_cdt 
+   Modified 6/78 by J. Whitmore to add convert_dprint_msgs and convert_absentee_queues
+   Modified 10/79 by C. Hornig to add make_MR8_PNT_URF
+   Modified 11/79 by D. Vinograd to add convert_volume_queues
+   Modified July 1981 by C. Hornig to add cv_MR9_use_totals.
+   Modified 7/81 by E. N. Kittlitz for cv_MR9_pdts
+   Modified 3/82 by E. N. Kittlitz for cv_MR10_pdts
+   Modified 5/82 by E. N. Kittlitz for bound_admin_old_tv_
+   Modified 9/82 by E. N. Kittlitz for reset_MR10_pdts.
+   Modified 10/82 by E. N. Kittlitz to delete convert_cdt.
+   Modified 10/83 by G. Palter to add cv_links_to_mail_table.
+   Modified 1984-07-20 by BIM to remove many obsolete entries, and add
+	  10.2 conversion tools.
+   Modified 1984-08-20 by E. Swenson to add more MR10.2 conversion
+            tools and delete make_MR8_PNT_URF.
+   Modified 1984-08-31 by BIM for cv_MR_10_2_use_totals.
+   Modified 1984-12-13 by EJ Sharpe for convert_MR10_2_audit_flags_
+   Modified 1984-12-18, BIM: added convert_old_value_seg, convert_old_log.
+*/
+
+Objectname:	bound_admin_old_;
+Global:		delete;
+
+Order:		convert_MR10_2_projfile,
+		convert_MR10_2_reqfile,
+		convert_MR10_2_sat,
+		convert_MR10_2_pdts,
+		convert_MR10_2_pnt,
+		convert_MR10_2_urf,
+		convert_MR10_2_mail_table,
+		convert_MR10_2_use_totals,
+		convert_MR10_2_audit_flags_,
+		convert_old_value_seg,
+		convert_old_log;
+
+Addname: 		convert_MR10_2_projfile,
+		convert_MR10_2_reqfile,
+		convert_MR10_2_sat,
+		reset_MR10_2_sat,
+		convert_MR10_2_pdts,
+		reset_MR10_2_pdts,
+		convert_MR10_2_pnt,
+		convert_MR10_2_urf,
+		convert_MR10_2_mail_table,
+		convert_MR10_2_use_totals,
+		convert_MR10_2_audit_flags_,
+		reset_MR10_2_audit_flags_,
+		convert_old_value_seg,
+		convert_old_log;
+
+objectname:	convert_MR10_2_projfile;
+ retain:		convert_MR10_2_projfile;
+
+objectname:	convert_MR10_2_reqfile;
+ retain:		convert_MR10_2_reqfile;
+
+objectname:	convert_MR10_2_sat;
+ synonym:		reset_MR10_2_sat;
+ retain:		convert_MR10_2_sat, reset_MR10_2_sat;
+
+objectname:	convert_MR10_2_pdts;
+ synonym:		reset_MR10_2_pdts;
+ retain:		convert_MR10_2_pdts, reset_MR10_2_pdts;
+
+objectname:	convert_MR10_2_pnt;
+ retain:		convert_MR10_2_pnt;
+
+objectname:	convert_MR10_2_urf;
+ retain:		convert_MR10_2_urf;
+
+objectname:	convert_MR10_2_mail_table;
+ retain:		convert_MR10_2_mail_table;
+
+objectname:	convert_MR10_2_use_totals;
+ retain:		convert_MR10_2_use_totals;
+
+objectname:	convert_MR10_2_audit_flags_;
+ retain:		convert_MR10_2_audit_flags_, reset_MR10_2_audit_flags_;
+
+objectname:	convert_old_value_seg;
+ retain:		convert_old_value_seg;
+
+objectname:         convert_old_log;
+ retain:		convert_old_log;
+
+/* END */
+
+
+

@@ -1,0 +1,181 @@
+/*
+  Bind file for bound_trace_
+     written 12/74 by S.E. Barr
+     modified 7/81 by Jeff Ives, add trace_meters, delete get_entry_ptr_
+     modified 4/82 by Jeff Ives, make some trace_catch_ things externally available for private tmt commands.
+     Modified April 1983 by C. Hornig to use display_argument_list_.
+     Modified June 1983 by Jeff Ives to add trace_call_standard_ and trace_standard_.
+     Modified May 1984 by Jeff Ives for new subroutine interface.
+*/
+
+Objectname:	bound_trace_;
+
+Global:		delete;
+
+Perprocess_Static;
+
+Addname:		trace,
+		trace_,
+		trace_catch_,
+		trace_meters, tmt,
+		display_argument_list_,
+		watch;
+
+Order:		trace_,
+		trace_catch_,
+		display_argument_list_,
+		trace,
+		trace_calibrate_,
+		trace_conversions_,
+		trace_entrypoints_,
+		trace_meters,
+		trace_parameters_,
+		trace_print_,
+		trace_recurse_,
+		trace_recurse_dummy_,
+		trace_repeat_,
+		trace_repeat_dummy_,
+		trace_tables_,
+		trace_time_,
+		trace_transactions_,
+		trace_version_,
+		watch;
+
+objectname:	trace_;
+ retain:		add_specified_eps,
+		add_specified_locs,
+		alm,
+		arguments,
+		automatic,
+		buffer,
+		buffer_counts,
+		buffer_event,
+		buffer_event_header,
+		buffer_event_string,
+		buffer_ptr,
+		calibrate,
+		call,
+		compensation,
+		cv_bit_to_onoff,
+		cv_bits_to_inout,
+		cv_entry_name_to_spp,
+		cv_file_path_to_osw,
+		cv_inout_to_bits,
+		cv_n_to_number,
+		cv_onoff_to_bit,
+		cv_stream_name_to_osw,
+		enabled,
+		entrypoint_counts,
+		entrypoint_global_meters,
+		entrypoint_index,
+		entrypoint_local_meters,
+		entrypoint_name,
+		entrypoint_ptr,
+		entrypoint_seg_path,
+		entrypoint_status,
+		every,
+		first,
+		function,
+		global_parms_string,
+		high,
+		in_trace,
+		last,
+		location_ptr,
+		location_seg_path,
+		location_values,
+		long,
+		loud,
+		low,
+		me,
+		meter,
+		metered,
+		new_high,
+		num_entrypoints,
+		num_locations,
+		num_specified_entrypoints,
+		num_specified_locations,
+		output_switch,
+		parms_specified,
+		parms_string,
+		remove_specified_eps,
+		remove_specified_locs,
+		removed,
+		reset_meters,
+		set_alm,
+		set_arguments,
+		set_automatic,
+		set_buffer,
+		set_calibrate,
+		set_call,
+		set_compensation,
+		set_enabled,
+		set_every,
+		set_first,
+		set_high,
+		set_last,
+		set_long,
+		set_loud,
+		set_low,
+		set_meter,
+		set_new_high,
+		set_output_switch,
+		set_signals,
+		set_stop,
+		set_stop_every,
+		set_stop_low,
+		set_stop_proc,
+		set_stop_routine,
+		set_trace,
+		set_trace_routine,
+		signals,
+		specified_entrypoint_index,
+		specified_location_index,
+		specify_changed_locations,
+		specify_entrypoints,
+		specify_locations,
+		stop,
+		stop_every,
+		stop_low,
+		stop_proc,
+		stop_routine,
+		trace,
+		trace_routine,
+		transaction_begin,
+		transaction_begin_force,
+		transaction_end,
+		translator_id,
+		turn_off_specified_eps,
+		turn_on_specified_eps,
+		update_default_parms,
+		update_global_parms,
+		version;
+objectname:	trace_catch_;
+ retain:		catch_pl1_;
+objectname:	display_argument_list_;
+ retain:		display_argument_list_;
+objectname:	trace;
+ retain:		trace,
+		compensation,
+		compensations;
+objectname:	trace_calibrate_;
+objectname:	trace_conversions_;
+objectname:	trace_entrypoints_;
+objectname:	trace_meters;
+ synonym:		tmt;
+ retain:		trace_meters,
+		tmt;
+objectname:	trace_parameters_;
+objectname:	trace_print_;
+objectname:	trace_recurse_;
+objectname:	trace_recurse_dummy_;
+objectname:	trace_repeat_;
+objectname:	trace_repeat_dummy_;
+objectname:	trace_tables_;
+objectname:	trace_time_;
+objectname:	trace_transactions_;
+objectname:	trace_version_;
+objectname:	watch;
+ retain:		watch;
+
+
+

@@ -1,0 +1,40 @@
+/* Bindfile for search-rule commands.
+   Modified June 1973 by Arlene J. Scherer to add command add_search_rules
+   Modified 761221 by PG to remove set_search_dirs.
+   */
+
+Objectname:	bound_search_rules_;
+Addname:		parse_search_rules_,
+		print_search_rules, psr,
+		set_search_rules, ssr,
+		add_search_rules, asr,
+		delete_search_rules, dsr,
+		get_system_search_rules, gssr;
+Order:		parse_search_rules_,
+		set_search_rules,
+		add_search_rules,
+		get_system_search_rules;
+Global:		delete;
+
+objectname:	set_search_rules;
+ synonym: 	ssr, print_search_rules, psr;
+ retain:		set_search_rules,
+		ssr,
+		print_search_rules,
+		psr;
+
+objectname:	parse_search_rules_;
+ retain:		parse_search_rules_;
+
+objectname:	add_search_rules;
+ retain:		add_search_rules,
+		asr,
+		delete_search_rules,
+		dsr;
+
+objectname:	get_system_search_rules;
+ retain:		get_system_search_rules, gssr;
+/* End */
+
+
+

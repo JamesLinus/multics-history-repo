@@ -1,0 +1,21 @@
+/* bind file for the stand alone macro processor 
+   20 Feb 1981 -- Marshall Presser */
+
+Objectname: bound_pl1_macro_;
+
+Global: delete;
+
+Addname: pl1_macro, pmac;
+
+objectname: pl1_macro;
+synonym:	  pmac;
+retain:	  pl1_macro, pmac;
+
+objectname: pl1_macro_lex_;
+
+objectname: pl1_macro_error_;
+
+/* end bound_pl1_macro_.bind */
+
+
+

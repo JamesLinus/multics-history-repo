@@ -1,0 +1,77 @@
+/* Search Facility Bindfile.
+
+   17 February 1978 created by P. Smee for WORDPRO.
+   3-Oct-78 Updated and removed search_list_defaults_ by Monte Davidoff.
+   9-Oct-79 Added Perprocess_Static, M. N. Davidoff.
+*/
+Objectname:	bound_search_facility_;
+
+Addname:		set_search_paths,
+		ssp,
+		add_search_paths,
+		asp,
+		delete_search_paths,
+		dsp,
+		print_search_paths,
+		psp,
+		where_search_paths,
+		wsp,
+		search_paths_,
+		find_include_file_,
+		set_translator_search_rules,
+		stsr,
+		print_translator_search_rules,
+		ptsr;
+
+Global:		delete;
+Perprocess_Static;
+
+Order:		set_search_paths,
+		search_paths_,
+		find_include_file_,
+		set_translator_search_rules;
+
+objectname:	set_search_paths;
+ synonym:		ssp,
+		add_search_paths,
+		asp,
+		delete_search_paths,
+		dsp,
+		where_search_paths,
+		wsp;
+ retain:		set_search_paths,
+		ssp,
+		add_search_paths,
+		asp,
+		delete_search_paths,
+		dsp,
+		print_search_paths,
+		psp,
+		where_search_paths,
+		wsp;
+
+objectname:	search_paths_;
+ retain:		find_dir,
+		find_all,
+		get,
+		set,
+		list,
+		delete_list,
+		init_search_seg;
+
+objectname:	find_include_file_;
+ retain:		initiate_count;
+
+objectname:	set_translator_search_rules;
+ synonym:		stsr,
+		print_translator_search_rules,
+		ptsr;
+ retain:		set_translator_search_rules,
+		stsr,
+		print_translator_search_rules,
+		ptsr;
+
+/* End */
+
+
+

@@ -1,0 +1,76 @@
+/* Bindfile for bound_debug_
+   Rewritten by W. Silver & R.S. Coren 1/26/73.
+   modified by JRDavis to remove binoct_tv, remove names db_regs and list_arg_,
+   and move disassemble to bound_debug_util_
+   modified 11/01/83 by M. Weaver to retain instead of indirect mme2_fault
+*/
+
+Objectname:	bound_debug_;
+
+Addname:		debug,
+		db,
+		comp_8_to_ascii_,
+		legal_f_,
+		pl1_frame_,
+		db_print,
+		db_data,
+		print_text_;
+
+Order:		db_data,
+		db_regs,
+		debug,
+		db_parse,
+		db_find_mc,
+		db_parse_arg,
+		db_get_count,
+		db_fill_snt,
+		pl1_frame_,
+		legal_f_,
+		db_parse_condition,
+		db_break,
+		db_break_map,
+		db_sym,
+		db_get_sym,
+		db_line_no,
+		db_print,
+		comp_8_to_ascii_,
+		print_text_,
+		db_ext_stat_,
+		binoct_tv_,
+		fix_bit,
+		db_assign,
+		list_arg_;
+
+Perprocess_Static;
+
+Global:		delete;
+
+objectname:	comp_8_to_ascii_;
+ retain:		comp_8_to_ascii_;
+
+objectname:	debug;
+ synonym:		db;
+ retain:		debug,
+		db,
+		mme2_fault;
+
+
+objectname:	pl1_frame_;
+ retain:		pl1_frame_,
+		name;
+
+objectname:	legal_f_;
+ retain:		legal_f_;
+
+
+objectname:	db_print;
+ retain:		db_print;
+
+objectname:	print_text_;
+ retain:		print_text_;
+
+objectname:	db_data;
+ retain:		names,
+		tags;
+
+/* End */

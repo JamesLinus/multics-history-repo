@@ -1,0 +1,80 @@
+/* *********************************************************
+   *                                                       *
+   * Copyright, (C) BULL HN Information Systems Inc., 1989 *
+   *                                                       *
+   * Copyright, (C) Honeywell Bull Inc., 1987              *
+   *                                                       *
+   * Copyright (c) 1972 by Massachusetts Institute of      *
+   * Technology and Honeywell Information Systems, Inc.    *
+   *                                                       *
+   ********************************************************* */
+
+
+
+/* HISTORY COMMENTS:
+  1) change(87-08-06,Parisek), approve(87-08-06,MCR7749),
+     audit(87-08-06,Martinson), install(87-08-13,MR12.1-1085):
+     Remove exec_com_caller_.
+  2) change(88-06-20,Berno), approve(88-07-13,MCR7928),
+     audit(88-06-20,Parisek), install(88-07-19,MR12.2-1061):
+     Add as_uncp_mpx_ entry for the UNCP multiplexer (DSA gateway)
+     implementation.
+  3) change(88-07-07,Beattie), approve(88-06-27,MCR7926),
+     audit(88-07-22,Brunelle), install(88-08-08,MR12.2-1082):
+     Add as_lap_mpx_ entry for the X.25 lap multiplexer.
+  4) change(89-10-03,Beattie), approve(89-10-03,MECR0011),
+     audit(89-10-03,Farley), install(89-10-04,MR12.3-1084):
+     Correct typo in as_lap_mpx_ entry of Addname statement.
+  5) change(88-10-03,Beattie), approve(89-10-19,MCR8141),
+     audit(89-10-19,Farley):
+     Offical correction/installation of previous problem.
+                                                   END HISTORY COMMENTS */
+
+
+/* bound_as_mpx_: Answering service support for system-supplied multiplexers */
+/* Modified 1985-04-10, BIM: retain mcs trace entrypoints */
+
+Objectname:	bound_as_mpx_;
+ Global:		 delete;
+
+Addname:		as_hasp_mpx_,
+		as_ibm3270_mpx_,
+		as_mcs_mpx_,
+		as_uncp_mpx_,
+		as_sty_mpx_,
+		as_vip7760_mpx_,
+		as_x25_mpx_,
+		as_lap_mpx_;
+
+Order:		as_hasp_mpx_,
+		as_ibm3270_mpx_,
+		as_mcs_mpx_,
+                    as_uncp_mpx_,
+		as_sty_mpx_,
+		as_vip7760_mpx_,
+		as_x25_mpx_,
+		as_lap_mpx_;
+
+objectname:	as_hasp_mpx_;
+ retain:		 hasp_load, hasp_dump, hasp_cv_cmf;
+
+objectname:	as_ibm3270_mpx_;
+ retain:		 ibm3270_load, ibm3270_dump, ibm3270_cv_cmf;
+
+objectname:	as_mcs_mpx_;
+ retain:		 mcs_load, mcs_dump, mcs_cv_cmf, trace_on, trace_off;
+
+objectname:         as_uncp_mpx_;
+ retain:             uncp_load, uncp_dump, uncp_cv_cmf;
+
+objectname:	as_sty_mpx_;
+ retain:		 sty_cv_cmf, sty_load, sty_dump;
+
+objectname:	as_vip7760_mpx_;
+ retain:		 vip7760_load, vip7760_dump, vip7760_cv_cmf;
+
+objectname:	as_x25_mpx_;
+ retain:		 x25_dump, x25_cv_cmf, x25_load;
+
+objectname:         as_lap_mpx_;
+ retain:             lap_dump, lap_cv_cmf, lap_load;

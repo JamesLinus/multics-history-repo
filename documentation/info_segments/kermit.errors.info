@@ -1,0 +1,151 @@
+
+09/21/87  kermit 
+Known errors in the current release of kermit.
+#	Associated TR's
+Description
+
+19  phx20214
+Running kermit over a network block transfer is not possible at low
+baud rates will cause kermit to become confused.  kermit_pad_ assumes
+that it is operating in block transfer mode, so that if it receives any
+characters, it will be a whole block or multiples of blocks.  It
+completely drops packet fragments thus making network (ARPANET)
+transfers at low baud rates impossible.  This is because if the user is
+sending a file at 300 baud, it will send a few characters at a time.
+kermit_pad_ will wake up, notice that it has a packet fragment and
+discard it.
+
+Proposed solution:
+
+Modify receive packet internal procedure within kermit_pad_ to retain
+packet fragments and assemble them as they come.
+
+18  phx20954
+Optimizer bug in kermit.
+
+Proposed solution:
+
+Packet_fix and packet_type should be added in kermit_pad_ to get around
+optimizer bug.
+
+17  phx20955 phx20846
+kermit is unable to handle multisegment files.  Approximately one out
+of 4 or 5 million byte would be missing when transferring MSF files.
+
+Proposed solution:
+
+Add support for MSF files :  change substr parameters, detect the
+improperly decoded packets and retry them, handle the lost packets
+carefully, and use vfile for debug to allow for MSF trace.
+
+16  phx20953,phx20952
+The currect kermit is unable to handle extended packet header and
+unable to communicate with nos/ve kermit due to extraneous data being
+transmitted by nos/ve.
+
+Proposed solution:
+
+Add support of extended packet header, enhance packet handling, extend
+maximum packet size from 96 to 1500 characters, and add modes for
+capabilities, window size and maximum extened packet length.
+
+15  phx20956
+Difficulties in representing characters, such as CR and NL in the
+source programs.
+
+Proposed solution:
+
+The definition of CR and NL should be moved to an include file, and
+should be coded as bit strings with overlays.
+
+14  phx20948
+Incorrect parity value "off" is found in kermit_mode_mgr_.  The 5 valid
+parity values are "none", "space", "mark", "even" and "odd".
+
+13  phx20103
+kermit will sometimes echo packets while in server mode, and mistakes
+timeouts while idling as legitimate packets.  Upon entering server
+mode, kermit will wait for 5 seconds before setting the line
+characteristic for data transfer.  It also resets the line
+characteristics between file transfer.  Any packets received at this
+time will be echoed to the caller as invalid packets.
+
+In addition, kermit will process timeouts while idling as legitimate
+packets when waiting for packet zero (0).  This causes it to send error
+packets with the Unimplemented command message.  This causes difficulty
+starting loading after a pause.
+
+Proposed solution:
+
+          kermit_info.incl.pl1:
+          Add server and transfer_modes_set indicators in the
+          "kermit_comm_info" structure.
+
+          kermit.pl1:
+          Do not set "server" and "transfer_modes_set" flags unless it is in
+          the server mode.
+
+          kermit_comm_mgr_.pl1:
+          Use "transfer_modes_set" flag so that initial line modes cannot be
+          lost.
+
+          kermit_server_request_.pl1:
+          Set the "server" flag properly according to the mode.  Delete the 5
+          second waiting and set file transfer mode immediately.
+
+          kermit_server_.pl1:
+          Idle until a valid packet is received regardless of the packet
+          number.  Remove all reset_line_modes except before logout.
+
+12  phx20598
+Some systems does not support the repeat character.  When requesting
+files from is (via get filename) the requested filename sent to the
+remote uses the repeat_char "~" to represent the trailing blanks.  The
+server rejects this as an illegal filename.  Using rtrim on the
+filename helps, but still a filename like "aaaaaa" would be sent as
+"~(a".  Since the Receive_init_packet can be sent before protocol has
+been negotiated, it should never be encoded or decoded before
+determining whether the server kermit will honour its encoding.
+
+Proposed solution:
+          kermit_remote_requests_.pl1:
+          Use rtrim to remove trailing blanks of the filename when sending
+          file to the remote.
+
+          kermit_pad_.pl1:
+          Do not encode or decode Receive_init_packets before determining
+          whether the server kermit will honour its encoding.
+
+11  phx20633
+kermit_comm_mgr_ does not set "^breakall" mode when setting "blk_xfer".
+This means that wakeups may not be received when data arrives.
+
+Proposed solution:  The "^breakall" mode should be added to the list of
+Constant_modes.  If a user has "breakall" enable on the io switch used
+by kermit, wakeups don't arrive.  When "breakall" and "blk_xfer" modes
+are both set, problems may arise.  So, if "blk_xfer" mode is used, then
+"^breakall" should be set, else switch "iox_$user_io" should be used.
+
+The affected module:
+          kermit_comm_mgr_.pl1
+          Add "^breakall" indicators.  Set "^breakall" and "blk_xfer" modes
+          together to avoid further problems.
+
+8  phx19739
+Multics kermit does not use the packet-length and control-quoting
+character provided by the local kermit correctly.  When sending data
+from Multics kermit to a local kermit, Multics kermit does not use the
+"receive packet length" that is provided by the local kermit.  As a
+result, the same packet length is used, regardless of whether
+Multics-kermit is sending or receiving.
+
+A similar problem exists for the character used to quote control
+characters.  If the control quoting characters for the two systems
+differ, Multics will use the local kermit's control quoting character
+for both output and input.  It should use the local kermit's control
+quoting character for input only.
+
+6  phx19091
+When a file is transmitted from a Mac to Multics, a "" is added to the
+end of the filename.  It is the Mac Kermit that adds the ""; thus, it
+is the culprit, not Multics Kermit.

@@ -1,0 +1,3 @@
+>ldd>standard>object:		get_primary_name_;
+>ldd>tools>object:			get_primary_name_;
+>ldd>unbundled>object:		get_primary_name_;

@@ -1,0 +1,78 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(88-08-09,LJAdams), approve(88-08-09,MCR7766),
+     audit(88-09-03,GDixon), install(88-09-13,MR12.2-1109):
+     The code in tut_quit_ and tut_terminate_sys_ was moved into tutorial and
+     tut_quit_ and tut_terminate_sys_ have been made synonyms for tutorial.
+                                                   END HISTORY COMMENTS */
+
+
+/* Bind file for bound_tutorial_ */
+
+/* Created by J. Siwila  10/06/83 */
+
+Objectname:	bound_tutorial_;
+
+Global:		delete;
+
+Order:		tutorial,
+		tut_main_menu_,
+		tut_getting_help_,
+		tut_giving_commands_,
+		tut_writing_text_,
+		tut_mail_,
+		tut_storing_information_,
+		tut_log_in_,
+		tut_wordpro_,
+		tut_get_seg_,
+		tut_window_,
+		tut_bottom_,
+		display_doc,
+		explain_doc,
+		online_doc_db_index,
+		where_doc;
+
+Addname:		tutorial,
+		explain_doc, edoc,
+		where_doc, wdoc;
+
+objectname:	tutorial;
+ synonym:	          tut_quit_,  tut_terminate_sys_;
+ retain:		tutorial;
+
+objectname:	tut_main_menu_;
+
+objectname:	tut_getting_help_;
+
+objectname:	tut_giving_commands_;
+
+objectname:	tut_writing_text_;
+
+objectname:	tut_mail_;
+
+objectname:	tut_storing_information_;
+
+objectname:	tut_log_in_;
+
+objectname:	tut_wordpro_;
+
+objectname:	tut_get_seg_;
+
+objectname:	tut_window_;
+
+objectname:	tut_bottom_;
+
+objectname:	display_doc;
+
+objectname:	explain_doc;
+ synonym:		edoc;
+ retain:		explain_doc, edoc;
+
+objectname:	online_doc_db_index;
+
+objectname:	where_doc;
+ synonym:		wdoc;
+ retain:		where_doc, wdoc;
+
+/* end; */

@@ -1,0 +1,95 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(77-06-06,Greenberg), approve(), audit(), install():
+     Pre-hcom comments.
+       Created by B. Greenberg 6/6/77
+       Modified by J. A. Bush to add trace_mc 6/29/77
+       modified by B. Greenberg 8/19/78 to add force_write
+       Modified by J. A. Bush 9/18/80 to add history_reg_save
+       Modified 27 June 1981 by W. Olin Sibert to add hc_tune
+       Modified September 1981 by J. Bongiovanni to add set_procs_required,
+              tc_util
+       Modified July 1982 by J. Bongiovanni for tc_util$validate_processid
+       Modified September 1982 by J. Bongiovanni for tc_util$check_abort
+       Modified November 1982 by J. Bongiovanni for force_write$consecutive, force_write$list
+       Modified May 1983 by E. N. Kittlitz for tc_util$get_aptep
+       Modified 831111 to move tc_util to bound_tc_wired... -E. A. Ranzenbach
+       Modified 831213 by E. N. Kittlitz, polly put it back again
+       Modified 07/20/84 by R. Michael Tague:  put in tc_util$ips_wakeup.
+       Modified 841207 by E. Swenson for suspend_tc and resume_tc
+       Modified 841207 by E. Swenson for ipc_get_operands and
+          ipc_get_operands_priv
+  2) change(87-06-02,Lippard), approve(87-02-09,MCR7616),
+     audit(87-06-03,Farley), install(87-08-06,MR12.1-1063):
+     Deleted single_cpu entry point from set_procs_required.
+  3) change(87-08-10,Lippard), approve(87-02-09,PBF7616),
+     audit(87-08-11,Farley), install(87-08-18,MR12.1-1090):
+     Added get_procs_required and get_system_procs_required.
+                                                   END HISTORY COMMENTS */
+
+
+/* bound_hc_tuning.bind */
+
+Objectname:         bound_hc_tuning;
+
+Global:             delete;
+
+Order:              force_write,
+                    user_wire,
+                    trace_mc,
+                    tc,
+                    hc_tune,
+                    set_procs_required,
+                    tc_util,
+                    history_reg_save;
+
+objectname:         force_write;
+ retain:            force_write,
+                    consecutive, list,
+                    set_force_write_limit;
+
+objectname:         user_wire;
+ retain:            user_wire_seg;
+
+objectname:         trace_mc;
+ retain:            trace_buffer_init,
+                    hc_trace_on_off;
+
+objectname:         tc;
+ retain:            define_work_classes,
+                    tune_work_class;
+
+objectname:         hc_tune;
+ retain:            get,
+                    set,
+                    set_silent,
+                    list;
+
+objectname:         set_procs_required;
+ retain:            set_procs_required,
+                    given_processid,
+                    system_default,
+		get_procs_required,
+		get_system_procs_required;
+
+objectname:         tc_util;
+ retain:            process_status,
+                    ips_wakeup,
+                    set_cpu_monitor,
+                    set_timax,
+                    validate_processid,
+                    check_abort,
+                    get_aptep,
+		suspend_tc,
+		resume_tc,
+		get_ipc_operands,
+		get_ipc_operands_priv;
+
+objectname:         history_reg_save;
+ retain:            per_proc_get,
+                    per_proc_set,
+                    per_system_get,
+                    per_system_set;
+
+/*                  END                 */

@@ -1,0 +1,77 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(86-03-17,EJSharpe), approve(86-03-17,MCR7364),
+     audit(86-03-21,Margolin), install(86-04-23,MR12.0-1045):
+     Added set_process_audit_flags and companion entrypoints.
+                                                   END HISTORY COMMENTS */
+
+
+/* BOUND_SECURITY_TOOLS_ - This segment holds routines that are used
+   by the system security administrator to deal with the storage
+   system and administrative access isolation attributes.
+
+   Written by J. Whitmore 741218
+   Modified 750603 by PG to add administrative user control commands
+   Modified 750819 by PG to delete set_term_class & print_term_info, now that CDT exists.
+   Modified 1984-07-20 BIM to remove set_sat_*. We should flush this bound segment!
+   Modified 1984-12-13 by EJ Sharpe - added convert_access_audit_flags_, merge_access_audit_flags_,
+			and set_system_audit_flags.  Also changed name of bound unit
+			(old name was bound_ssa_commands_).
+*/
+
+Objectname:	bound_security_tools_;
+
+Order:		reclassify_dir,
+		reset_soos,
+		set_system_priv,
+		set_system_audit_flags,
+		convert_access_audit_flags_,
+		merge_access_audit_flags_,
+		set_process_audit_flags;
+
+Global:		delete;
+
+Addname:		reclassify_dir,
+		reclassify_seg,
+		reclassify_sys_seg,
+		reset_soos,
+		set_system_priv,
+		set_system_audit_flags,
+		display_system_audit_flags,
+		convert_access_audit_flags_,
+		merge_access_audit_flags_,
+		set_process_audit_flags,
+		edit_process_audit_flags,
+		display_process_audit_flags;
+
+objectname:	reclassify_dir;
+ retain:		reclassify_dir, 
+		reclassify_seg,
+		reclassify_sys_seg;
+
+objectname:	set_system_priv;
+ retain:		set_system_priv;
+
+objectname:	reset_soos;
+ retain:		reset_soos;
+
+objectname:	set_system_audit_flags;
+ synonym:		display_system_audit_flags;
+ retain:		set_system_audit_flags, display_system_audit_flags;
+
+objectname:	convert_access_audit_flags_;
+ retain:		to_string, to_string_long, from_string, edit_from_string;
+
+objectname:	merge_access_audit_flags_;
+ retain:		merge_access_audit_flags_;
+
+objectname:	set_process_audit_flags;
+ retain:		set_process_audit_flags,
+		edit_process_audit_flags,
+		display_process_audit_flags;
+
+/* END */
+
+
+

@@ -1,0 +1,17 @@
+/* Created by J. Bongiovanni May 1981 */
+
+Objectname:	bound_tc_priv;
+Global:		delete;
+
+Order:		pxss,
+		meter_response_time;
+
+objectname:	pxss;
+ synonym:		usage_values;
+ global:		retain;
+
+objectname:	meter_response_time;
+ retain:		meter_response_time;
+
+
+

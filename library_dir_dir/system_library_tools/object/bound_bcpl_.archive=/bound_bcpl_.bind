@@ -1,0 +1,46 @@
+/* Binding control file to save only command and main phase entry points.
+   Last modified on 07/22/73 at 21:24:38 by R F Mabee.
+   Binding order specified in April 1973 by R F Mabee.
+   Modified 22 Nov 1971 by C Garman.
+   Written by R F Mabee for installation of compiler, August 1971.   */
+
+
+Objectname:	bound_bcpl_;
+Addname:		bcpl;
+Global:		delete;
+
+Order:		bcpl_lex2, bcpl_plist, bcpl_report,
+		bcpl_cae0, bcpl_cae1, bcpl_cae2,
+		bcpl_lex0, bcpl_lex1,
+		bcpl_version, bcpl_driver, bcpl_utility, bcpl_trans0, bcpl_cg0,
+		bcpl_trans1, bcpl_trans2, bcpl_trans3, bcpl_trans4, bcpl_trans5, bcpl_trans6,
+		bcpl_cg_interface,
+		bcpl_cg1, bcpl_cg2, bcpl_cg3, bcpl_cg4,
+		bcpl_cg5, bcpl_cg6, bcpl_cg7, bcpl_cg8, bcpl_cg9,
+		bcpl_meter_print;
+
+objectname:	bcpl_driver;
+   synonym:	bcpl;
+   retain:	bcpl, meters;
+
+objectname:	bcpl_utility;
+   retain:	Newvec, Freevec, List1, List2, List3, List4, List5, List6,
+		StoreString, MakeTimeString, FormCharconst, FormStringconst,
+		Nextparam, GetStream, PushInput, PopInput,
+		SaveOldUsage, RecordUsage,
+		UtilitiesInit, Cleanup;
+
+objectname:	bcpl_lex0;
+   retain:	Nextsymb, LexInit, EnterIntoDictionary;
+
+objectname:	bcpl_cae0;
+   retain:	CAE;
+
+objectname:	bcpl_trans0;
+   retain:	Trans;
+
+objectname:	bcpl_cg0;
+   retain:	CgInit, BuildObject, WriteObjectListing;
+
+objectname:	bcpl_plist;
+   retain:	SymbolName, Plist;

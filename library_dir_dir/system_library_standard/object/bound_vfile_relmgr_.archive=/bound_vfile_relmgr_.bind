@@ -1,0 +1,175 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(86-05-14,Dupuis), approve(86-08-05,MCR7491), audit(86-08-08,Blair),
+     install(86-08-15,MR12.0-1127):
+     Changed so that a real transfer vector could be used. The current
+     method of not shipping customers the vfile_relmgr_ transfer vector
+     causes problems.  (mrds #157)
+                                                   END HISTORY COMMENTS */
+
+
+/*  DESCRIPTION:
+
+    bind file for vfile relation manager
+
+*/
+
+/* History:
+
+   82-10-12  R. Harvey:  Initially written
+
+*/
+
+Objectname:	bound_vfile_relmgr_;
+
+Addname:		vfile_relmgr_, 
+                    vrm_data_;
+
+No_Table;
+
+Global:	delete;
+
+Ignore:	vfile_relmgr_;
+
+Order:	vrm_destroy_relation,
+	vrm_open_man,
+	vrm_destroy_cursor,
+	vrm_data_,
+	vrm_open,
+	vrm_create_relation,
+	vrm_set_scope,
+	vrm_close,
+	vrm_create_cursor,
+	vrm_index,
+	vrm_put,
+	vrm_get_by_id,
+	vrm_delete_by_id,
+	vrm_modify_by_id,
+	vrm_get_description,
+	vrm_get_duplicate_key_count,
+	vrm_get_population,
+	vrm_get_by_spec,
+	vrmu_cv_vf_desc_to_ptr,
+	vrmu_search,
+	vrmu_search_init,
+	vrmu_data_class,
+	vrmu_data_length,
+	vrmu_data_align,
+	vrmu_display_descriptor,
+	vrmu_convert,
+	vrmu_compare_values,
+	vrmu_scan_records,
+	vrmu_encode_key,
+	vrmu_add_indexes,
+	vrmu_delete_indexes,
+	vrmu_cv_tuple_to_vector,
+	vrmu_add_tuple,
+	vrmu_cv_vector_to_tuple,
+	vrmu_build_index_list,
+	vrmu_init_rel_desc,
+	vrmu_iocb_manager,
+	vrmu_validate_spec,
+	vrm_display_search_list,
+	vrm_meter;
+
+objectname:	vrm_destroy_relation;
+  retain:		  destroy_relation_by_opening, destroy_relation_by_path;
+
+objectname:	vrm_destroy_cursor;
+  retain:		  destroy_cursor;
+
+objectname:	vrm_open;
+  retain:		  open;
+
+objectname:	vrm_create_relation;
+  retain:		  create_relation, create_MRDS_relation;
+
+objectname:	vrm_set_scope;
+  retain:		  set_scope;
+
+objectname:	vrm_close;
+  retain:		  close;
+
+objectname:	vrm_create_cursor;
+  retain:		  create_cursor, metering_on, metering_off;
+
+objectname:	vrm_index;
+  retain:		  create_index, destroy_index;
+
+objectname:	vrm_put;
+  retain:		  put_tuple, put_tuples;
+
+objectname:	vrm_get_by_id;
+  retain:		  get_tuple_by_id, get_tuples_by_id;
+
+objectname:	vrm_delete_by_id;
+  retain:		  delete_tuples_by_id;
+
+objectname:	vrm_modify_by_id;
+  retain:		  modify_tuples_by_id;
+
+objectname:	vrm_get_by_spec;
+  retain:		  get_tuples_by_spec, get_tuples_and_ids, get_tuple_id, get_count;
+
+objectname:	vrm_get_duplicate_key_count;
+  retain:		  get_duplicate_key_count;
+
+objectname:	vrm_get_description;
+  retain:		  get_description;
+
+objectname:	vrm_get_population;
+  retain:		  get_population;
+
+/* Support for main entries */
+
+objectname:	vrm_data_;
+  global:		  retain;
+
+objectname:	vrm_open_man;
+  retain:		  get_open_info_ptr, get_open_relations;	/* undocumented */
+
+objectname:	vrmu_data_class;
+
+objectname:	vrmu_data_length;
+
+objectname:	vrmu_data_align;
+
+objectname:	vrmu_display_descriptor;
+
+objectname:	vrmu_convert;
+
+objectname:	vrmu_compare_values;
+
+objectname:	vrm_meter;
+  retain:		  vrm_meter, vrmm;			/* undocumented */
+
+objectname:	vrmu_cv_vf_desc_to_ptr;
+
+objectname:	vrmu_scan_records;
+
+objectname:	vrmu_encode_key;
+
+objectname:	vrmu_add_indexes;
+
+objectname:	vrmu_delete_indexes;
+
+objectname:	vrmu_cv_tuple_to_vector;
+
+objectname:	vrmu_add_tuple;
+
+objectname:	vrmu_cv_vector_to_tuple;
+
+objectname:	vrmu_build_index_list;
+
+objectname:	vrmu_init_rel_desc;
+
+objectname:	vrmu_search;
+
+objectname:	vrmu_search_init;
+
+objectname:	vrmu_iocb_manager;
+
+objectname:	vrmu_validate_spec;
+
+objectname:	vrm_display_search_list;

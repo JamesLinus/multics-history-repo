@@ -1,0 +1,17 @@
+/* Bindfile for bound segment that collects misc I/O modules. */
+/* Created 1984-10-22 BIM */
+
+Objectname:	bound_misc_io_modules_;
+Global:		delete;
+Addname:		discard_, signal_io_;
+
+Order:		discard_,
+		signal_io_;
+
+objectname:	discard_;
+ retain:		discard_attach;
+
+objectname:	signal_io_;
+ retain:		signal_io_attach;
+
+/* end */

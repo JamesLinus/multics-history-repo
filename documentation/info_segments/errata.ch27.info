@@ -1,0 +1,62 @@
+11/30/89  CH27 (Multics Emacs Text Editor Users' Guide)
+          Errata Information for MR12.3
+
+
+pg B-5 to B-6:  add the following RMAIL mode commands.
+
+     ?   rmail-help
+         Displays as printout a brief description of each of the
+         RMAIL mode commands.
+
+     x   rmail-toggle-seen
+         Toggles the "Seen" switch of the current message being
+         read.  The state of this switch is indicated as minor
+         mode "Seen" in the RMAIL buffer.
+
+
+     f   rmail-forward
+         Forwards the current message to a list of addresses
+         which are prompted for in the mini-buffer.
+         Redistribution comments can be added by supplying a
+         numeric argument (e.g., 3f).  A comment buffer which
+         allows the use of ^X^Q (quit), ^X^A (acknowledge), and
+         ^X^S (send) will be created.
+
+
+pg B-7:  replace the first paragraph of the page with the
+     following.
+
+         Once you have invoked the r request, you can use the
+         MAIL mode requests as well as the standard Emacs
+         requests.  In addition, the following requests are
+         available (refer to the individual rmail request to
+         determine which of these requests are valid).
+
+
+pg B-7:  add the following RMAIL command description.
+
+         ^X^A rmail-toggle-ack
+         In a mail-mode or forwarding comments buffer, toggles
+         the "Ack" request of the mail.
+
+
+pg B-7:  replace the description of ^X^S with the following.
+
+         ^X^S send-the-mail, foward-the-mail
+         Sends the reply, or forwards the message and comments,
+         and returns to RMAIL and its window.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,19 @@
+Objectname:	bound_eis_tester_;
+
+Addname:		et, eis_tester;
+
+Global:		delete;
+
+Order:		et_instr_data,
+		et,
+		et_test,
+		et_inst,
+		et_desc,
+		et_data,
+		et_page,
+		et_mf,
+		et_util;
+
+
+objectname:	et;
+retain:		et, eis_tester, gen;

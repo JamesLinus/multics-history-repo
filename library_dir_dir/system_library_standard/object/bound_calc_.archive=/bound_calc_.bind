@@ -1,0 +1,17 @@
+/* Bindfile for bound_calc_.
+   Initially written 18 Feb 1971 by Dan Bricklin.
+   Last modified 30 Nov 1971 by C Garman.
+   */
+
+Objectname:	bound_calc_;
+Addname:		calc;
+Global:		delete;
+
+objectname:	ffip;
+
+objectname:	calc;
+ retain:		calc;
+
+objectname:	ffop;
+
+/* End */

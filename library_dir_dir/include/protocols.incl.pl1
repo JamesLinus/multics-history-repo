@@ -1,0 +1,31 @@
+/* ------------------ BEGIN include file protocols.incl.pl1 -------------- */
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(89-03-16,Parisek), approve(89-10-25,MECR0012),
+     audit(89-10-25,Farley), install(89-10-25,MR12.3-1100):
+     Add support of protocol mpx.
+                                                   END HISTORY COMMENTS */
+
+/*                   Ecrit en mars 1986 par C. Claveleira - CICB            */
+
+/* Derniere version :                                           */
+/*                                                              */
+/* 14 mars 1986 : C. Claveleira                                 */
+/* 26 nov. 1986 : C. Claveleira - version 1.8 of protocol_mpx   */
+
+     dcl	   layer3_ISO	      fixed bin static options (constant) init (1);
+     dcl	   layer3_IP	      fixed bin static options (constant) init (2);
+     dcl	   layer3_X29	      fixed bin static options (constant) init (3);
+     dcl	   layer3_XNS	      fixed bin static options (constant) init (4);
+
+
+     dcl	   layer3_call_datas      (4) char (48) varying static options (constant) init (
+			      "",		/* 3,1,1,0 */
+			      "L",		/* $CC */
+			      "",		/* 1,0,0,0 */
+			      "" /* inconnu pour l'instant ! */
+			      );
+
+/*  ----------      END INCLUDE FILE ... protocols.incl.pl1      --------- */

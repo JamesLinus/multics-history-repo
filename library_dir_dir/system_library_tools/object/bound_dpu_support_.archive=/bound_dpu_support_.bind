@@ -1,0 +1,15 @@
+/* bind file for bound_dpu_support_ */
+/* Created 9/81 by M.R. Jordan */
+
+Objectname:	bound_dpu_support_;
+
+Order:		console_server;
+
+Addname:		console_server;
+
+Global:		delete;
+
+objectname:	console_server;
+ retain:		console_server;
+
+/* end of bind file for bound_dpu_support_ */

@@ -1,0 +1,30 @@
+/* ******************************************************
+   *                                                    *
+   *                                                    *
+   * Copyright (c) 1972 by Massachusetts Institute of   *
+   * Technology and Honeywell Information Systems, Inc. *
+   *                                                    *
+   *                                                    *
+   ****************************************************** */
+
+/* Created 82-03-07  E. N. Kittlitz.  from bound_user_control_ */
+
+Objectname:	bound_ftp_ctl_;
+
+Addname:		ftp_dialup_;
+
+Order:		ftp_dialup_,
+		ftp_misc_,
+		parse_ftp_login_line_;
+
+Global:		delete;
+
+objectname:	ftp_dialup_;
+    global: retain;
+
+objectname:	parse_ftp_login_line_;
+
+objectname:	ftp_misc_;
+
+
+

@@ -1,0 +1,55 @@
+/* ******************************************************
+   *                                                    *
+   *                                                    *
+   * Copyright (c) 1972 by Massachusetts Institute of   *
+   * Technology and Honeywell Information Systems, Inc. *
+   *                                                    *
+   *                                                    *
+   ****************************************************** */
+
+/* Created 82-03-07  E. N. Kittlitz.  from bound_user_control_ */
+/* 82-08-11 E. N. Kittlitz. moved create_homedir_ from bound_user_ctl_ */
+
+Objectname:	bound_as_install_ctl_;
+
+Addname:		hash_,
+		rehash_,
+		up_sat_,
+		up_sysctl_;
+
+Order:		up_sysctl_,
+		up_cdt_,
+		up_mgt_,
+		up_pdt_,
+		up_rtdt_,
+		up_sat_,
+		create_homedir_,
+		hash_,
+		rehash_;
+
+objectname:	up_sysctl_;
+ global:		retain;
+
+objectname:	up_cdt_;
+ global:		retain;
+
+objectname:	up_mgt_;
+ global:		retain;
+
+objectname:	up_pdt_;
+ global:		retain;
+
+objectname:	up_rtdt_;
+ global:		retain;
+
+objectname:	up_sat_;
+ global:		retain;
+
+objectname:	create_homedir_;
+ global:		retain;
+
+objectname:	hash_;
+ global:		retain;
+
+objectname:	rehash_;
+ global:		retain;

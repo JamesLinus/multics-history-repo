@@ -1,0 +1,105 @@
+/* *	BOUND_HARDCORE_DB_
+   *
+   *	This segment contains commands and subroutines for various functions
+   *	loosely termed "hardcore debugging". This includes anything which uses
+   *	privileged access to modify the system, as well as tools for analyzing
+   *	various forms of file system damage.
+   *
+   *	This is part of the familiy of metering/analysis bound segments:
+   *	   bound_metering_cmds_	bound_meter_util_
+   *	   bound_comm_meters_	bound_tuning_
+   *	   bound_system_test_	bound_hc_display_
+   *	   bound_hardcore_db_
+   *
+   *	Reorganized to be this way, 04/11/81, W. Olin Sibert
+   *	Modified 12/02/83 for read_early_dump_tape and friend, Keith Loepere.
+   */
+
+Objectname:	bound_hardcore_db_;
+
+Order:		analyze_ioi_istat_,
+		binary_segmsg_util_,
+		copy_out,
+		dump_fnp,
+		edit_mos_rscr_,
+		extract,
+		find_config_card_,
+		mc_trace,
+		mcs_version,
+		parse_io_channel_name_,
+		identify_io_channel_,
+		patch_ring_zero,
+		save_history_registers,
+		read_early_dump_tape,
+		ed_appending_simulation_;
+
+Addname:		copy_out, cpo,
+		dump_fnp, patch_fnp,
+		extract, ext,
+		mc_trace, mct,
+		mcs_version,
+		patch_ring_zero, prz,
+		save_history_registers,
+		analyze_ioi_istat_,
+		analyze_ioi_imess_,
+		binary_segmsg_util_,
+		edit_mos_rscr_,
+		find_config_card_,
+		identify_io_channel_,
+		parse_io_channel_name_,
+		read_early_dump_tape, redt;
+
+Global:		delete;
+
+objectname:	analyze_ioi_istat_;
+ synonym: 	analyze_ioi_imess_;
+ retain:		analyze_ioi_istat_, analyze_ioi_imess_ ;
+
+objectname:	binary_segmsg_util_;
+ retain:		binary_segmsg_util_, interpret_pvname;
+
+objectname:	copy_out;
+ synonym: 	cpo;
+ retain:		copy_out, cpo;
+
+objectname:	dump_fnp;
+ retain:		dump_fnp, patch_fnp;
+
+objectname:	edit_mos_rscr_;
+ retain:		edit_mos_rscr_, decode;
+
+objectname:	extract;
+ synonym: 	ext;
+ retain:		extract, ext;
+
+objectname:	find_config_card_;
+ retain:		prph_for_channel,
+		mpc_for_channel;
+
+objectname:	mc_trace;
+ synonym: 	mct;
+ retain:		mc_trace, mct;
+
+objectname:	mcs_version;
+ retain:		mcs_version;
+
+objectname:	parse_io_channel_name_;
+ retain:		parse_io_channel_name_;
+
+objectname:	identify_io_channel_;
+ retain:		identify_io_channel_;
+
+objectname:	patch_ring_zero;
+ synonym: 	prz;
+ retain:		patch_ring_zero, prz;
+
+objectname:	save_history_registers;
+ retain:		save_history_registers;
+
+objectname:	read_early_dump_tape;
+ synonym:		redt;
+ retain:		read_early_dump_tape, redt;
+
+objectname:	ed_appending_simulation_;
+
+/*		END		*/

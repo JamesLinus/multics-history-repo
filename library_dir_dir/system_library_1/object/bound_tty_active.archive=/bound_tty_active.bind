@@ -1,0 +1,95 @@
+/* Rewritten 2/10/75 by Mike Grady */
+/* Modified 11/18/75 by Robert S. Coren -- tty_ctl changed to tty_tables */
+/* and tty_util_ added */
+/* Modified 5/12/77 by J. Stern -- tty_tables deleted, tty_tables_mgr added */
+/* Modified 18 September 1980 by G. Palter to add tty_crt_canon_erase */
+/* Modified: 12 November 1980 by G. Palter to rename tty_canon to tty_overstrike_canon and
+	      tty_crt_canon_erase to tty_replace_canon */
+/* Modified Jan 1981 by Eleanor Donner to remove hc_ipc$ipc_init */
+/* Modified 13 February 1981 by Robert Coren to add tty_write_set_mark and tty_read_with_mark */
+/* Modified 19 June 1981 by Robert Coren to add tty_write_whole_string */
+/* Modified 1/82 BIM for truncate_stacks */
+/* Modified 4/82 by W. york to add tty_read_echoed. */
+/* Modified 1984-11-16 by E. Swenson to remove ipc_sf_block entrypoint */
+
+Objectname:	bound_tty_active;
+Global:		delete;
+
+Order:		fast_hc_ipc,
+		hc_ipc,
+		truncate_stacks,
+		try_to_unlock_lock,
+		mcs_timer_daemon,
+		tty_write,
+		tty_util_,
+		tty_read,
+		tty_overstrike_canon,
+		tty_replace_canon,
+		tty_index,
+		tty_modes,
+		tty_tables_mgr;
+
+objectname:	fast_hc_ipc;
+ retain:		ipc_block,
+		ipc_f_block,
+		read_events;
+
+objectname:	hc_ipc;
+ retain:		assign_channel,
+		delete_channel,
+		ipc_wakeup;
+
+objectname:	truncate_stacks;
+
+objectname:	tty_overstrike_canon;
+
+objectname:	tty_replace_canon;
+
+objectname:	tty_util_;
+
+objectname:	tty_index;
+ synonym:		tty_abort,
+		tty_attach,
+		tty_detach,
+		tty_get_name,
+		tty_order,
+		tty_state;
+ retain:		new_proc,
+		tty_abort,
+		tty_attach,
+		tty_detach,
+		tty_event,
+		tty_get_name,
+		tty_index,
+		tty_order,
+		tty_state,
+		init_channel,
+		terminate_channel;
+
+objectname:	tty_read;
+ retain:		tty_read,
+		tty_get_line,
+		tty_read_with_mark,
+		tty_read_echoed,
+		echo_negotiate_get_chars;
+
+objectname:	tty_write;
+ retain:		tty_write,
+		tty_write_set_mark,
+		tty_write_whole_string,
+		tty_write_force;
+
+objectname:	tty_modes;
+
+objectname:	tty_tables_mgr;
+
+objectname:	try_to_unlock_lock;
+  retain:		check_lock, try_to_unlock_lock;
+
+objectname:	mcs_timer_daemon;
+  retain:		mcs_timer_daemon;
+
+/* end */
+
+
+

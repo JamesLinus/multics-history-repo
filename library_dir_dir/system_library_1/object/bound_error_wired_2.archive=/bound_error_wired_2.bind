@@ -1,0 +1,27 @@
+/* Bindfile for bound_error_wired_2, split from bound_error_wired */
+/* Modified 85-03-08 by EJ Sharpe: added adjust_wired_log_sequence entry */
+
+Objectname:	bound_error_wired_2;
+Global:		delete;
+
+Order:		illegal_procedure,
+		mos_memory_check,
+		syserr_copy_wired_log,
+		syserr_log_daemon;
+
+objectname:	illegal_procedure;
+ retain:		set_pl1_machine_mode;
+
+objectname:	mos_memory_check;
+ retain:		mos_memory_check, poll, set_poll_time;
+
+objectname:	syserr_copy_wired_log;
+ retain:		syserr_copy_wired_log, adjust_wired_log_sequence;
+
+objectname:	syserr_log_daemon;
+ retain:		syserr_log_daemon;
+
+/* end */
+
+
+

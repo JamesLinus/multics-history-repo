@@ -1,0 +1,150 @@
+/* *	83-08-11, E. A. Ranzenbach: Removed oc_data_init
+   *	84-01-01, Keith Loepere: Modified many times during 1983 and
+   *	   1984 for bootload Multics objects.
+   *	84-10-17, WOS: Moved map_onto_disk into bound_init_1, deleted
+   *	   symbol_table definitions to save on definitions_ space.
+   */
+
+
+/* HISTORY COMMENTS:
+  1) change(85-10-03,Farley), approve(86-07-18,MCR7439),
+     audit(86-09-26,Fawcett), install(86-10-20,MR12.0-1189):
+     Moved ioi_init & io_config_init here from bound_io_init, which was
+     deleted.
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:	bound_temp_1;
+Global:		retain;			/* Init-segs */
+
+Order:		set_smic_pattern,
+		scas_init,
+		scs_and_clock_init,
+		disk_init,
+		establish_config_deck,
+		init_sst,
+		init_aste_pools,
+		init_pvt,
+		iom_data_init,
+		ioi_init,
+		io_config_init,
+		collect_free_core,
+		make_segs_paged,
+		init_empty_root,
+		get_io_segs,
+		announce_chwm, 
+		init_partitions,
+		init_root_vols,
+		create_rpv_partition,
+		move_non_perm_wired_segs,
+		read_disk_label,
+		init_early_config,
+		find_rpv_subsystem,
+		boot_rpv_subsystem,
+		load_disk_mpcs,
+		init_toehold,
+		save_handler_mc,
+		find_file_partition,
+		load_mst,
+		tape_reader,
+		boot_tape_io,
+		establish_temp_segs,
+		bce_abs_seg;
+
+objectname:	set_smic_pattern;
+ delete:		symbol_table;
+
+objectname:	scas_init;
+ delete:		symbol_table;
+
+objectname:	scs_and_clock_init;
+ delete:		symbol_table;
+
+objectname:	disk_init;
+ delete:		symbol_table;
+
+objectname:	establish_config_deck;
+ delete:		symbol_table;
+
+objectname:	init_sst;
+ delete:		symbol_table;
+
+objectname:	init_aste_pools;
+ delete:		symbol_table;
+
+objectname:	init_pvt;
+ delete:		symbol_table;
+
+objectname:	iom_data_init;
+ delete:		symbol_table;
+
+objectname:	io_config_init;
+ delete:		symbol_table;
+
+objectname:	ioi_init;
+ delete:		symbol_table;
+
+objectname:	make_segs_paged;
+ delete:		symbol_table;
+
+objectname:	collect_free_core;
+ delete:		symbol_table;
+
+objectname:	init_empty_root;
+ delete:		symbol_table;
+
+objectname:	get_io_segs;
+ delete:		symbol_table;
+
+objectname:	read_disk_label;
+ delete:		symbol_table;
+
+objectname:	init_partitions;
+ delete:		symbol_table;
+
+objectname:	init_root_vols;
+ delete:		symbol_table;
+
+objectname:	create_rpv_partition;
+ delete:		symbol_table;
+
+objectname:	move_non_perm_wired_segs;
+ delete:		symbol_table;
+
+objectname:	init_early_config;
+ delete:		symbol_table;
+
+objectname:	find_rpv_subsystem;
+ delete:		symbol_table;
+
+objectname:	boot_rpv_subsystem;
+ global:		delete;
+
+objectname:	load_disk_mpcs;
+ delete:		symbol_table;
+
+objectname:	init_toehold;
+ delete:		symbol_table;
+
+objectname:	save_handler_mc;
+ delete:		symbol_table;
+
+objectname:	find_file_partition;
+ delete:		symbol_table;
+
+objectname:	load_mst;
+ delete:		symbol_table;
+
+objectname:	tape_reader;
+ delete:		symbol_table;
+
+objectname:	boot_tape_io;
+ delete:		symbol_table;
+
+objectname:	establish_temp_segs;
+ delete:		symbol_table;
+
+objectname:	bce_abs_seg;
+ delete:		symbol_table;
+
+/* end bound_temp_1.bind */

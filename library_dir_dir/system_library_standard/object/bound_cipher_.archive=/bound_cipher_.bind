@@ -1,0 +1,41 @@
+/* Bindfile for boudn_cipher_ */
+
+/* Standard encryption/decryption routines and password manipulation
+   modules */
+
+/* Modified: 14 December 1981 by G. Palter to retain read_password_$switch */
+/* Modifed 1985-03-06 by E. Swenson to add check_password_ */
+
+Objectname:	bound_cipher_;
+  Global:		  delete;
+  No_Table;
+
+  Order:		  encode,
+		  encipher_,
+		  read_password_,
+		  check_password_;
+
+  Addname:	  decode,
+		  encode,
+		  decipher_,
+		  encipher_,
+		  read_password_,
+		  get_password_,
+		  check_password_;
+
+objectname:	encode;
+  synonym:	  decode;
+  retain:		  encode, decode;
+
+objectname:	encipher_;
+  synonym:	  decipher_;
+  retain:		  encipher_, decipher_;
+
+objectname:	read_password_;
+  synonym:	  get_password_;
+  retain:		  read_password_, get_password_, switch;
+
+objectname:	check_password_;
+  retain:		check_password_;
+
+/* end; */

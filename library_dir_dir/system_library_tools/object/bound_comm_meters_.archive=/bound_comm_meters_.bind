@@ -1,0 +1,168 @@
+/* ******************************************************
+   *                                                    *
+   * Copyright, (C) Honeywell Bull Inc., 1988           *
+   *                                                    *
+   * Copyright (c) 1972 by Massachusetts Institute of   *
+   * Technology and Honeywell Information Systems, Inc. *
+   *                                                    *
+   ****************************************************** */
+
+/* *	BOUND_COMM_METERS_
+   *
+   *	This segment contains all the commands and subroutines associated
+   *	with communications metering.
+   *
+   *	This is part of the family of metering/analysis bound segments:
+   *	   bound_metering_cmds_	bound_meter_util_
+   *	   bound_comm_meters_	bound_tuning_
+   *	   bound_system_test_	bound_hc_display_
+   *	   bound_hardcore_db_
+   *
+   *	Reorganized to be this way, 04/11/81, W. Olin Sibert
+   *	system_comm_meters, channel_comm_meters, comm_meters_, meter_format_,
+   *	 and some multiplexer-specific subroutines added, 04/28/81, Robert S. Coren
+   *	ibm3270_meters_ and vip7760_meters_ added, 06/30/81, Robert S. Coren
+   *	hasp_meters_ added, 07/31/81, G. Palter
+   *	fnp_throughput added, 09/15/81, Robert S. Coren
+   *	multiplexer dump and analyze subroutines added, December 1981, by C. Hornig.
+   *	meter_fnp_idle and display_fnp_idle added, February 1982, by Robert Coren.
+   */
+
+
+/* HISTORY COMMENTS:
+  1) change(88-07-06,Beattie), approve(88-06-27,MCR7926),
+     audit(88-07-22,Brunelle), install(88-08-08,MR12.2-1082):
+     Add support for LAP multiplexers.
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:	bound_comm_meters_;
+
+Addname:		channel_comm_meters,
+		fnp_throughput,
+		system_comm_meters, tty_meters,
+		tty_analyze,
+		tty_dump,
+
+		meter_fnp_idle,
+		display_fnp_idle,
+		comm_meters_,
+		meter_format_,
+
+		hasp_meters_, hasp_dump_, hasp_analyze_,
+		ibm3270_meters_, ibm3270_dump_,
+		mcs_meters_,
+		sty_dump_,
+		tty_meters_,
+		vip7760_meters_, vip7760_dump_, vip7760_analyze_,
+		x25_dump_, x25_analyze_,
+                    lap_dump_, lap_analyze_;
+
+Order:		channel_comm_meters,
+		fnp_throughput,
+		system_comm_meters,
+		tty_analyze,
+		tty_dump,
+
+		display_fnp_idle,
+		meter_fnp_idle,
+		comm_meters_,
+		meter_format_,
+
+		hasp_meters_, hasp_dump_,
+		ibm3270_meters_, ibm3270_dump_,
+		mcs_meters_,
+		sty_dump_,
+		tty_meters_,
+		vip7760_meters_, vip7760_dump_,
+		x25_analyze_, x25_dump_,
+                    lap_dump_;
+
+
+objectname:	channel_comm_meters;
+ retain:		channel_comm_meters;
+
+objectname:	fnp_throughput;
+ retain:		fnp_throughput;
+
+objectname:	system_comm_meters;
+ synonym:		tty_meters;
+ retain:		system_comm_meters,
+		tty_meters;
+
+objectname:	tty_analyze;
+ retain:		tty_analyze;
+
+objectname:	tty_dump;
+ retain:		tty_dump, print_chain;
+
+objectname:	meter_fnp_idle;
+ retain:		meter_fnp_idle;
+
+objectname:	display_fnp_idle;
+ retain:		display_fnp_idle;
+
+objectname:	comm_meters_;
+ retain:		comm_meters_, free, get_mpx_entry;
+
+objectname:	meter_format_;
+ retain:		picture, quotient, time;
+
+
+objectname:	hasp_meters_;
+ global:		retain;
+ delete:		hasp_meters_, symbol_table;
+
+objectname:	hasp_dump_;
+ synonym:		 hasp_analyze_;
+ retain:		 hasp_dump_, hasp_analyze_;
+
+objectname:	ibm3270_meters_;
+ retain:		allocate_mpx,
+		free_mpx,
+		display_mpx,
+		mpx_summary;
+
+objectname:	ibm3270_dump_;
+ retain:		 ibm3270_dump_;
+
+objectname:	mcs_meters_;
+ retain:		allocate_mpx, allocate_subchan,
+		free_mpx, free_subchan,
+		display_mpx, display_subchan,
+		subchan_summary;
+
+objectname:	sty_dump_;
+ retain:		sty_dump_;
+
+objectname:	tty_meters_;
+ retain:		allocate_mpx,
+		free_mpx,
+		display_mpx,
+		mpx_summary;
+
+objectname:	vip7760_meters_;
+ retain:		allocate_mpx, allocate_subchan,
+		free_mpx, free_subchan,
+		display_mpx, display_subchan,
+		mpx_summary, subchan_summary;
+
+objectname:	vip7760_dump_;
+ synonym:		 vip7760_analyze_;
+ retain:		 vip7760_dump_,
+		 vip7760_analyze_;
+
+objectname:	x25_analyze_;
+ retain:		 x25_analyze_;
+
+objectname:	x25_dump_;
+ retain:		 x25_dump_;
+
+objectname:         lap_dump_;
+ synonym:            lap_analyze_;
+ retain:             lap_dump_, lap_analyze_;
+
+/*		END		*/
+
+
+

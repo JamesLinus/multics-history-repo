@@ -1,0 +1,37 @@
+/* Modified 10/3/78 by J. Stern to delete tty_assign, add priv_channel_manager */
+/* Modified February 1981 by Robert Coren to add get_mcm_meters */
+/* Modified 84-12-14 by Benson Margulies to move fnp_util to bound_355_wired */
+/* Modified November 1984 by Robert Coren to add tty_area_manager */
+
+Objectname:	bound_mcs_util;
+Global:		delete;
+
+Order:		priv_channel_manager,
+		get_mcm_meters,
+		tty_area_manager,
+		priv_mcs_trace;
+
+objectname:	priv_channel_manager;
+ retain:		init_channel, terminate_channel,
+		init_multiplexer, terminate_multiplexer,
+		start, stop, shutdown,
+		priv_control, hpriv_control,
+		lct_init, get_devx;
+
+objectname:	get_mcm_meters;
+ retain:		get_mcm_meters, chan_star_list;
+
+objectname:	tty_area_manager;
+ retain:		allocate, free,
+		lock_area, unlock_area;
+
+objectname:	priv_mcs_trace;
+ retain:		get_trace_table_size,
+		set_trace_table_size,
+		set_global_trace,
+		set_channel_trace;
+
+/* End */
+
+
+

@@ -1,0 +1,592 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(86-05-14,Dupuis), approve(86-08-05,MCR7491), audit(86-08-08,Blair),
+     install(86-08-15,MR12.0-1127):
+     Changed so that real transfer vectors could be used. The current method of
+     not shipping customers the dmd_, dsl_, dsmd_, mdbm_util_, and mmi_
+     transfer vectors causes problems. (mrds #157)
+  2) change(86-05-15,Spitzer), approve(86-02-13,MCR7311),
+     audit(86-09-02,Blair), install(86-10-16,MR12.0-1187):
+     add database crossreference external utility (mu_db_xref)
+  3) change(87-11-23,Hergert), approve(88-07-12,MCR7903),
+     audit(88-07-12,Dupuis), install(88-08-01,MR12.2-1073):
+     Modified to support new parser.
+                                                   END HISTORY COMMENTS */
+
+
+/* DESCRIPTION:
+
+ bind file for Multics Relational Data Store (MRDS)
+
+*/
+
+/* HISTORY:
+
+  82-07-08 Roger Lackey for MR 10.1
+  82-12-02 R. Harvey: First crack at MR10.2 relation_manager_ mods
+  83-04-07 R. Harvey: added copy_mrds_data
+  83-05-05 Roger Lackey : deleted mu_sec_get_tuple and mu_get_tid
+  83-05-24 R. Harvey: added mrds_dsl_create_res_copy
+  83-06-29 Paul Benjamin: removed umdbv and mu_pointer_bit_offset
+  83-10-05 Paul Benjamin: removed copy_mrds_data for the time being.
+  84-05-07 Paul Benjamin: put copy_mrds_data back in.
+  84-07-19 J. Hergert: added mrds_dsl_set_user_vals.
+  84-09-22 John Hergert: Added dsl_$compile (mrds_dsl_compile)
+  84-10-25 Paul Benjamin: added mmi_$quiesce_db and mmi_$unquiesce_db.
+
+*/
+
+
+Objectname:	bound_mrds_ ;
+
+No_Table ;
+
+Global:		delete ;
+
+Addname:
+
+/* data manipulation subroutines */
+
+		dsl_,
+
+/* database model subroutines */
+
+		mmi_,  dmd_,
+
+/* submodel manipulation subroutines */
+
+/* CHANGE: msmi_ new interface, dsmd_ no longer a transfer vector,
+but incorporated in the module mrds_dsm_dsmd. */
+
+		msmi_,  dsmd_,
+
+/* utility level subroutine entries (undocumented, for internal mrds or linus use only) */
+
+		mdbm_util_,
+
+/*  Error tables */
+		mrds_error_, mdbm_error_,
+
+/*  Commands     */
+
+		adjust_mrds_db,  amdb,
+		copy_mrds_data,  cpmd,
+		create_mrds_dm_include,    cmdmi,
+		create_mrds_dm_table,    cmdmt,
+		create_mrds_dsm,  cmdsm,
+		display_mrds_db_access,  dmda, dmdba,
+		display_mrds_db_population,  dmdp, dmdbp,
+		display_mrds_db_status,  dmdbs,
+		display_mrds_db_version,  dmdv,
+		display_mrds_dm,  dmdm,
+		display_mrds_dsm,  dmdsm,
+		display_mrds_open_dbs,  dmod,
+		display_mrds_scope_settings,  dmss,
+		display_mrds_temp_dir,  dmtd,
+		mrds_call,  mrc,
+		quiesce_mrds_db,  qmdb,
+		secure_mrds_db,  smdb,
+		set_mrds_options,  smo,
+		set_mrds_temp_dir,  smtd,
+		unpopulate_mrds_db,  umdb,
+
+/*     Data tables    */
+
+		mrds_data_,
+		mdbm_data_,
+
+/*    Builtin functions   */
+
+		mrds_builtin_,
+
+/* debug table */
+
+		mrds_debug_ ;
+
+Ignore:	dmd_,	
+	dsl_,
+	dsmd_,
+	mdbm_util_,
+	mmi_;
+
+
+/* order the modules for least page faulting
+based on locality of reference and their function */
+
+Order:	mrds_dsl_close,
+	mrds_dsl_close_all,
+	mrds_dsl_compile,
+	mrds_dsl_db_openings,
+	mrds_dsl_declare,
+	mrds_dsl_define_temp_rel,
+	mu_get_tuple,
+	mrds_dsl_delete,
+	mrds_dsl_get_rslt_info,
+	mrds_dsl_get_scope,
+	mu_database_index,
+	mu_convert_parameter,
+	mrds_dsl_get_version,
+	mrds_dsl_modify,
+	mrds_dsl_open,
+	mrds_dsl_create_res_copy,
+	mu_define_area,
+	mu_release_area,
+	mrds_dsl_retrieve,
+	mrds_dsl_set_scope,
+	mrds_dsl_store,
+	mrds_dsl_get_population,
+	mrds_dsl_get_attribute_list,
+	mrds_dsl_get_relation_list,
+	mu_data_align,
+	mu_break_structure,
+	mu_data_length,
+	mu_data_class,
+	mu_valid_data_type,
+	mrds_dsl_select_clause_,
+          mrds_dsl_set_user_vals,
+	mrds_dsl_permute,
+	mrds_dsl_gen_srch_prog,
+	mrds_dsl_init_select_area,
+	mrds_dsl_delete_se,
+	mrds_dsl_optimize,
+	mrds_dsl_translate,
+	mrds_dsl_parser,
+	mrds_dsl_tables,
+	mrds_dsl_semantics,
+	mrds_dsl_where_clause_,
+	mrds_dsl_make_literal,
+	mrds_dsl_eval_func,
+	mrds_dsl_func_,
+	mrds_dsl_get_fn_info,
+	mrds_dsl_get_builtins,
+	mrds_dsl_thread_fn_list,
+	mrds_builtin_,
+	mrds_dsl_expr_,
+	mrds_dsl_eval_expr,
+	mu_convert,
+	mu_get_data,
+	mu_temp_segments,
+	mrds_data_,
+	mrds_debug_,
+	mrds_dsl_search,
+	mu_retrieve,
+	mu_compare_values,
+	mdb_display_data_value,
+	mu_build_tuple,
+	mu_store,
+	mrds_dsl_resultant_storage,
+	mrds_dsl_init_res,
+	mu_sec_init_res,
+	mu_sec_make_res,
+	mus_get_att_names,
+	mus_get_rel_names,
+	mu_sec_reg_user,
+	mu_concurrency_control,
+	mrds_dsl_ready_all,
+	mrds_dsl_set_fscope,
+	mu_get_relation_acl,
+	mu_check_scope,
+	mu_empty_scope,
+          mu_print_error,
+	mu_check_conflict,
+	mu_de_queue_user,
+	mrds_dsl_dl_fscope,
+	mrds_dm_secured_submodel,
+	mrds_dm_check_path,
+	mrds_dm_authorization,
+	mrds_dm_close,
+	mrds_dm_create_db,
+	mrds_dm_db_secured,
+	mrds_dm_get_attributes,
+	mrds_dm_get_header,
+	mrds_dm_get_relations,
+	mrds_dm_open,
+	mu_open_name_manager,
+	mrds_dsm_read_header,
+	mrds_dsm_read_relation,
+	mrds_dsm_close,
+	mrds_dsm_determine_auth_sec,
+	mrds_dsm_msmi,
+	mrds_dsm_dsmd,
+	mrds_dsm_get_relation_names,
+	mrds_dsm_open,
+	mrds_dsm_parse,
+	mrds_dsm_parse_table,
+	mrds_dsm_scanner,
+	mrds_dsm_semantics,
+	mrds_dsm_write_header,
+	mrds_dsm_compute_access,
+	mrds_dsm_define_temp,
+	create_mrds_dsm,
+	mrds_dsm_dmdsm,
+	display_mrds_dsm,
+	adjust_mrds_db,
+	create_mrds_dm_include,
+	display_mrds_db_access,
+	display_mrds_db_population,
+	display_mrds_db_status,
+	display_mrds_db_version,
+	display_mrds_open_dbs,
+	display_mrds_scope_settings,
+	display_mrds_temp_dir,
+	mrds_call,
+	set_mrds_temp_dir,
+	set_mrds_options,
+	mu_quiesce,
+	quiesce_mrds_db,
+	secure_mrds_db,
+	unpopulate_mrds_db,
+	mu_display_descriptor,
+	mu_trim_descriptor,
+	display_mrds_dm,
+	mrds_dm_display,
+	mrds_dm_display_cmdb,
+	mrds_dm_display_history,
+	copy_mrds_data,
+	mrds_error_,
+	mu_db_inconsistent,
+	mu_cursor_manager_,
+	mu_rel_statistics,
+	mu_db_xref;
+
+/* modules for MRDS commands */
+
+objectname:	adjust_mrds_db ;
+   retain:	adjust_mrds_db,  amdb ;
+
+objectname:	copy_mrds_data;
+   retain:	copy_mrds_data, cpmd;
+
+objectname:	create_mrds_dm_include ;
+   retain:	create_mrds_dm_include,    cmdmi,    create_mrds_dm_table,    cmdmt ;
+
+objectname:	create_mrds_dsm ;
+   retain:	create_mrds_dsm,  cmdsm ;
+
+objectname:	display_mrds_db_access ;
+    retain:	display_mrds_db_access,  dmda,  dmdba ;
+
+objectname:	display_mrds_db_population ;
+    retain:	display_mrds_db_population,  dmdp,  dmdbp ;
+
+objectname:	display_mrds_db_status ;
+   retain:	display_mrds_db_status,  dmdbs ;
+
+objectname:	display_mrds_db_version ;
+   retain:	display_mrds_db_version,  dmdv ;
+
+objectname:	display_mrds_dm ;
+   retain:	display_mrds_dm,  dmdm, rmdb_rq_dmdm ;
+
+objectname:	display_mrds_dsm ;
+   retain:	display_mrds_dsm,  dmdsm ;
+
+objectname:	display_mrds_open_dbs ;
+   retain:	display_mrds_open_dbs,  dmod ;
+
+objectname:	display_mrds_scope_settings ;
+    retain:	display_mrds_scope_settings,  dmss ;
+
+objectname:	display_mrds_temp_dir ;
+   retain:	display_mrds_temp_dir,  dmtd ;
+
+objectname:	mrds_call ;
+   retain:	mrds_call,  mrc ;
+
+objectname:	quiesce_mrds_db ;
+   retain:	quiesce_mrds_db, qmdb, quiesce_db, unquiesce_db;
+
+objectname:	secure_mrds_db ;
+    retain:	secure_mrds_db,  smdb ;
+
+objectname:	set_mrds_options ;
+   retain:	set_mrds_options,  smo ;
+
+objectname:	set_mrds_temp_dir ;
+   retain:	set_mrds_temp_dir,  smtd ;
+
+objectname:	unpopulate_mrds_db ;
+    retain:	unpopulate_mrds_db,  umdb ;
+
+/* modules for dsl_ subroutine interface */
+
+objectname: mrds_dsl_close ;    
+    retain:  close ;
+
+objectname: mrds_dsl_close_all ;    
+    retain:  close_all ;
+
+objectname: mrds_dsl_compile ;    
+    retain:  compile ;
+
+objectname: mrds_dsl_declare ;    
+    retain:  declare ;
+
+objectname: mrds_dsl_define_temp_rel ;    
+    retain:  define_temp_rel ;
+
+objectname: mrds_dsl_delete ;    
+    retain:  delete ;
+
+objectname: mrds_dsl_dl_fscope ;    
+    retain:  dl_fscope,  dl_fscope_all ;
+
+objectname: mrds_dsl_get_attribute_list ;
+    retain:  get_attribute_list ;
+
+objectname: mrds_dsl_get_fn_info ;    
+    retain:  get_fn_info ;
+
+objectname: mrds_dsl_get_relation_list ;
+    retain:  get_relation_list ;
+
+objectname: mrds_dsl_get_rslt_info ;    
+    retain:  get_pn,  get_rslt_info, get_rslt_rels,
+             get_scope_info,  get_security_info, get_temp_info;
+
+objectname: mrds_dsl_get_scope ;
+    retain:  get_scope ;
+
+objectname: mrds_dsl_get_population ;
+    retain:  get_population ;
+
+objectname: mrds_dsl_get_version ;    
+    retain:  get_db_version,
+	   get_path_info ;
+
+objectname: mrds_dsl_db_openings ;    
+    retain:  list_dbs,
+	   list_openings ;
+
+objectname: mrds_dsl_modify ;    
+    retain:  modify ;
+
+objectname: mrds_dsl_open ;    
+    retain:  open ;
+
+objectname: mrds_dsl_resultant_storage ;    
+    retain:  get_temp_dir,  set_temp_dir,
+	   get_opening_temp_dir ;
+
+objectname: mrds_dsl_create_res_copy ;
+    retain: create_res_copy ;
+
+objectname: mrds_dsl_retrieve ;    
+    retain:  retrieve ;
+
+objectname: mrds_dsl_set_fscope ;    
+    retain:  set_fscope ;
+
+objectname: mrds_dsl_set_scope ;    
+    retain:  dl_scope,  dl_scope_all,  set_scope,  set_scope_all ;
+
+objectname: mrds_dsl_store ;    
+    retain:  store ;
+
+
+/* modules for dmd_ and mmi_  subroutine interfaces */
+
+objectname: mrds_dm_authorization ;
+    retain:  get_authorization,  set_needed_access, get_user_class ;
+
+objectname: mrds_dm_check_path ;
+    retain:  check_path ;
+
+objectname: mrds_dm_close ;    
+    retain:  close_dm,  close_model ;
+
+objectname: mrds_dm_create_db ;    
+    retain:  create_db ;
+
+objectname: mrds_dm_db_secured ;
+    retain:  get_secured_state ;
+
+objectname: mrds_dm_get_attributes ;    
+    retain:  get_attributes,  get_model_attributes ;
+
+objectname: mrds_dm_get_header ;    
+    retain:  get_header,  get_model_info ;
+
+objectname: mrds_dm_get_relations ;    
+    retain:  get_relations,  get_model_relations ;
+
+objectname: mrds_dm_open ;    
+    retain:  open_dm,  open_model ;
+
+objectname: 	mrds_dm_display;
+    retain:	mrds_dm_display;
+
+objectname:	mrds_dm_display_cmdb;
+objectname:	mrds_dm_display_history;
+objectname:	mu_get_tuple;
+    retain:	mu_get_tuple;
+
+
+/* modules for dsmd_ and msmi_ subroutine interfaces */
+
+objectname:	mrds_dsm_dsmd ;
+    retain:	close_dsm, open_dsm_read, get_dsm_header,
+		get_relation, get_dsm_relations ;
+
+objectname:	mrds_dsm_msmi ;
+    retain:	close_submodel,
+		get_attribute_data,
+		get_relation_data,
+		get_submodel_info,
+		open_submodel ;
+
+
+
+/* non-external mrds modules */
+
+objectname:	mrds_dm_secured_submodel ;
+objectname:	mrds_dsl_delete_se ;
+objectname:	mrds_dsl_eval_expr ;    
+objectname:	mrds_dsl_eval_func ;
+objectname:	mrds_dsl_expr_ ;
+objectname:	mrds_dsl_func_ ;
+objectname: 	mrds_dsl_get_builtins;
+objectname:	mrds_dsl_gen_srch_prog ;
+objectname:	mrds_dsl_init_res ;
+objectname:	mrds_dsl_init_select_area ;
+objectname:	mrds_dsl_make_literal ;
+objectname:	mrds_dsl_optimize ;
+objectname:	mrds_dsl_parser;
+objectname:	mrds_dsl_permute ;
+objectname:	mrds_dsl_ready_all ;    
+objectname:	mrds_dsl_search ;
+objectname:	mrds_dsl_select_clause_ ;
+objectname:         mrds_dsl_semantics ;
+objectname:         mrds_dsl_set_user_vals ;
+objectname:	mrds_dsl_thread_fn_list ;
+objectname:	mrds_dsl_where_clause_ ;
+objectname:	mrds_dsm_close ;
+objectname:	mrds_dsm_compute_access ;
+objectname:	mrds_dsm_define_temp ;
+objectname:	mrds_dsm_determine_auth_sec ;
+objectname:	mrds_dsm_dmdsm ;
+objectname:	mrds_dsm_get_relation_names ;
+objectname:	mrds_dsm_open ;
+objectname:	mrds_dsm_parse ;
+objectname:	mrds_dsm_read_header ;
+objectname:	mrds_dsm_read_relation ;
+objectname:	mrds_dsm_scanner ;
+objectname:	mrds_dsm_semantics ;
+objectname:	mrds_dsm_write_header;
+
+/* utility modules that are externally known */
+
+objectname: mu_concurrency_control ;    
+    retain:  create_control_segment ;
+
+objectname: mu_data_align ;    
+    retain:  align_data_item ;
+
+objectname: mu_data_class ;    
+    retain:  binary_data_class,  bit_data_class,  
+	   character_data_class,  complex_data_class,  
+	   fixed_data_class,  number_data_class,  
+	   string_data_class,  varying_data_class ;
+
+objectname: mu_data_length ;    
+    retain:  mu_data_length, get_data_bit_length ;
+
+objectname: mu_define_area ;    
+    retain:  mu_define_area, define_temp_dir_area ;
+
+objectname: mu_display_descriptor ;    
+    retain:  display_descriptor ;
+
+objectname: mu_database_index ;    
+    retain:  get_resultant_model_pointer;
+
+objectname: mu_open_name_manager ;
+    retain:  display_open_names,  delete_all_open_names ;
+     table;
+
+objectname: mu_quiesce ;    
+    retain:  quiesce_free,  quiesce_quiet ;
+
+objectname: mu_trim_descriptor ;    
+    retain:  trim_descriptor ;
+
+objectname: mu_db_inconsistent;
+    retain:  inconsistent_get_info, inconsistent_reset, inconsistent_set;
+
+objectname: mrds_dsl_translate ;
+    retain:  mrds_dsl_translate;
+
+objectname: mu_store ;
+    retain:  store_direct;
+
+objectname: mu_db_xref;
+    retain:  xref_build,
+	   xref_create_record,
+	   xref_delete_record,
+	   xref_dereference,
+	   xref_destroy,
+	   xref_find_record,
+	   xref_modify_record_name,
+	   xref_modify_reference_name,
+	   xref_reference,
+	   xref_statistics;
+
+/* non-external utility modules */
+
+
+objectname:	mu_break_structure ;
+objectname:	mu_build_tuple ;
+objectname:	mu_check_conflict ;
+objectname:	mu_check_scope ;
+objectname:	mu_compare_values ;
+objectname:	mu_convert ;
+objectname:	mu_convert_parameter ;
+objectname:	mu_cursor_manager_ ;
+objectname:	mu_de_queue_user ;
+objectname:	mu_empty_scope ;
+objectname:	mu_get_data ;
+objectname:	mu_print_error ;
+objectname:	mu_rel_statistics ;
+objectname:	mu_release_area ;
+objectname:	mu_retrieve ;
+objectname:	mu_sec_init_res ;
+objectname:	mu_sec_make_res ;
+objectname:	mu_sec_reg_user ;
+objectname:	mu_valid_data_type ;
+objectname:	mus_get_att_names ;
+objectname:	mus_get_rel_names ;
+
+objectname:	mu_temp_segments;
+    retain:	free_temp_segment,
+		free_temp_segments,
+		get_temp_segment_path,
+		get_temp_segments_path,
+		cleanup_temp_dir;
+
+/* special modules or tables */
+
+objectname: 	mrds_data_ ;
+    global:	retain ;
+
+objectname:	mrds_builtin_ ;
+    global:	retain ;
+
+objectname:	mrds_debug_ ;
+    global:	retain ;
+
+objectname:	mrds_dsm_parse_table ;
+    global:	retain ;
+
+objectname:	mrds_dsl_tables ;
+    global:	retain ;
+
+objectname:	mdb_display_data_value ;
+
+objectname:	mrds_error_;
+    synonym:	mdbm_error_;
+     global:	retain;
+
+
+
+

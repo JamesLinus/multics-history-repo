@@ -1,0 +1,51 @@
+
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+	/*									*/
+	/* N__a_m_e:  bound_utility_tools_						*/
+	/*									*/
+	/*      This bound segment contains subprograms which are of general utility.  These	*/
+	/* subroutines have not been installed in the Standard Service System because the	*/
+	/* requirements of the external interface of these routines are not well-defined yet,	*/
+	/* or because the functions which they provide have been deemed inappropriate for	*/
+	/* general use by the user community.						*/
+	/*									*/
+	/* S__t_a_t_u_s									*/
+	/*									*/
+	/* 0) Created:  August, 1973 by G. C. Dixon					*/
+	/*	a) added smart_alloc_, msa_manager_					*/
+	/*	b) added sort_items_, sort_items_indirect_				*/
+          /* 1) Modified: 30 May 1974 by R E Klinger - sort_items_ and sort_items_indirect_ deleted   */
+	/*									*/
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+
+Objectname:	bound_utility_tools_;
+
+Addname:		get_system_msa_,
+		msa_manager_,
+		release_system_msa_,
+		smart_alloc_;
+
+Order:		smart_alloc_,
+		msa_manager_;
+
+Global:		delete;
+
+objectname:	msa_manager_;
+  retain:		area_handler,
+		delete,
+		get_system_msa_,
+		initiate,
+		make,
+		make_special,
+		release_system_msa_,
+		terminate,
+		truncate;
+
+objectname:	smart_alloc_;
+  retain:		area_full,
+		smart_alloc_;
+
+/* END */
+
+
+

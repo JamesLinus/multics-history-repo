@@ -1,0 +1,319 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(87-08-07,Parisek), approve(87-08-07,MCR7550),
+     audit(87-08-07,GJohnson), install(87-08-07,MR12.1-1070):
+     Removed sys_full_report_.
+                                                   END HISTORY COMMENTS */
+
+
+/*	BINDFILE FOR bound_admin_rtnes_		*/
+/* Modified: 05/09/79 W. Olin Sibert to move objectname: entry for disk_left_
+   to the end to avoid a binder problem */
+/* Modified 10/01/82 E. N. Kittlitz. add cv_ */
+/* Modified 1984-07-20 BIM to add create_sat, clear_sat. */
+/* Modified 1984-08-17 by E. Swenson to add create_pnt and create_urf. */
+/* Modified 1984-08-31 by BIM for create_projfile, create_reqfile */
+/* Modified 1984-10-10 by E. Swenson to retain new_proj$test entrypoint. */
+/* Modified 1984-12-04, BIM: remove old log stuff. */
+/* Modified 1985-02-20, BIM: send_daemon_command added */
+
+Objectname:	bound_admin_rtnes_;
+Global:		delete;
+
+Order:		accounts_overseer_,
+		admin_util,
+		b_and_w,
+		charge_disk,
+		charge_user_,
+		clear_projfile,
+		clear_reqfile,
+		clear_sat,
+		create_sat,
+		create_pnt,
+		create_urf,
+		create_projfile,
+		create_reqfile,
+		compute_bill,
+		copy_as_meters,
+		cv_,
+		daily_summary,
+		disk_left_,
+		disk_stat_print,
+		disklow,
+		edit_projfile,
+		edit_reqfile,
+		is_he_user,
+		is_legal_proj,
+		labl1,
+		misc,
+		new_proj,
+		rename_proj,
+		edit_proj,
+		edit_proj_,
+		delete_proj,
+		parse_attributes_,
+		new_user,
+		urf_manager_,
+		pdt_copy,
+		print_disk,
+		print_meters,
+		proj_mtd,
+		reset_disk_meters,
+		reset_proj,
+		reset_usage,
+		reset_use_totals,
+		send_admin_command,
+	          send_daemon_command,
+		set_admin_data_,
+		sort_projfile,
+		sort_reqfile,
+		sweep,
+		system_daily_report,
+		system_monthly_report,
+		system_total,
+		terminals_overseer_,
+		up_ctr,
+		usage_and_revenue,
+		usage_total,
+		value,
+		set_tpp,
+		authenticate_device,
+		make_volume_labels;
+
+Addname:		accounts_overseer_,
+		admin_util,
+		b_and_w,
+		charge_disk,
+		compute_bill,
+		create_projfile,
+		create_reqfile,
+		create_sat,
+		create_pnt,
+		create_urf,
+		cv_,
+		daily_summary,
+		disk_left_,
+		disk_stat_print,
+		disklow,
+		edit_projfile,
+		edit_reqfile,
+		labl1,
+		misc,
+		new_user, print_pnt,
+		urf_manager_,
+		new_proj,
+		rename_proj,
+		edit_proj,
+		delete_proj,
+		print_disk,
+		proj_mtd,
+		reset_disk_meters,
+		reset_use_totals,
+		send_admin_command, sac,
+		send_daemon_command,
+		set_admin_data_,
+		sweep,
+		system_daily_report,
+		system_monthly_report,
+		system_total,
+		terminals_overseer_,
+		up_ctr,
+		usage_and_revenue,
+		usage_total,
+		value,
+		is_he_user,
+		is_legal_proj,
+		charge_user_,
+		clear_projfile,
+		clear_reqfile,
+		clear_sat,
+		copy_as_meters,
+		pdt_copy,
+		print_meters,
+		reset_proj,
+		reset_usage,
+		sort_projfile,
+		sort_reqfile,
+		set_tpp,
+		stpp,
+		authenticate_device,
+		make_volume_labels;
+
+objectname:	accounts_overseer_;
+ retain:		accounts_overseer_;
+
+objectname:	admin_util;
+ retain:		admin_util;
+
+objectname:	b_and_w;
+ retain:		b_and_w;
+
+objectname:	charge_disk;
+ retain:		charge_disk;
+
+objectname:	compute_bill;
+ retain:		compute_bill, update_pdts_from_reqfile;
+
+objectname:	create_sat;
+ retain:		create_sat;
+
+objectname:	create_pnt;
+ retain:		create_pnt;
+
+objectname:	create_urf;
+ retain:		create_urf;
+
+objectname:	create_projfile;
+ retain:		create_projfile;
+
+objectname:	create_reqfile;
+ retain:		create_reqfile;
+
+objectname:	cv_;	/* don't retain cv_ ! */
+  retain:		absdat, cdate, hrmin, mwvf, shift;
+
+objectname:	daily_summary;
+ retain:		daily_summary;
+
+objectname:	disk_stat_print;
+ retain:		disk_stat_print, dsp;	/* KLUDGE because binder won't bind it with just disk_stat_print */
+
+objectname:	edit_projfile;
+ retain:		edit_projfile, epro;
+
+objectname:	edit_reqfile;
+ retain:		edit_reqfile, erf;
+
+objectname:	labl1;
+ retain:		labl1;
+
+objectname:	misc;
+ global:		retain;
+
+objectname:	new_user;
+synonym:		nu, print_pnt;
+ retain:		nu, nua, new_user, cg, cga, change, new_user_test, print_pnt;
+
+objectname:	new_proj;
+ retain:		new_proj, test;
+
+objectname:	urf_manager_;
+ global:		retain;
+
+objectname:	rename_proj;
+ retain:		rename_proj;
+
+objectname:	edit_proj;
+ retain:		edit_proj, change_all;
+
+objectname:	delete_proj;
+ retain:		delete_proj;
+
+objectname:	print_disk;
+ retain:		print_disk;
+
+objectname:	proj_mtd;
+  retain:		proj_mtd;
+
+objectname:	set_admin_data_;
+ retain:		set_admin_data_, lock, unlock;
+
+objectname:	sweep;
+ retain:		sweep;
+
+objectname:	up_ctr;
+ retain:		up_ctr;
+
+objectname:	reset_disk_meters;
+ retain:		reset_disk_meters;
+
+objectname:	send_admin_command;
+ retain:		send_admin_command, sac;
+ synonym:		sac;
+
+objectname:	value;
+ retain:		value, set, set_seg, dump;
+
+objectname:	send_daemon_command;
+ retain:		send_daemon_command;
+
+objectname:	terminals_overseer_;
+ retain:		terminals_overseer_, t_quit, cmproc;
+
+objectname:	disklow;
+ retain:		disklow;
+
+objectname:	is_he_user;
+ retain:		is_he_user;
+
+objectname:	is_legal_proj;
+ retain:		is_legal_proj;
+
+objectname:	charge_user_;
+ retain:		charge_user_, set_user_charge, debug;
+
+objectname:	clear_projfile;
+ retain:		clear_projfile;
+
+objectname:	clear_reqfile;
+ retain:		clear_reqfile;
+
+objectname:	clear_sat;
+ retain:		clear_sat;
+
+objectname:	copy_as_meters;
+ retain:		copy_as_meters;
+
+objectname:	pdt_copy;
+ retain:		pdt_copy;
+
+objectname:	print_meters;
+ retain:		print_meters;
+
+objectname:	reset_proj;
+ retain:		reset_proj;
+
+objectname:	reset_usage;
+ retain:		reset_usage;
+
+objectname:	sort_projfile;
+ retain:		sort_projfile;
+
+objectname:	sort_reqfile;
+ retain:		sort_reqfile;
+
+objectname:	reset_use_totals;
+ retain:		reset_use_totals;
+
+objectname:	system_daily_report;
+ retain:		system_daily_report;
+
+objectname:	system_monthly_report;
+ retain:		system_monthly_report;
+
+objectname:	system_total;
+ retain:		system_total;
+
+objectname:	usage_and_revenue;
+ retain:		usage_and_revenue;
+
+objectname:	usage_total;
+ retain:		usage_total;
+
+objectname:	set_tpp;
+ retain:		set_tpp, stpp;
+
+objectname:	authenticate_device;
+ retain:		authenticate_device;
+
+objectname:	make_volume_labels;
+ retain:		make_volume_labels;
+
+objectname:	disk_left_;
+ retain:		disk_left_;
+
+/* end */
+
+
+

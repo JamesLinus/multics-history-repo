@@ -1,0 +1,41 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(86-08-14,Elhard), approve(86-08-14,MCR7505),
+     audit(86-12-10,DGHowe), install(86-12-10,MR12.0-1241):
+     Originally written.
+                                                   END HISTORY COMMENTS */
+
+/*** ******************************************************************/
+/***							*/
+/***	Name:	bound_linkage_editor_.bind			*/
+/***	Function: This is the bindfile for the linkage editor.	*/
+/***							*/
+/*** ******************************************************************/
+
+Objectname:	bound_linkage_editor_;
+Addname:		linkage_editor, le, le_, ocu_;
+Order:		le, le_, le_apply_def_options_, le_backpatch_,
+		le_combine_init_info_, le_complete_binary_,
+		le_create_binary_, le_create_list_, le_data_, le_debug_,
+		le_emit_defs_, le_emit_firstref_, le_emit_static_,
+		le_emit_symbol_, le_emit_text_, le_error_, le_et_,
+		le_make_comp_tbl_, le_make_component_, le_make_link_tbl_,
+		le_make_opt_tbl_, le_make_segname_tbl_, le_msf_partition_,
+		le_snap_, le_util_, ocu_;
+Global:		delete;
+
+objectname:	le;
+ synonym:		linkage_editor;
+ retain:		le, linkage_editor;
+
+objectname:	le_;
+ retain:		le_;
+
+objectname:	ocu_;
+ global:		retain;
+
+/* end */
+
+
+

@@ -1,0 +1,220 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+   *                                                         *
+   * Copyright (c) 1972 by Massachusetts Institute of        *
+   * Technology and Honeywell Information Systems, Inc.      *
+   *                                                         *
+   *********************************************************** */
+
+
+
+
+
+/* HISTORY COMMENTS:
+  1) change(86-01-30,KFleming), approve(86-01-30,MCR7333),
+     audit(86-08-05,Lippard), install(86-08-06,MR12.0-1116):
+     Deleted exists, as it has been merged with entries in
+     bound_active_function_.
+  2) change(86-08-12,JSLove), approve(86-08-12,MCR7519),
+     audit(86-08-14,FCSmith), install(86-10-01,MR12.0-1170):
+     Added the execute_string and substitute_arguments entrypoints to the "do"
+     command.
+  3) change(86-11-12,Elhard), approve(86-11-12,MCR7457),
+     audit(86-11-12,GDixon), install(86-11-20,MR12.0-1222):
+     Add set_fortran_common (sfc) command.
+  4) change(86-12-06,GDixon), approve(86-12-06,PBF7519),
+     audit(86-12-09,Parisek), install(86-12-09,MR12.0-1238):
+     Add the names execute_string and exs, which were forgotten in the earlier
+     installation.
+                                                   END HISTORY COMMENTS */
+
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+/*									*/
+/* N__a_m_e:  bound_full_cp_							*/
+/*									*/
+/*      This bound segment contains the abbreviation processor facilities,	          */
+/* and the active functions which are commonly used in exec_com's.		          */
+/*									*/
+/* S__t_a_t_u_s									*/
+/*									*/
+/* 1) Created:  Jun, 1972 by V. Voydock - part of fast command loop development.	*/
+/* 2) Modified: Jun, 1972 by C. Garman - combine exec_com and command processor.	*/
+/* 3) Modified: Nov, 1972 by R. S. Coren - add pathname-related active functions.	*/
+/* 4) Modified: Dec, 1972 by G. C. Dixon - add format_line, query, response and string	*/
+/* 5) Modified: Dec, 1972 by G. C. Dixon - put entry for absentee_dim_util_ back; it was  */
+/* 6) Modified: July 15, 1973 by Peter B. Kelley - add decode_entryname_		*/
+/* 7) Modified: July 17, 1973 by C. L. Wong - add abbrev                                  */
+/* 8) Modified: March 29, 1974 by B. L. Wolman - replace plus, equal			*/
+/*				- add do, numeric_to_ascii_, move_r_or_t_	*/
+/* 9) Modified: June 18, 1976 by Steve Herbst to add if.				*/
+/*10) Modified: September 20, 1976 by C.W. Anderson to add general_ready and get_rates_   */
+/*11) Modified: April 15, 1977 by Jay Goldman to remove get_rates_ and add gr_get_rates_  */
+/*12) Modified: September, 1977 by S. Webber to add execute_epilogue_			*/
+/*13) Modified: October 3, 1977 by M. Weaver to add Perprocess_Static attribute		*/
+/*14) Modified: January 3, 1978 by J Falksen to add picture, hex, bin, oct, dec		*/
+/*15) Modified: June 16, 1978 by M. Weaver to add run and run_			*/
+/*16) Modified: July 7, 1978 by G. Palter to remove full_command_processor_ and related   */
+/*				     entries				*/
+/*17) Modified: September 1, 1978 by G. Palter to remove find_command_error_		*/
+/*				       and full_find_command_			*/
+/*18) Modified: November 17, 1978 by G. Dixon to replace length, index and substr active	*/
+/*				      functions with single substr including the	*/
+/*				      length and index entries, plus many others.	*/
+/*				      Also replace index_set with more powerful 1.*/
+/*19) Modified: 01/22/80 S. Herbst to add date_time_equal, date_time_before,		*/
+/*			     date_time_after af's				*/
+/*20) Modified 05/20/80 S. Herbst to add format_line_nnl, flnnl to format_line		*/
+/*21) Modified 10/31/80 S. Herbst to add names uppercase and lowercase to upper_case, etc.*/
+/*22) Modified 05/20/81 S. Herbst to remove exec_com and abs_io_ (now in bound_exec_com_)	*/
+/*23) Modified 81-11-07 B. I. Margulies for byte/rank.                                    */
+/*24) Modified 12/03/81 S. Herbst to add get_shortest_path_ subroutine.		*/
+/*25) Modified 81-01-08 James A Falksen to fix bugs in picture & add valid_pictured_data  */
+/*26) Modified: 26 February 1982 by G. Palter to retain new entries in abbrev, do, and if */
+/*	         for use by the subsystem utilities and to add tct_			*/
+/*27) Modified 82-03-16 E. N. Kittlitz to add login_args.				*/
+/*28) Modified 82-05-08 B. Margolin to remove path &c (moved to bound_active_function	*/
+/*29) Modified 82-06-09 M. Weaver to retain run_$environment_info			*/
+/*30) Modified: August 1982 by G. Palter to move abbrev and tct_ to bound_command_loop_	*/
+/*31) Modified Sept 1983 by J. A. Bush to add the date_time_valid AF			*/
+/*32) Modified 10 Feb 1984 by J A Falksen move date_time_(after before equal valid)	*/
+/*		to bound_time_rtns_ (was in equal) 				*/
+/*33) Modified 8 March 1985 by Keith Loepere to move some active functions into 	*/
+/*		bound_multics_bce_.						*/
+/*									*/
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+
+
+Objectname:	bound_full_cp_;
+
+Global:		delete;
+
+Perprocess_Static;
+
+Order:		do,
+		execute_epilogue_,
+		general_ready,
+		gr_get_rates_,
+		if,
+		index_set,
+		user,
+		system,
+		login_args,
+		format_line,
+		query,
+		string,
+		decode_entryname_,
+		picture,
+		hex,
+		rank,
+		run,
+		run_,
+		set_fortran_common, 
+		get_shortest_path_;
+
+Addname:            add_epilogue_handler_,
+		binary, bin,
+		byte,
+		decimal, dec,
+		decode_entryname_,
+		do,
+		execute_epilogue_,
+		execute_string, exs,
+		format_line, fl, format_line_nnl, flnnl,
+		general_ready, gr,
+		get_shortest_path_,
+		hexadecimal, hex,
+		if,
+		index_set,
+		login_arg, login_args,
+		octal, oct,
+		picture, pic,
+		query,
+		rank,
+		response,
+		run,
+		run_,
+		set_fortran_common, sfc, 
+		stop_run,
+		string,
+		substitute_arguments, substitute_args, sbag,
+		system,
+		user,
+		valid_pictured_data,vpd;
+
+objectname:	decode_entryname_;
+ retain:		decode_entryname_;
+
+objectname:	do;
+ synonym:		execute_string, exs,
+		substitute_arguments, substitute_args, sbag;
+ retain:		do,
+		execute_string, exs,
+		substitute_arguments, substitute_args, sbag,
+		ssu_do_request_,
+		ssu_execute_string_request_,
+		ssu_substitute_args_request_;
+
+objectname:	execute_epilogue_;
+ synonym:		add_epilogue_handler_;
+ retain:		execute_epilogue_, add_epilogue_handler_;
+
+objectname:	format_line;
+ synonym:		fl;
+ retain:		format_line, fl, format_line_nnl, flnnl;
+
+objectname:	general_ready;
+ synonym:		gr;
+ retain:		general_ready, gr;
+
+objectname:	get_shortest_path_;
+ retain:		get_shortest_path_;
+
+objectname:	hex;
+ synonym:		bin, binary, oct, octal, dec, decimal, hexadecimal;
+ retain:		bin, binary, oct, octal, dec, decimal, hex, hexadecimal;
+
+objectname:	if;
+ retain:		if, ssu_if_request_;
+
+objectname:	index_set;
+ retain:		index_set;
+
+objectname:	login_args;
+ retain:		login_arg, login_args;
+
+objectname:	picture;
+ synonym:		pic, valid_pictured_data, vpd;
+ retain:		pic, picture, valid_pictured_data, vpd;
+
+objectname:	query;
+ synonym:		response;
+ retain:		query, response;
+
+objectname:	rank;
+ synonym:		byte;
+ retain:		rank, byte;
+
+objectname:	run;
+ retain:		run;
+
+objectname:	run_;
+ synonym:		stop_run;
+ retain:		run_, stop_run, environment_info;
+
+objectname:	set_fortran_common;
+  synonym:	sfc;
+  retain:		set_fortran_common,
+		sfc;
+
+objectname:	string;
+ retain:		string;
+
+objectname:	system;
+ retain:		system;
+
+objectname:	user;
+ retain:		user;
+
+/* end; */

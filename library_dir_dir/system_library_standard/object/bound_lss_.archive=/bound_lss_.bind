@@ -1,0 +1,36 @@
+/* Created in June 1972 by V. Voydock (part of the development of the fast command loop) */
+/* Modified: July 17, 1973 by C. L. Wong - add make_commands                             */
+/* Modified: November 1979 by C. Hornig to add enter_lss */
+/* Modified: July 1981 by C. Hornig to remove process_overseer_'s */
+
+Objectname:	bound_lss_;
+Global:		delete;
+
+Order:		transform_command_,
+		start_governor_,
+		enter_lss,
+                    make_commands;
+
+Addname:		enter_lss,
+                    make_commands,
+		start_governor_,
+                    stop_governor_,
+		transform_command_;
+
+objectname:         make_commands;
+ synonym:           mc;
+ retain:            make_commands,
+                    mc;
+
+objectname:	start_governor_;
+ synonym: 	stop_governor_;
+ retain:		start_governor_,
+		stop_governor_;
+
+objectname:	transform_command_;
+ retain:		transform_command_;
+
+objectname:	enter_lss;
+ retain:		enter_lss;
+
+/* End */

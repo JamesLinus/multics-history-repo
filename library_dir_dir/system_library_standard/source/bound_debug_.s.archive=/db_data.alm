@@ -1,0 +1,276 @@
+" ***********************************************************
+" *                                                         *
+" * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+" *                                                         *
+" * Copyright (c) 1972 by Massachusetts Institute of        *
+" * Technology and Honeywell Information Systems, Inc.      *
+" *                                                         *
+" ***********************************************************
+
+	name	db_data
+
+
+
+	segdef	names
+
+	segdef	tags
+
+	segdef	fault_names
+
+	segdef	acv_names
+
+	segdef	ipr_names
+
+
+	segdef	n_regs
+
+
+
+
+
+" This procedure is used as a constant data base for the MULTICS on-line debug
+" programs.  It is written in  ALM  so that it can be part of the text section of the
+" bound debug program.  This allows it to be shared by all processes without any copying.
+"
+" Rewritten  Nov 72  for the  6180  by  Bill Silver.
+"
+" This table contains the names of the  debug defined data items.   They correspond to
+" the data fields found in the machine conditions.   Each name must be four (4) characters
+" long.   If this table is changed the  db_regs  program must also be changed.
+
+
+
+names:
+
+	aci	"pr0 "		The eight pointer registers
+	aci	"pr1 "
+	aci	"pr2 "
+	aci	"pr3 "
+	aci	"pr4 "
+	aci	"pr5 "
+	aci	"pr6 "
+	aci	"pr7 "
+
+	aci	"x0  "		The eight index registers
+	aci	"x1  "
+	aci	"x2  "
+	aci	"x3  "
+	aci	"x4  "
+	aci	"x5  "
+	aci	"x6  "
+	aci	"x7  "
+
+	aci	"aq  "		The combined A and Q registers
+	aci	"all "		Used to print all debug data.
+	aci	"prs "		Used to print all eight pointer regs.
+	aci	"regs"		Used to print index regs, a,q,exp,tr, and ralr.
+	aci	"scu "		Used to print all the SCU data.
+	aci	"user"		Used to print all of the user registers.
+
+	aci	"a   "		A  register
+	aci	"q   "		Q  register
+	aci	"exp "		Exponent  register
+	aci	"tr  "		Timer  register
+	aci	"ralr"		Ring Alarm Register
+	aci	"ppr "		Procedure Pointer Register
+	aci	"tpr "		Temporary Pointer Register
+	aci	"even"		Even instruction at fault time
+	aci	"odd "		Odd  instruction at fault time
+	aci	"ind "		Indicators
+	aci	"eaq "		Floating point accumulator
+
+n_regs:	vfd	36/*-names-1	Number of names (-1 becuse array is (0:n))
+"
+tags:
+
+          aci	"    "		Register Modification  (R )
+          aci	",au "
+          aci	",qu "
+          aci	",du "
+          aci	",ic "
+          aci	",al "
+          aci	",ql "
+          aci	",dl "
+          aci	",0  "
+          aci	",1  "
+          aci	",2  "
+          aci	",3  "
+          aci	",4  "
+          aci	",5  "
+          aci	",6  "
+          aci	",7  "
+
+          aci	",*  "		Register then Indirect  (RI)
+          aci	",au*"
+          aci	",qu*"
+          aci	"    "
+          aci	",ic*"
+          aci	",al*"
+          aci	",ql*"
+          aci	"    "
+          aci	",0* "
+          aci	",1* "
+          aci	",2* "
+          aci	",3* "
+          aci	",4* "
+          aci	",5* "
+          aci	",6* "
+          aci	",7* "
+
+          aci	",f1 "		Indirect then Tally  (IT)
+          aci	",itp"
+          aci	"    "
+          aci	",its"
+          aci	",sd "
+          aci	",scr"
+          aci	",f2 "
+          aci	",f3 "
+          aci	",ci "
+          aci	",i  "
+          aci	",sc "
+          aci	",ad "
+          aci	",di "
+          aci	",dic"
+          aci	",id "
+          aci	",idc"
+
+          aci	",*n "		Indirect then Register  (IR)
+          aci	",*au"
+          aci	",*qu"
+          aci	"    "
+          aci	",*ic"
+          aci	",*al"
+          aci	",*ql"
+          aci	"    "
+          aci	",*0 "
+          aci	",*1 "
+          aci	",*2 "
+          aci	",*3 "
+          aci	",*4 "
+          aci	",*5 "
+          aci	",*6 "
+          aci	",*7 "
+"
+fault_names:
+
+          aci	"shutdown            "
+
+          aci	"store               "
+
+          aci	"mme1                "
+
+          aci	"fault_tag_1         "
+
+          aci	"timer_runout        "
+
+          aci	"command             "
+
+          aci	"derail              "
+
+          aci	"lockup              "
+
+          aci	"connect             "
+
+          aci	"parity              "
+
+          aci	"IPR:                "
+
+          aci	"ONC:                "
+
+          aci	"startup             "
+
+          aci	"overflow            "
+
+          aci	"zerodivide          "
+
+          aci	"execute             "
+
+	aci	"directed_fault_0    "
+
+          aci	"seg_fault_error     "
+
+          aci	"page_fault_error    "
+
+          aci	"gate_error          "
+
+
+          aci       "ACV:                "
+
+          aci	"mme2                "
+
+          aci	"mme3                "
+
+          aci	"mme4                "
+
+          aci	"linkage_error       "
+
+          aci	"fault_tag_3         "
+
+	aci	"undefined_fault     "
+
+          aci	"undefined_fault     "
+
+          aci	"undefined_fault     "
+
+          aci	"undefined_fault     "
+
+          aci	"undefined_fault     "
+
+          aci	"trouble             "
+"
+acv_names:
+
+          aci	"illegal_ring_order      "
+
+          aci	"out_of_execute_bracket  "
+
+          aci	"no_execute_permission   "
+
+          aci	"out_of_read_bracket     "
+
+          aci	"no_read_permission      "
+
+          aci	"out_of_write_bracket    "
+
+          aci	"no_write_permission     "
+
+          aci	"not_a_gate              "
+
+          aci	"out_of_call_bracket     "
+
+          aci	"outward_call            "
+
+          aci	"bad_outward_call        "
+
+          aci	"inward_return           "
+
+          aci	"cross_ring_transfer     "
+
+          aci	"ring_alarm_register     "
+
+          aci	"associative_memory      "
+
+          aci	"out_of_segment_bounds   "
+"
+ipr_names:
+
+          aci	"illegal_segment_number  "
+
+	aci	"illegal_opcode          "
+
+          aci	"illegal_modifier        "
+
+          aci	"illegal_slave_procedure "
+
+          aci	"other_illegal           "
+
+          aci	"nonexistent_address     "
+
+          aci	"out_of_bounds           "
+"
+
+
+	end
+
+
+

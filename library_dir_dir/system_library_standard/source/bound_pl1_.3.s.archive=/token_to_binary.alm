@@ -1,0 +1,41 @@
+" ***********************************************************
+" *                                                         *
+" * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+" *                                                         *
+" * Copyright (c) 1972 by Massachusetts Institute of        *
+" * Technology and Honeywell Information Systems, Inc.      *
+" *                                                         *
+" ***********************************************************
+
+" Quick decimal to binary conversion program for v2pl1
+" Barry L. Wolman, 17 May 1973
+"
+"	dcl token_to_binary entry(ptr) returns(fixed bin)
+"	n = token_to_binary(p)
+"
+"	where p points at v2pl1 token node
+"
+	entry	token_to_binary
+	include	token
+
+token_to_binary:
+	epp2	0|2,*		get ptr to token node
+	epp2	2|0,*
+	epp3	0|4,*		get ptr to output result
+	lda	2|token.size	get size of string
+	ldq	2|token.string	get first character of string
+	anq	=o777000,du
+	cmpq	=a+,du		check for leading + or -
+	tze	signed
+	cmpq	=a-,du
+	tze	signed
+	dtb	(pr,rl),(pr)	convert unsigned
+	desc9ns	2|token.string,al
+	desc9a	3|0,4
+	short_return
+signed:
+	dtb	(pr,rl),(pr)	convert signed
+	desc9ls	2|token.string,al
+	desc9a	3|0,4
+	short_return
+	end

@@ -1,0 +1,196 @@
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) Honeywell Bull Inc., 1988                *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+/* ASCEVL_ - program to evaluate the ACI, ACC, and BCI pseudo-ops.
+   Returns the converted string and word count, and next break. */
+
+ascevl_$accevl:
+     procedure (rslts) returns (fixed binary);
+
+/*	Modified 3/6/77 by NIM to implement ac4 pseudo-op.
+	Modified 740830 by PG to allow optional length field to specify padding. Program was rewritten.
+   Modified on 01/15/73 at 01:59:12 by R F Mabee.
+   by R F Mabee on 15 January 1973 to add BCD strings.
+   by R F Mabee on 16 August 1972 to fix some bugs in listing ACC statements.
+   by RHG on 23 Sept 1970 to call inputs_$ascii_literal */
+
+/* PARAMETERS */
+
+declare  rslts (42) fixed binary (35) parameter;
+
+/* BUILTINS */
+
+declare (addr, bin, bit, ceil, copy, divide, floor, hbound, length, mod, substr) builtin;
+
+/* EXTERNAL ENTRIES CALLED BY ASCEVL */
+
+declare  inputs_$next external entry,
+         inputs_$ascii_literal external entry,
+         inputs_$nxtnb external entry,
+         varevl_ entry (fixed bin (26), fixed bin (26), fixed bin (26), fixed bin (26), fixed bin (26),
+         fixed bin (26)) returns (fixed bin (26));
+
+/* AUTOMATIC DATA USED BY ASCEVL */
+
+declare (pad_length, pad_start, delta, n_words, max_length, out, chars_per_word) fixed bin;
+declare  quote fixed binary (35);
+declare (acc_type, too_long) bit (1) aligned;
+declare (basno, value, admod, b29, iaddr) fixed bin (26);
+declare  string_ptr ptr;
+
+/* BASED STRUCTURES */
+
+declare  ascii (1:168) based (string_ptr) unaligned bit (9),
+         ascii_string char (168) based (string_ptr) unaligned,
+         bcd (1:252) based (string_ptr) unaligned bit (6),
+         bcd_string bit (252*6) based (string_ptr) unaligned,
+         asc4 bit (42*36) based (string_ptr) unaligned;
+
+/* EXTERNAL DATA */
+
+declare  eb_data_$bcd_table (0:127) external unaligned bit (6);
+
+/* INCLUDE FILES FOR ASCEVL */
+
+% include varcom;
+% include concom;
+% include codtab;
+% include erflgs;
+
+/* program */
+
+						/* ACC pseudo-op. */
+	chars_per_word = 4;
+	max_length = hbound (ascii (*), 1);
+	acc_type = "1"b;
+	go to begin;
+
+ascevl_$acievl:					/* ACI pseudo-op. */
+	entry (rslts) returns (fixed binary);
+	chars_per_word = 4;
+	max_length = hbound (ascii (*), 1);
+	acc_type = "0"b;
+	go to begin;
+
+ascevl_$ac4evl:					/* AC4 pseudo-op. */
+	entry (rslts) returns (fixed binary);
+	chars_per_word = 8;
+	max_length = divide (length (asc4), 4.5, 17, 0);
+	acc_type = "0"b;
+	go to begin;
+
+ascevl_$bcdevl:					/* BCI pseudo-op. */
+	entry (rslts) returns (fixed binary);
+	chars_per_word = 6;
+	max_length = hbound (bcd (*), 1);
+	acc_type = "0"b;
+
+begin:
+	too_long = "0"b;
+
+	if acc_type then
+	     out = 2;
+	else
+	     out = 1;				/* skip over count position if acc */
+
+	string_ptr = addr (rslts);			/* where to store chars */
+
+	call inputs_$nxtnb;
+	quote = brk (2);				/* use the actual ASCII character as the bounding character in binary */
+
+	do while ("1"b);
+	     call inputs_$ascii_literal;		/* get next character */
+	     if brk (2) = quote then do;		/* if termination character */
+		call inputs_$next;			/* get next character */
+		if brk (2) ^= quote then do;		/* two termination chars in a row means insert one of them */
+
+/* check for optional length field. */
+		     if brk (1) = icomma then do;
+			if (varevl_ (invrvl, basno, value, admod, b29, iaddr) = 0) then
+			     go to undefined_symbol_error;
+
+			if iaddr ^= 0 then
+			     go to lc_error;
+
+			if value > max_length then do;
+			     too_long = "1"b;
+			     value = max_length;
+			end;
+
+			delta = value - out + 1;
+
+			if delta < 0 then
+			     too_long = "1"b;
+			else if delta > 0 then do;	/* avoid stupid IPR fault */
+			     if chars_per_word = 4 then
+				substr (ascii_string, out, delta) = " ";
+			     else if chars_per_word = 6 then
+				substr (bcd_string, 6 * out - 5, 6 * delta) = copy ("20"b3, delta);
+			     else do;
+				pad_start = floor (out * 4.5) - 3;
+				pad_length = ceil (value * 4.5) + 1 - pad_start;
+				substr (asc4, pad_start, pad_length) = "0"b;
+			     end;
+			     out = out + delta;
+			end;
+		     end;
+error_return:
+		     n_words = divide (out - 1 + chars_per_word - 1, chars_per_word, 18, 0);
+		     delta = chars_per_word * n_words - out + 1;
+
+		     if delta > 0 then		/* avoid IPR fault */
+			if chars_per_word = 4 then
+			     substr (ascii_string, out, delta) = (3) ""; /* \000 */
+			else if chars_per_word = 6 then
+			     substr (bcd_string, 6 * out - 5, 6 * delta) = (30)"0"b;
+			else
+			     substr (asc4, floor (out * 4.5) - 3, floor (4.5 * delta)) = "0"b;
+
+		     if acc_type then
+			ascii (1) = bit (bin (out - 2, 9), 9);
+
+		     if too_long then
+			prnte = 1;
+
+		     return (n_words);
+		end;
+	     end;
+
+	     if out > max_length then
+		too_long = "1"b;
+	     else do;
+		if chars_per_word = 4 then		/* put this char in result string */
+		     ascii (out) = bit (bin (brk (2), 9), 9);
+		else if chars_per_word = 6 then
+		     bcd (out) = eb_data_$bcd_table (brk (2));
+		else do;
+		     pad_start = ceil (out * 4.5) - 3;
+		     if mod (out, 2) ^= 0 then
+			substr (asc4, pad_start - 1, 1) = "0"b;
+		     substr (asc4, pad_start, 4) = substr (unspec (brk (2)), 33, 4);
+		end;
+		out = out + 1;
+	     end;
+	end;
+
+lc_error:
+	prnte = 1;
+	go to error_return;
+
+undefined_symbol_error:
+	prntu = 1;
+	go to error_return;
+
+     end ascevl_$accevl;
+
+
+

@@ -1,0 +1,36 @@
+/*	BINDFILE for BOUND_BOOTLOAD_0 	*/
+/* Created 10/03/80 W. Olin Sibert		*/
+/* Modified to become bound_bootload_0.		*/
+/* Modified to add in toehold as first object,	*/
+/* 	by Keith Loepere, October, 1983.	*/
+
+Objectname:	bound_bootload_0;
+
+Global:		retain;                        /* Let IFD find all entrypoints */
+
+/* *	The only important ordering constraints here are that
+   *	toehold MUST come FIRST.
+   */
+
+Order:		toehold,		/* bce toehold, placed into memory first */
+		bootload_early_dump,/* Dumps memory to tape upon early failure, after toehold so absloc is known */
+		bootload_abs_mode,	/* Very first program to run. Transfered to by toehold. */
+		bootload_0,	/* Takes care of miscellaneous initializations */
+		bootload_console,   /* Console O (and someday I) */
+		bootload_dseg,	/* Program to make bound_bootload_0's DSEG */
+		bootload_error,	/* Error message generator */
+		bootload_faults,	/* Program to set up fault vector, and handle some faults */
+		bootload_flagbox,	/* Temporary program for flagbox initialization */
+		bootload_formline,  /* message formatter */
+		bootload_info,	/* Data segment for default tape firmware, etc. */
+		bootload_io,	/* Primitive IOM manager */
+		bootload_linker,	/* prelinker */
+		bootload_loader,	/* Program to load the rest of collection 1 */
+		bootload_slt_manager,/* Manages the SLT */
+		bootload_tape_fw,	/* Program to load tape MPC firmware */
+		template_slt_;       /* collection 0 slt image */
+
+/*		END		*/
+
+
+

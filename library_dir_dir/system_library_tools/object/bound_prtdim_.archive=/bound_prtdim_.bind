@@ -1,0 +1,83 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+   *                                                         *
+   *********************************************************** */
+/* Bindfile for bound_prtdim_, the Multics printer DIM. */
+/* Created 11/5/74 by Noel I. Morris	*/
+/* Modified 10/22/75 by Noel I. Morris	*/
+/* Modified February 1976 by Larry Johnson for new analyze_device_stat_ entry */
+/* Modified Sept 1977 by D. Vinograd to add the remote_printer.... entries */
+/* Modified January 1983 by E. N. Kittlitz to retain/addname printer_images_ */
+/* Modified 83-10-20 by E. N. Kittlitz for separate eurc/urmpc support */
+
+Objectname:	bound_prtdim_;
+ Addname:		prtdim, prtdim_,
+		prt_status_table_,
+		init_printer_,
+		prt_conv_,
+		analyze_device_stat_,
+		printer_images_,
+		remote_printer_control_,
+		remote_printer_modes_,
+		analyze_system_fault_;
+
+ Global:		delete;
+
+ Order:		init_printer_,
+		printer_images_,
+		pr2_conv_,
+		pr3_conv_,
+		prtdim,
+		prtdim_attach,
+		prtdim_util,
+		prtdim_eurc_util,
+		prtdim_changemode,
+		prtdim_order,
+		prtdim_write,
+		prt_conv_,
+		prtdim_eurc_write,
+		prt_status_table_,
+		analyze_device_stat_,
+		analyze_system_fault_;
+
+objectname:	prtdim;
+ retain:		prtdimmodule, prtdim_module;
+
+objectname:	prtdim_attach;
+
+objectname:	prtdim_util;
+
+objectname:	prtdim_eurc_util;
+
+objectname:	prtdim_changemode;
+ retain:		prtdim_changemode, remote_printer_modes_;
+
+objectname:	prtdim_order;
+ retain:		prtdim_order, remote_printer_control_;
+
+objectname:	prtdim_write;
+
+objectname:	prtdim_eurc_write;
+
+objectname:	prt_status_table_;
+ retain:		prt_status_table_;
+
+objectname:	analyze_device_stat_;
+ retain:		analyze_device_stat_, rs, rsnnl;
+
+objectname:	analyze_system_fault_;
+ retain:		analyze_system_fault_;
+
+objectname:	init_printer_;
+ retain:		init_printer_, load_image, load_vfc, reset;
+
+objectname:	printer_images_;
+ global:		retain;
+
+objectname:	pr2_conv_;
+
+objectname:	pr3_conv_;
+
+objectname:	prt_conv_;
+ retain:		prt_conv_;

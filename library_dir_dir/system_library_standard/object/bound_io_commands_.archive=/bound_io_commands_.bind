@@ -1,0 +1,279 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+   *                                                         *
+   *********************************************************** */
+
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+	/*									*/
+	/* Bindfile for bound_io_commands_						*/
+	/*									*/
+	/* Status:								*/
+	/* 1) 17 July 1973,      C. L. Wong      to add parse_file_, read_list_, write_list_	*/
+	/* 2) 15 January 1974,   M. G. Smith     to added "pat" and "io".			*/
+	/* 3) 12 February 1974,  Robert S. Coren to added print_io_devices, get_iod_defaults_,	*/
+	/*				 iodc_parse_parms_				*/
+	/* 4) 12 June 1974,      M. G. Smith     to deleted IOS version of "print_attach_table".	*/
+	/* 5) 23 June 1975,	     Paul Green      to add get_line_length_			*/
+	/* 6) 6 May 1975,	     R.S. Coren      to replace iomode with set_tty.		*/
+	/* 7) 10 July 1975,	     Larry Johnson   to change 'io' to 'io_call'			*/
+	/* 8) 22 July 1975,	     J. Stern        to delete print_io_devices, get_iod_defaults,	*/
+	/*				 iodc_parse_parms_ and to add iod_info_,	*/
+	/*				 print_request_types, copy_cards, pool_manager_.	*/
+	/* 9) 13 February 1976,  Ross E. Klinger to add copy_file.				*/
+	/* 10) 26 April 1977,    Steve Herbst    to add terminal_output, revert_output and	*/
+	/*				 discard_output.				*/
+	/* 11) 30 June 1977,     Robert Coren    to add ttt_info_, display_ttt,		*/
+	/*				 print_terminal_types.			*/
+	/* 12) 2 May 1978,       J. C. Whitmore  to add new entries for iod_info_.		*/
+	/* 13) 8 December 1978,  W. Olin Sibert  to rename "pat" to "print_attach_table".	*/
+	/* 14) 19 August 1980,   James R. Davis  to add entry ttt_info_$video_info and command	*/
+	/*				 "print_ttt_path" (in ttt_info_)		*/
+	/* 15) 4 February 1981,  J. Spencer Love to move requote_string_ to bound_sss_active_	*/
+	/*				 (in >sl1) and add get_mode			*/
+	/* 16) 20 April 1981,    G. Palter       to retain all entries in dprint_ as several new	*/
+	/*				 ones have been added			*/
+	/* 17) 8 January 1982,   G. Dixon        to add enter_output_request			*/
+	/* 18) 5 May 1982,	     G. Dixon	 to add total_output_requests			*/
+	/* 19) 21 June 1982,     R. Kovalcik	 to add eor_cv6_7_				*/
+	/* 20) 18 August, 1982   G. Dixon	 to move close_file from >unb to this bound seg.	*/
+	/* 21) 13 September 1982 Richard Lamson	 to add timed_io_				*/
+	/* 22) 8 October 1982,   G. Palter	 to add have_queue_entries			*/
+          /* 23) 1985-02-20, BIM: added get_com_channel_info_.
+	/*									*/
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+
+
+/* HISTORY COMMENTS:
+  1) change(87-05-10,Gilcrease), approve(87-07-31,MCR7686),
+     audit(88-02-01,Farley), install(88-02-02,MR12.2-1019):
+     Add the subroutine eor_cv8_9_, for eor -nb
+  2) change(88-08-24,Brunelle), approve(88-09-12,MCR7911),
+     audit(88-09-29,Wallman), install(88-10-28,MR12.2-1199):
+     Added display_forms_info command.
+  3) change(88-08-24,Farley), approve(88-09-12,MCR7911),
+     audit(88-09-29,Wallman), install(88-10-28,MR12.2-1199):
+     Added eor_cv9_10_, for increasing forms_name variable to char 64.
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:	bound_io_commands_;
+
+Order:		file_output,
+		discard_output,
+		dprint,
+		enter_output_request,
+		dprint_,
+		iod_info_,
+		iod_forms_,
+		eor_cv5_6_,
+		eor_cv6_7_,
+                    eor_cv7_8_,
+		eor_cv8_9_,
+		eor_cv9_10_,
+		print_request_types,
+		total_output_requests,
+		have_queue_entries,
+		display_forms_info,
+		get_com_channel_info_,
+		get_line_length_,
+		print_attach_table,
+		io_call,
+		io_call_read_write_,
+		io_call_print_iocb_,
+		io_call_msg_,
+		line_length,
+		set_tty,
+		ttt_info_,
+		timed_io_,
+		display_ttt,
+		iocall,
+                    parse_file_,
+                    read_list_,
+                    write_list_,
+		copy_cards,
+		pool_manager_,
+		copy_file,
+		get_mode,
+		close_file;
+
+Addname:		close_file, cf,
+		console_output, co,
+		copy_cards, ccd,
+		copy_file, cpf,
+		discard_output, dco,
+		display_ttt,
+		display_forms_info,
+		dprint, dp, dp1, dp2,
+		dprint_,
+		dpunch, dpn, dpn1, dpn2,
+		enter_output_request, eor, 
+		file_output, fo,
+		get_com_channel_info_,
+		get_line_length_,
+		get_mode,
+		have_queue_entries,
+		io, io_call,
+		iocall,
+		iod_info_,
+		iod_forms_,
+		line_length, ll,
+                    parse_file_,
+		pool_manager_,
+		print_attach_table, pat,
+		print_request_types, prt,
+		print_terminal_types, ptt,
+		print_ttt_path,
+                    read_list_,
+		revert_output, ro,
+		set_ttt_path,
+		set_tty, stty,
+		syn_output, so,
+		terminal_output, to,
+		timed_io_,
+		total_output_requests, tor,
+		ttt_info_,
+                    write_list_;
+
+Global:		delete;
+
+Perprocess_Static;
+
+objectname:	close_file;
+  synonym:	cf;
+  retain:		close_file, cf;
+
+objectname:	copy_cards;
+  synonym:	ccd;
+  retain:		copy_cards, ccd;
+
+objectname:	copy_file;
+ synonym:		cpf;
+ retain:		copy_file, cpf;
+
+objectname:	discard_output;
+ synonym:		dco;
+ retain:		discard_output, dco;
+
+objectname:	display_forms_info;
+ retain:		display_forms_info;
+
+objectname:	display_ttt;
+ synonym:		print_terminal_types, ptt;
+ retain:		display_ttt,
+		print_terminal_types, ptt;
+
+objectname:	dprint;
+ synonym:		dp, dp1, dp2, dpunch, dpn, dpn1, dpn2;
+ retain:		dprint, dp, dp1, dp2, dpunch, dpn, dpn1, dpn2;
+
+objectname:	dprint_;
+ global:		retain;			/* many useful entrypoints */
+ delete:		symbol_table;
+
+objectname:	enter_output_request;
+  synonym:	eor;
+  retain:		enter_output_request, eor,
+		default_count,
+		default_request_type,
+		list_defaults,
+		request_type;
+
+objectname:	file_output;
+ synonym:		fo, console_output, co,
+		terminal_output, to, revert_output, ro,
+		syn_output, so;
+ retain:		file_output, fo, console_output, co,
+		terminal_output, to, revert_output, ro,
+		syn_output, so;
+
+objectname:	get_com_channel_info_;
+ retain:		get_com_channel_info_;
+
+objectname:	get_line_length_;
+retain:		get_line_length_,
+		stream,
+		switch;
+
+objectname:	get_mode;
+ retain:		get_mode;
+
+objectname:	have_queue_entries;
+ retain:		have_queue_entries;
+
+objectname:	io_call;
+ synonym:		io;
+ retain:		io,
+		io_call;
+
+objectname:	iocall;
+ retain:		iocall, checkstatus;
+
+objectname:	iod_forms_;
+ retain:		info, evaluate;
+
+objectname:	iod_info_;
+  retain:		driver_access_name,
+		generic_type,
+		test,
+		queue_data,
+		rqt_list,
+		evaluate_forms_info,
+		forms_info,
+		validate_forms_info;
+
+objectname:	line_length;
+ synonym:		ll;
+ retain:		line_length, ll;
+
+objectname:         parse_file_;
+ retain:		parse_file_,
+		parse_file_init,
+                    parse_file_line_no,
+                    parse_file_cur_line,
+                    parse_file_ptr,
+                    parse_file_unset_break,
+                    parse_file_set_break,
+                    parse_file_init_ptr,
+                    parse_file_init_name;
+
+objectname:	pool_manager_;
+  retain:		init, open_user_pool, add_quota, close_user_pool,
+		find_pool, clean_pool;
+
+objectname:	print_attach_table;
+ retain:		print_attach_table, pat;
+ synonym:		pat;
+
+objectname:	print_request_types;
+  synonym:	prt;
+  retain:		print_request_types, prt;
+
+objectname:         read_list_;
+ retain:            read_list_,
+                    prompt,
+                    no_prompt,
+                    scan_string;
+
+objectname:	set_tty;
+  synonym:	stty;
+  retain:		set_tty, stty;
+
+objectname:	timed_io_;
+  global:		retain;
+  delete:		timed_io_;
+
+objectname:	total_output_requests;
+  synonym:	tor;
+  retain:		total_output_requests, tor;
+
+objectname:	ttt_info_;
+ synonym:		print_ttt_path, set_ttt_path;
+ global:		retain;
+ delete:		ttt_info_, symbol_table;
+
+objectname:         write_list_;
+ retain:            write_list_,
+                    nnl;
+
+/* End */

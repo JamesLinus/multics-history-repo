@@ -1,0 +1,68 @@
+/*	BEGIN INCLUDE FILE comp_art_parts.incl.pl1	*/
+
+/**** format: off */
+dcl 1 art		static options (constant),
+
+      2 top	(8) char (1) unal init
+	("'", "-", "3", "9", "?", "E", "K", "Q"),
+      2 half_top	(8) char (1) unal init
+	("(", ".", "4", ":", "@", "F", "L", "R"),
+      2 middle	(8) char (1) unal init
+	(")", "/", "5", ";", "A", "G", "M", "S"),
+      2 bottom	(8) char (1) unal init
+	("*", "0", "6", "<", "B", "H", "N", "T"),
+      2 half_bottom (8) char (1) unal init
+	("+", "1", "7", "=", "C", "I", "O", "U"),
+      2 other_part	(8) char (1) unal init
+	(",", "2", "8", ">", "D", "J", "P", "V"),
+      2 one	(15) char (1) unal init
+	("", """, "", "!", "", "$", "W", "X",
+	"M",			/* o = bullet */
+	"Y",			/* / = right slash */
+	"",			/* X = multiply */
+	"",			/* * = delete */
+	"",			/* m = modify */
+	"C",			/* c = copyright */
+	"T"),			/* t = trademark */
+
+/* artwork codes */
+      2 vpart	char (1) unal init ("Z"),
+      2 daro	char (1) unal init (""),
+      2 uparo	char (1) unal init ("%"),
+      2 horiz,
+        3 start	char (1) unal init ("["),
+        3 line	char (1) unal init ("\"),
+        3 term	char (1) unal init ("]"),
+      2 laro	char (1) unal init (""),
+      2 raro	char (1) unal init (" "),
+      2 diam,
+        3 top	char (1) unal init (""),
+        3 lvert	char (1) unal init (""),
+        3 rvert	char (1) unal init (""),
+        3 bottom	char (1) unal init (""),
+      2 lslnt	char (1) unal init ("^"),
+      2 rslnt	char (1) unal init ("_"),
+      2 lcirc	char (1) unal init (""),
+      2 rcirc	char (1) unal init ("#"),
+      2 PI	char (1) unal init ("P"),
+      2 pi	char (1) unal init ("p"),
+      2 box,
+        3 tl	char (1) unal init ("`"), /* top left corner */
+        3 t	char (1) unal init ("a"), /* top intersection */
+        3 tr	char (1) unal init ("b"), /* top right corner */
+        3 l	char (1) unal init ("c"), /* left edge intersection */
+        3 x	char (1) unal init ("d"), /* interior insection */
+        3 r	char (1) unal init ("e"), /* right edge intersection */
+        3 bl	char (1) unal init ("f"), /* bottom left corner */
+        3 b	char (1) unal init ("g"), /* bottom intersection */
+        3 br	char (1) unal init ("h"), /* bottom right corner */
+      2 loz,
+        3 tl	char (1) unal init ("i"), /* top left corner */
+        3 tr	char (1) unal init ("j"), /* top right corner */
+        3 l	char (1) unal init ("k"), /* left vertx */
+        3 r	char (1) unal init ("l"), /* right vertex */
+        3 bl	char (1) unal init ("m"), /* bottom left corner */
+        3 br	char (1) unal init ("n"); /* bottom right corner */
+
+/**** format: on */
+/* END INCLUDE FILE comp_art_parts.incl.pl1	*/

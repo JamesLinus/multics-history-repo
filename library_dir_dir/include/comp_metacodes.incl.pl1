@@ -1,0 +1,92 @@
+/* BEGIN INCLUDE FILE - comp_metacodes.incl.pl1 */
+
+/* format: style2,ind2,ll79,dclind4,idind25,comcol51,linecom */
+
+/* ASCII control characters */
+     dcl (
+         NUL		    init (""),	/* 000 */
+         SOH		    init (""),	/* 001 */
+         STX		    init (""),	/* 002 */
+         ETX		    init (""),	/* 003 */
+         EOT		    init (""),	/* 004 */
+         ENQ		    init (""),	/* 005 */
+         ACK		    init (""),	/* 006 */
+         BEL		    init (""),	/* 007 */
+         BSP		    init (""),	/* 010 */
+         HT		    init ("	"),
+					/* 011 */
+         (NL, LF)		    init ("
+"),					/* 012 */
+         VT		    init (""),					/* 013 */
+         FF		    init (""),					/* 014 */
+         CR		    init (""),	/* 015 */
+         (RRS, SO)		    init (""),	/* 016 */
+         (BRS, SI)		    init (""),	/* 017 */
+         DLE		    init (""),	/* 020 */
+         DC1		    init (""),	/* 021 */
+         (DC2, HLF, HUGE)	    init (""),	/* 022 */
+         DC3		    init (""),	/* 023 */
+         (DC4, HLR, THICK)	    init (""),	/* 024 */
+         (NAK, MEDIUM)	    init (""),	/* 025 */
+         SYN		    init (""),	/* 026 */
+         (ETB, HAIR)	    init (""),	/* 027 */
+         (CAN, STROKE)	    init (""),	/* 030 */
+         oct031		    init (""),	/* 031 */
+         SUB		    init (""),	/* 032 */
+         ESC		    init (""),	/* 033 */
+         FS		    init (""),	/* 034 */
+         GS		    init (""),	/* 035 */
+         RS		    init (""),	/* 036 */
+         US		    init (""),	/* 037 */
+         (DEL, PAD)		    init (""),	/* 177 */
+					/* compose meta-characters */
+         multiply		    init ("*"),	/* 252 - multiply symbol */
+         pl_mi		    init ("+"),	/* 253 - plus/minus sign */
+         nabla		    init (","),	/* 254 */
+         EMdash		    init ("-"),	/* 255 - EM dash */
+         slash		    init ("/"),	/* 256 */
+         dagger		    init ("1"),	/* 261 */
+         perpen		    init (";"),	/* 273 - perpendicular mark */
+         not_eq		    init ("="),	/* 275 - not-equal mark */
+         dbldag		    init ("A"),	/* 301 - double daggar */
+         cright		    init ("C"),	/* 303 - copyright mark */
+         delta		    init ("D"),	/* 304 */
+         bullet		    init ("M"),	/* 315 */
+         prll		    init ("N"),	/* 316 - parallel mark */
+         PI		    init ("P"),	/* 320 - uppercase Greek pi */
+         tmark		    init ("T"),	/* 324 - trademark */
+         tfore		    init ("V"),	/* 326 - therefore mark */
+         approx		    init ("Z"),	/* 332 - approximately-equal mark */
+         infin		    init ("_"),	/* 337 - infinity */
+         theta		    init ("j"),	/* 352 */
+         pi		    init ("p"),	/* 360 - lowercase Greek pi */
+         square		    init ("}"),	/* 375 */
+         overbar		    init ("~"),	/* 376 */
+         PS		    init (""),	/* 377 - punctuation space */
+         sup0		    init (""),	/* 400 - superior digit 0 */
+         sup1		    init (""),	/* 401 - superior digit 1 */
+         sup2		    init (""),	/* 402 - superior digit 2 */
+         sup3		    init (""),	/* 403 - superior digit 3 */
+         sup4		    init (""),	/* 404 - superior digit 4 */
+         sup5		    init (""),	/* 405 - superior digit 5 */
+         sup6		    init (""),	/* 406 - superior digit 6 */
+         sup7		    init (""),	/* 407 - superior digit 7 */
+         sup8		    init (""),	/* 410 - superior digit 8 */
+         sup9		    init ("	"),	/* 411 - superior digit 9 */
+         EM		    init ("
+"),	/* 412 - EM space */
+         EM_		    init (""),	/* 413 - EM aligned dash */
+         EN		    init (""),	/* 414 - EN space */
+         EN_		    init (""),	/* 415 - EN aligned dash */
+         ENd		    init (""),	/* 416 - EN dash */
+         THIN		    init (""),	/* 417 - thinspace */
+         DEVIT		    init (""),	/* 420 - device unit */
+         lquote		    init (""),	/* 421 - left double quote */
+         rquote		    init (""),	/* 422 - right double quote */
+         modmark		    init (""),	/* 424 - text modification/addition mark */
+         delmark		    init (""),	/* 430 - deletion mark */
+         vrule		    init ("Z"),	/* 532 - vertical rule */
+         lslnt		    init ("^")	/* 536 - left slant */
+         )		    char (1) unaligned static options (constant);
+
+/* END INCLUDE FILE  comp_metacodes.incl.pl1  */

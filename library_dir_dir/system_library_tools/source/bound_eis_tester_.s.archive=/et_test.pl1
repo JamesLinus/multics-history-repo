@@ -1,0 +1,409 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+   *                                                         *
+   * Copyright (c) 1972 by Massachusetts Institute of        *
+   * Technology and Honeywell Information Systems, Inc.      *
+   *                                                         *
+   *********************************************************** */
+
+
+et_test: procedure (script_ptr, script_len, arg_et_data_ptr, finished_flag, code);
+
+
+/*	Modified Aug, 1980 to add capability to run the new ets scripts.
+   *	Accomplished by changing declaration of most fixed bin variables to
+   *	fixed bin (35).
+*/
+
+
+
+/*	This procedure will parse the input data for one instruction.  The data
+   *	for each instruction consists of statements.  There are four types of
+   *	statements: inst, desc, data, and page.  The first statement of each
+   *	instruction must be an  "inst"  statement.
+   *	The format of a statement is as follows:
+   *
+   *	name	required_field	-option . . . -option . . .;
+   *
+   *	1.  The first field in all statements MUST be its  4  character statement
+   *	    name:  "inst", "desc", "data", or "page".
+   *
+   *	2.  In some statements (all but page) the second field in the statement
+   *	    MUST be some required information.
+   *
+   *	3.  The other fields in the statement represent optional data which may or
+   *	    may not be given.  Each option field MUST begin with a "-".
+   *
+   *	4.  All statements must end with a ";".
+   *
+   *	5.  There may be any number of  blanks, tabs, and new line  characters between
+   *	    any  fields in the statement, including before the name field.
+   *
+   *	6.  Wherever blanks are permitted (see 5. above) there may also be comment
+   *	    fields.  Comments MUST begin with the characters "/*" and end with
+   *	    the characters "*/".
+   *
+   *	Initial code on  10/24/72  by  Bill Silver.
+*/
+
+
+
+/*	The following data items are used as arguments in the call to  et_test. */
+
+dcl  script_ptr ptr,				/* Pointer to the input data file. */
+
+     script_len fixed bin (35),			/* The length in characters of the
+						   *  input data file. */
+
+     arg_et_data_ptr ptr,				/* Pointer to the  et_data  area.  */
+
+     finished_flag fixed bin,				/* Indicates when all of the instructions
+						   *  have been tested.  */
+
+     code fixed bin (35);				/* Error code.  */
+
+
+
+
+/*	This is an overlay of the input script file.  */
+
+dcl 1 script based (script_ptr),			/* Used to access the input data segment
+						   *  as a stream of characters. */
+
+    2 offset char (start),				/* The part of the segment which we have
+						   *  allready processed. */
+
+    2 window char (size);				/* The part of the segment which we are
+						   *  currently accessing.  */
+
+
+dcl  start fixed bin (35),				/* The number of script characters allready
+						   *  processed.  The next character is the start
+						   *  of the window.  */
+
+     size fixed bin (35);				/* The current size (in characters) of the window
+						   *  on the script segment.  */
+
+
+
+/*	These are some temporary variables. */
+
+dcl  i fixed bin (35),				/* Work index variables. */
+
+     len fixed bin (35),				/* Temporary.  */
+
+     next_statement_x fixed bin (35),			/* The number of the last character in the
+						   *  current statement.  */
+
+     save fixed bin (35),				/* Temporary.  */
+
+     test_x fixed bin;				/* Used to hold the test_x field from this
+						   *  instruction's entry in the et_instr_data
+						   *  table.  */
+
+
+
+/*	An overlay of an  mf  field.  */
+
+dcl 1 mf_map based unaligned,
+    2 ar bit (1),
+    2 rl bit (1),
+    2 id bit (1),
+    2 reg bit (4);
+
+
+dcl  stringrange_label label internal static;
+
+
+
+
+dcl  com_err_ entry options (variable),
+
+     condition_ entry (char (*), entry),
+
+     et_inst entry (char (*), ptr, fixed bin (35)),
+     et_desc entry (char (*), ptr, fixed bin (35)),
+     et_data entry (char (*), ptr, fixed bin (35)),
+     et_page entry (char (*), ptr, fixed bin (35)),
+
+     et_util$get_next entry (ptr, fixed bin (35), fixed bin (35), char (*), fixed bin (35)),
+     et_util$skip entry (ptr, fixed bin (35), fixed bin (35));
+
+
+dcl  substr builtin;
+						/* 	*/
+%include et_instr_data_map;
+/*  */
+%include et_setup_data;
+/* 	*/
+/*	Establish a window onto the data segment which will look at all of the data
+   *	of this one instruction.  */
+
+	et_data_ptr = arg_et_data_ptr;		/* Copy this argument so we can reference
+						   *  common data directly.  */
+
+	start = next_instruction_x;			/* Start the window at the beginning
+						   *  of the next instruction's data.  */
+	size = script_len - start;			/* From there open the window on
+						   *  the rest of the file.  */
+
+/*	Move the window so that it starts at the beginning of the statement name
+   *	of the next test statement.  If len = 0 then none was found. */
+
+	call et_util$get_next (script_ptr, start, size, "inst", len);
+	if len = 0
+	then do;
+	     code = 100;
+	     call com_err_ (0, "ET", "^d Script does not contain valid ""inst"" statement.", code);
+	     finished_flag = 1;			/* Set flag to end the whole  */
+	     return;				/* thing.  End it now. */
+	end;
+
+
+/*	We do have an instruction statement to start out test.  We must set up a condition
+   *	handler for the  "stringrange"  condition.  We will also set up the label variable
+   *	which the condition handler procedure can use to get back to this stack frame.
+*/
+
+	call condition_ ("stringrange", stringrange_handler);
+
+	stringrange_label = stringrange_error;
+
+	save = start;				/* Remember where the window is now at
+						   *  the beginning of this instruction.
+						   *  Right at the  "inst"  statement name. */
+
+	start = start + 4;				/* Move the window to after the  "inst".  */
+	size = size - 4;
+
+
+/*	Find the beginning of the next instruction.  */
+
+	call et_util$get_next (script_ptr, start, size, "inst", len);
+
+	if len = 0
+
+/*	If no new instruction was found ( the current one is the last one ) then
+   *	move the window back to the beginning of the current instruction and
+   *	then set the size of the window to be the rest of the segment.  Also set
+   *	the finished_flag  on  to indicate that this is the last instruction to test. */
+
+	then do;
+	     start = save;
+	     size = script_len - start;
+	     next_instruction_x = script_len;
+	     finished_flag = 1;
+	end;
+
+/*	If there is another instruction remember where it starts by saving its
+   *	address (character number) in next_instruction_x.  Then move the window
+   *	back to the beginning of the current instruction.  Set the size of the
+   *	window so that it is open to just the data of the current instruction. */
+
+	else do;
+	     next_instruction_x = start;
+	     start = save;
+	     size = next_instruction_x - start;
+	end;
+						/* 	*/
+						/*	Now look through the statements of this test.  Each statement must
+						   *	end with a  ";".  First we must set up the  next_statement_x to
+						   *	point to the beginning of the  "inst" statement.
+						   */
+	next_statement_x = start;
+
+
+
+statement_loop:
+
+	start = next_statement_x;			/* Move the window to start at
+						   *  the beginning of the next state. */
+	size = next_instruction_x - start;		/* The window looks at the rest
+						   *  of the data for this instruction.  */
+
+	save = start;				/* Save the start of the window at
+						   * the beginning of the current statement. */
+
+/*	Look for the ";" which denotes the end of the statement.  */
+
+	call et_util$get_next (script_ptr, start, size, ";", len);
+	if len = 0				/* If no ";" then there are no more */
+	then goto end_statements;			/* statements to parse for this test.  */
+
+/*	If there is a statement then remember where this statement ends and the next
+   *	one begins.  Move the window back to the beginning of the current statement
+   *	and open it so that it just references the data for this statement.
+*/
+
+	next_statement_x = start + 1;			/* start references the character
+						   *  before the ";" so if we want to
+						   *  include the ";" in the window for
+						   *  this statement we must extend the
+						   *  window by one character. */
+	start = save;
+	size = next_statement_x - start;
+
+/*	Now search for the statement name of this statement.  Note that the first
+   *	statement of each instruction must be an  "inst" statement.  It is processed
+   *	in this generalized manner.  All other statements do not have to be in any
+   *	special order.  The statement name does not have to be at the beginning
+   *	of the statement line but it must be the first non skip field.
+*/
+	call et_util$skip (script_ptr, start, size);
+
+/*	Now test to see if we have a valid statement name.  If we do we will call
+   *	the procedure which will parse this statement.  If there is no valid
+   *	statement name then we have to return with an error.
+   *	Note, upon entry to any of the statement parsing procedures the data window
+   *	will start at the first character of the statement name and end at either
+   *	a ";" or the end of the data for this instruction.
+*/
+
+	if substr (window, 1, 4) = "inst"
+	then call et_inst (window, et_data_ptr, code);
+
+	else if substr (window, 1, 4) = "desc"
+	then call et_desc (window, et_data_ptr, code);
+
+	else if substr (window, 1, 4) = "data"
+	then call et_data (window, et_data_ptr, code);
+
+	else if substr (window, 1, 4) = "page"
+	then call et_page (window, et_data_ptr, code);
+
+	else do;
+	     call com_err_ (0, "ET", "^d Invalid statement name: ^a ",
+		code, substr (window, 1, 4));
+	     code = 102;
+	end;
+
+
+/*	If the statement just parsed contained an error we will skip the whole test.
+   *	The index to the beginning of the next instruction will be saved in "next_instruction_x"
+   *	and the next time  "et_test"  is entered  it will start working on the the next
+   *	instruction test.
+*/
+
+	if code ^= 0 then return;			/* Was there an error?  */
+
+
+
+	goto statement_loop;			/* This is the end of the  loop which
+						   *  processes the statements in an instruction
+						   *  test.  Each iteration processes one
+						   *  statement.  */
+
+
+
+/*	Now we have parsed all of the statements in this instruction test.
+   *	We must set up any index registers that are used in modification of a descriptor.
+   *	This is based on the number of characters per word for this descriptor.
+*/
+
+end_statements:
+
+	if mf_ptrs (3) = null ()
+	then len = 2;
+	else len = 3;
+
+	do i = 1 to len;
+	     if mf_ptrs (i) -> mf_map.reg ^= "0"b
+	     then if num_chars (i) ^= -1
+		then regs.x (i) = i * num_chars (i);
+		else regs.x (i) = i * num_chars (1);
+	end;
+
+
+/*	Now we must check that the appropriate data fields have been set up by input data.
+   *	statements.  We will check the following:
+   *
+   *	1.  Every instruction must have data for descriptor 1.
+   *	2.  If the statement is used to input test data is not a   or data 2  statement
+   *	    then there must be data for descriptor 2.
+   *	3.  If there is a third descriptor and the test data is NOT input via a  data 3
+   *	    statement then there must be data for descriptor 3.
+   *	4.  If there is supposed to be test data for this instruction then this data must
+   *	    be present.
+*/
+
+
+	test_x = et_instr_data$instructions (instr_num).test_x;
+
+
+	if data_lens (1) = 0
+
+	then call error_missing_data (1);
+
+
+	if (test_x ^= 2) & (data_lens (2) = 0)
+
+	then call error_missing_data (2);
+
+
+	if (et_instr_data$instructions (instr_num).desc_3_flag) &
+
+	(test_x ^= 3) & (data_lens (3) = 0)
+
+	then call error_missing_data (3);
+
+
+	if (test_x ^= 0) & (data_lens (4) = 0)
+
+	then call error_missing_data (test_x);
+
+
+
+	return;
+						/* 	*/
+						/*	We come here from the stringrange handler procedure.  */
+
+
+stringrange_error:
+
+	code = 109;
+
+	call com_err_ (0, "ET", "^d Stringrange condition.  Current window is: ^/^a", code, window);
+
+	return;
+
+
+
+
+
+
+stringrange_handler: procedure;
+
+	     goto stringrange_label;
+
+	end stringrange_handler;
+						/* 	*/
+error_missing_data: procedure (data_num);
+
+
+dcl  data_num fixed bin;				/* The number of the data statement that is missing.  */
+
+
+	     code = 110 + data_num;
+
+
+	     if data_num ^= test_x
+
+	     then
+		call com_err_ (0, "ET", "^d data ^d statement missing or incomplete.",
+		code, data_num);
+
+	     else
+	     call com_err_ (0, "ET", "^d Test data ^d statement missing or incomplete.",
+		code, data_num);
+
+
+	end error_missing_data;
+
+
+
+
+     end et_test;
+
+
+

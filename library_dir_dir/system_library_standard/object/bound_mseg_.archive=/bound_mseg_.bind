@@ -1,0 +1,60 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1985 *
+   *                                                         *
+   *********************************************************** */
+
+/* bound_mseg_ -- The Multics Message Segment Primitives */
+
+/* Created:  May 1985 by Benson Margulies and Gary Palter */
+
+
+Objectname:	bound_mseg_;
+
+   Global:	   delete;
+   Perprocess_Static;
+
+   Addname:	   mseg_,
+		   mseg_data_,
+		   mseg_mbx_ms_gate_target_,
+		   suffix_mbx_,
+		   suffix_ms_;
+
+   Order:		   mseg_mbx_ms_gate_target_,
+		   mseg_index_,
+		   mseg_check_access_,
+		   mseg_access_operations_,
+		   mseg_,
+		   mseg_data_,
+		   mseg_message_,
+		   mseg_utils_,
+		   mseg_operations_,
+		   mseg_segment_,
+		   mseg_fs_interface_,
+		   mseg_format_errors_,
+		   suffix_mbx_,
+		   suffix_ms_;
+
+
+/* Instructions for individual components */
+
+objectname:	mseg_;
+   global:	   retain;
+   delete:	   symbol_table;
+
+objectname:	mseg_data_;
+   retain:	   template_operation, max_message_size;   
+
+objectname:	mseg_mbx_ms_gate_target_;
+   global:	   retain;
+   delete:	   mseg_mbx_ms_gate_target_, symbol_table;
+
+objectname:	suffix_mbx_;
+   global:	   retain;
+   delete:	   suffix_mbx_, symbol_table;
+
+objectname:	suffix_ms_;
+   global:	   retain;
+   delete:	   suffix_ms_, symbol_table;
+
+/* end; */

@@ -1,0 +1,95 @@
+/* **************************************************************
+   *                                                            *
+   * Copyright, (C) Honeywell Information Systems Inc., 1983    *
+   *                                                            *
+   * Copyright, (C) Massachusetts Institute of Technology, 1983 *
+   *                                                            *
+   ************************************************************** */
+
+/* Bindfile for bound_fs_util_ */
+
+/* BIM 831002 */
+/* MAP 841120 to add describe_entry_type */
+
+
+/* HISTORY COMMENTS:
+  1) change(88-09-19,GDixon), approve(88-09-20,MCR8007),
+     audit(88-10-03,Beattie), install(88-10-06,MR12.2-1139):
+      A) Add fs_star_ to this bound segment.
+      B) Add an Order statement to the bind file, as required by standards.
+      C) Eliminate "global: retain" statement from fs_util_, as required by
+         standards.
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:         bound_fs_util_;
+
+Addname:            describe_entry_type, dset,
+		fs_star_, 
+		fs_util_,
+		list_entry_types, lset;
+
+Global:             delete;
+
+Order:		fs_util_,
+		fs_get_type_,
+		fs_standard_object_,
+		fs_acl_util_, 
+		fs_copy_util_, 
+		fs_msf_rb_util_, 
+		describe_entry_type, 
+		fs_star_;
+
+objectname:	describe_entry_type;
+ retain:		describe_entry_type,
+		list_entry_types,
+		dset,
+		lset;
+ synonym:		list_entry_types,
+		dset,
+		lset;
+
+objectname:         fs_acl_util_;
+
+objectname:	fs_copy_util_;
+
+objectname:         fs_get_type_;
+
+objectname:         fs_standard_object_;
+
+objectname:	fs_star_;
+ retain:		adjust_structure_size,
+		init,
+		reinit,
+		select,
+		term;
+
+objectname:         fs_util_;
+ retain:		add_acl_entries,
+		add_extended_acl_entries,
+		chname_file,
+		copy,
+		delentry_file,
+		delete_acl_entries,
+		get_bit_count,
+		get_max_length,
+		get_ring_brackets,
+		get_switch,
+		get_type,
+		get_user_access_modes,
+		list_acl,
+		list_extended_acl,
+		list_switches,
+		list_switches_for_type,
+		make_entry,
+		make_entry_for_type,
+		replace_acl,
+		replace_extended_acl,
+		set_bit_count,
+		set_max_length,
+		set_ring_brackets,
+		set_switch,
+		suffix_info,
+		suffix_info_for_type;
+
+/* End */

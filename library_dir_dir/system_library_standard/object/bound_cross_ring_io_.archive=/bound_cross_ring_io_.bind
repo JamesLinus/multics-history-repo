@@ -1,0 +1,45 @@
+/* Bindfile for bound_cross_ring_io_ */
+
+/* Created: by T. VanVleck */
+/* Modified:  19 June 1980 by G. Palter to add correct names to the object segment */
+/* Modified 1/82 BIM for improved program names */
+
+Objectname:	bound_cross_ring_io_;
+Global:		delete;
+
+Order:		cross_ring_,
+		cross_ring_io_;
+
+Addname:		cross_ring_,
+		cross_ring_io_;
+
+objectname:	cross_ring_;
+ retain:		cross_ring_attach;
+
+objectname:	cross_ring_io_;
+ retain:		allow_cross,
+		close,
+		control,
+		cross_ring_io_,
+		delete_record,
+		find_attachment,
+		get_chars,
+		get_line,
+		modes,
+		open,
+		position,
+		put_chars,
+		read_key,
+		read_length,
+		read_record,
+		release_attachment,
+		rewrite_record,
+		seek_key,
+		write_record;
+
+
+
+/* End */
+
+
+

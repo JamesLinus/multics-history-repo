@@ -1,0 +1,41 @@
+
+Objectname:	bound_process_creation;
+Global:		retain;
+
+Order:	act_proc, deact_proc, initialize_kst,
+		init_proc,  stop_process, grab_aste,  deactivate_segs,  
+		check_trailer, get_process_usage, create_hproc,
+		copy_stack_0;
+
+objectname:	act_proc;
+ retain:		/* activate, */ create;
+ delete:		act_proc;
+
+objectname:	deact_proc;
+ retain:		destroy_process_begin, destroy_process_finish;
+
+objectname:	initialize_kst;
+ retain:		initialize_kst;
+
+objectname:	init_proc;
+ retain:		init_proc;
+
+
+objectname:	stop_process;
+ retain:		stop_process;
+
+objectname:	grab_aste;
+ retain:		grab_aste_io, release_io, prewithdraw, release_prewithdraw;
+
+objectname:	check_trailer;
+
+objectname:	get_process_usage;
+ retain:		get_process_usage;
+
+objectname:	create_hproc;
+ retain:		create_hproc, early_hproc;
+
+objectname:	copy_stack_0;
+ retain:		copy_stack_0;
+
+/* end */

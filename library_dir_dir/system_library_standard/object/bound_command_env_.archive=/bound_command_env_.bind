@@ -1,0 +1,189 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+   *                                                         *
+   * Copyright (c) 1972 by Massachusetts Institute of        *
+   * Technology and Honeywell Information Systems, Inc.      *
+   *                                                         *
+   *********************************************************** */
+
+
+    
+
+/* HISTORY COMMENTS:
+  1) change(86-08-01,Ex), approve(86-08-01,MCR7465), audit(86-08-01,Wong),
+     install(86-09-04,MR12.0-1134):
+     Changed by Rick Kissel to retrain get_block_data_info.  Also alphabetized
+     addnames and object_names.
+                                                   END HISTORY COMMENTS */
+
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+    /*                                                                   */
+    /* Name: bound_command_env_                                          */
+    /*                                                                   */
+    /* 1) Created: July 20, 1973 by C. L. Wong                           */
+    /* 2) Modified: November 19, 1976 by M. Weaver to add create_area,   */
+    /*    set_storage_ptrs, list_external_variables and		   */
+    /*  	reset_external_variables				   */
+    /* 3) Modified: August 18, 1977 by M. Weaver to  specify	   */
+    /*	 perprocess static					   */
+    /* 4) Modified: June 9, 1978 by G. Palter to remove set_com_line	   */
+    /* 5) Modified: 08/15/79 S. Herbst Short names lev, rev & dev added  */
+    /*	to list_external_variables, etc.			   */
+    /* 6) Modified: 17 September 1979 by C. Hornig for set_*_storage	   */
+    /* 7) Modified: 26 March 1980 by C. Hornig to add set_time_zone      */
+    /* 8) Modified: 23 March 1981 by W. Olin Sibert to add system_type_  */
+    /*	subroutine and system_type command/AF.			   */
+    /* 9) Modified 1 June 1981 by M.R. Jordan to add		   */
+    /*    set_severity_indicator and get_external_variable_.	   */
+    /*10) Modified 1 Oct 1981 by C. D. Tavares to add display_timers	   */
+    /*11) Modified 19 Jan 1982 by B. Margulies for signal command        */
+    /*12) Modified: 26 February 1982 by G. Palter for new entrypoint in  */
+    /*	   answer for support of subsystems (ssu_answer_request_)	   */
+    /*13) Modified: 10 Feb 1984 by J A Falksen. move set_time_zone	   */
+    /*       to bound_time_rtns_)				   */
+    /*                                                                   */ 
+    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+Objectname:         bound_command_env_;
+
+ Global:            delete;
+
+ Perprocess_Static;
+
+ Order:             answer,
+                    change_error_mode,
+                    prepare_mc_restart_,
+                    program_interrupt,
+                    progress,
+                    ready,
+                    reprint_error,
+		signal,
+		system_type,
+		system_type_,
+		area_status,
+		on,
+		create_area,
+		set_storage_ptrs,
+		list_external_variables,
+		reset_external_variables,
+		resolve_linkage_error,
+		set_severity_indicator,
+		get_external_variable_,
+		display_timers;
+
+Addname:            answer,
+		area_status, area_info_,
+                    change_error_mode, cem,
+		create_area,
+		delete_external_variables, dev,
+		display_timers,
+		get_external_variable_,
+		list_external_variables, lev,
+		on,
+                    prepare_mc_restart_,
+                    program_interrupt, pi,
+                    progress, pg,
+                    ready, rdy,
+		ready_on, rdn,
+		ready_off, rdf,
+                    reprint_error, re,
+		reset_external_variables, rev,
+		resolve_linkage_error, rle,
+		set_severity_indicator, ssi,
+		set_system_storage, set_user_storage,
+		signal,
+		system_type,
+		system_type_;
+
+objectname:         answer;
+ retain:            answer, ssu_answer_request_;
+
+objectname:	area_status;
+ retain:		area_status,
+		area_info_,
+		get_block_data_info;
+
+objectname:         change_error_mode;
+ synonym:           cem;
+ retain:            change_error_mode,
+                    cem;
+
+objectname:	create_area;
+ retain:		create_area;
+
+objectname:	display_timers;
+ retain:		display_timers;
+
+objectname:	get_external_variable_;
+ retain:		get_external_variable_;
+
+objectname:	list_external_variables;
+ synonym:		lev;
+ retain:		list_external_variables, lev;
+
+objectname:	on;
+ retain:		on;
+
+objectname:         prepare_mc_restart_;
+ retain:            prepare_mc_restart_,
+                    retry,
+                    replace,
+                    tra;
+
+objectname:         program_interrupt;
+ synonym:           pi;
+ retain:            program_interrupt,
+                    pi;
+
+objectname:         progress;
+ synonym:           pg;
+ retain:            progress,
+                    pg;
+
+objectname:         ready;
+ synonym:		rdy, ready_on, rdn, ready_off, rdf;
+ retain:            ready,
+                    rdy,
+                    ready_off,
+                    rdf,
+                    ready_on,
+                    rdn;
+
+objectname:         reprint_error;
+ synonym:           re;
+ retain:            reprint_error,
+                    re;
+
+objectname:	reset_external_variables;
+ synonym:		rev, delete_external_variables, dev;
+ retain:		reset_external_variables, rev,
+		delete_external_variables, dev;
+
+objectname:	resolve_linkage_error;
+ synonym:		rle;
+ retain:		resolve_linkage_error, rle;
+
+objectname:	set_severity_indicator;
+ synonym:		ssi;
+ retain:		set_severity_indicator, ssi;
+
+objectname:	set_storage_ptrs;
+ synonym:		set_system_storage, set_user_storage;
+ retain:		set_system_storage,
+		set_user_storage;
+
+objectname:         signal;
+ retain:		signal;
+
+objectname:	system_type;
+ retain:		system_type;
+
+objectname:	system_type_;
+ retain:		system_type_;
+
+/* end */
+
+
+

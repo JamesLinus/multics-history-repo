@@ -1,0 +1,107 @@
+/* Bind file for bound_info_rtns_ */
+
+/* Created: August 20, 1973 by C. L. Wong */
+/* Modified: November 17, 1978 by G. C. Dixon - add help_ subroutine */
+/* Modified: 1 October 1980 by G. Palter to retain all entries in system_info_ and user_info_ */
+/* Modified: 10 March 1982 by G. Palter to delete profile_data_ (no longer referenced by anything) */
+
+/* HISTORY COMMENTS:
+  1) change(85-04-15,LJAdams), approve(86-04-17,MCR7327),
+     audit(86-04-18,Lippard), install(86-04-24,MR12.0-1048):
+      to add help_rql_
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:	bound_info_rtns_;
+
+Global:		delete;
+
+Order:		check_info_segs,
+		help,
+		help_,
+                    help_rql_, 
+		list_help,
+		list_ref_names,
+		print_motd,
+		resource_usage,
+		ring0_get_,
+		system_info_,
+		user_info_,
+		where,
+		who;
+
+
+Addname:		check_info_segs, cis,
+		help,
+		help_,
+                    help_rql_, 
+		list_help, lh,
+		how_many_users, hmu,
+		list_ref_names, lrn,
+		print_motd, pmotd,
+		resource_usage, ru,
+		ring0_get_,
+		system_info_,
+		user_info_,
+		where, wh,
+		who;
+
+objectname:	check_info_segs;
+ synonym:		cis;
+ retain:		check_info_segs,
+		cis;
+
+objectname:	help;
+ retain:		help,  ssu_help_request;
+
+objectname:	help_;
+ retain:		help_, check_info_segs, init, term;
+
+objectname:	list_help;
+ retain:		list_help, lh;
+
+objectname:	list_ref_names;
+ synonym:		lrn;
+ retain:		list_ref_names,
+		lrn;
+
+objectname:	print_motd;
+ synonym:		pmotd;
+ retain:		print_motd,
+		pmotd;
+
+objectname:	resource_usage;
+ synonym:		ru;
+ retain:		resource_usage,
+		ru,
+		test_ru;
+
+objectname:	ring0_get_;
+ retain:		ring0_get_, segptr,
+		name, names,
+		segptr_given_slt,
+		name_given_slt,
+		definition, definition_given_slt;
+
+objectname:	system_info_;
+ global:		retain;
+ delete:		system_info_, symbol_table;
+
+objectname:	user_info_;
+ global:		retain;
+ delete:		symbol_table;
+
+objectname:	where;
+ synonym:		wh;
+ retain:		where, wh;
+
+objectname:	who;
+ synonym:		how_many_users, hmu;
+ retain:		who, who_init,
+		how_many_users,
+		hmu;
+
+/* end; */
+
+
+

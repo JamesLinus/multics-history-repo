@@ -1,0 +1,76 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+   *                                                         *
+   *********************************************************** */
+
+
+/* bound_ssu_: the Subsystem Utilities */
+
+/* Created:  5 May 1980 by W. Olin Sibert */
+/* Modified: 23 August 1980 by W. Olin Sibert to add ssu_table_mgr_ and ssu_validate_ */
+/* Modified: 11 December 1981 by G. Palter to rename ssu_help_request_ to ssu_info_request_ */
+/* Modified: February 1982 by G. Palter to prepare for installation */
+/* Modified: June 1982 by G. Palter to rename ssu_execute_line_ to ssu_request_processor_ */
+/* Modified: August 1984 by P. Benjamin to add ssu_info_directories_ */
+
+Objectname:	bound_ssu_;
+
+  Global:		  delete;
+  Perprocess_Static;
+  No_Table;
+
+  Addname:	  ssu_,
+		  ssu_request_tables_,
+		  ssu_requests_,
+		  ssu_et_,
+		  ssu_info_directories_,
+		  display_subsystem_usage;
+
+  Order:		  ssu_et_,
+		  ssu_,
+		  ssu_request_tables_,
+		  ssu_requests_,
+		  ssu_listen_,
+		  ssu_request_processor_,
+		  ssu_execute_,
+		  ssu_request_mgr_,
+		  ssu_arglist_,
+		  ssu_error_,
+		  ssu_misc_procs_,
+		  ssu_misc_requests_,
+		  ssu_invocation_,
+		  ssu_usage_,
+		  ssu_temp_mgr_,
+		  ssu_procedure_mgr_,
+		  ssu_info_mgr_,
+		  ssu_ec_,
+		  ssu_info_directories_,
+		  display_subsystem_usage;
+
+
+/* Instructions for individual components */
+
+objectname:	ssu_et_;				/* error table */
+  global: 	  retain;
+  delete: 	  symbol_table;
+
+objectname:	ssu_;				/* transfer vector */
+  global: 	  retain;
+  delete: 	  symbol_table;
+
+objectname:	ssu_request_tables_;		/* standard request tables */
+  retain:		  standard_requests;
+
+objectname:	ssu_requests_;			/* requests transfer vector */
+  global: 	  retain;
+  delete: 	  symbol_table;
+
+objectname:	ssu_info_directories_;                  /* data segment with pathnames of info directories */
+  global:		  retain;
+  delete:		  symbol_table;
+
+objectname:         display_subsystem_usage;
+  retain:		  display_subsystem_usage;
+
+/* end; */

@@ -1,0 +1,57 @@
+/* bindfile for bound_dn355_tools_. */
+/* created god-knows-when by god-knows-whom. */
+/* Modified July 1981 by Robert Coren to add poll_fnp and fnp_data_summary. */
+/* Modified August 1981 by J. A. Bush to add test_fnp */
+/* Modified March 1982, W. Olin Sibert, to add trace_mcs */
+
+Objectname:         bound_dn355_tools_;
+ Global:            delete;
+
+Addname:		coreload,
+		bind_fnp,
+                    map355,
+		poll_fnp,
+		test_fnp,
+		fnp_data_summary,
+		trace_mcs;
+
+Order:		map355,
+                    manipulate_pathname_,
+		coreload,
+		bind_fnp,
+		bind_fnp_load_,
+		poll_fnp,
+		test_fnp,
+		fnp_data_summary,
+		trace_mcs;
+
+objectname:         map355;
+ retain:            map355;
+
+objectname:         manipulate_pathname_;
+ retain:            get_longest_pathname_,
+                    get_primary_pathname_,
+                    get_shortest_pathname_;
+ synonym:           get_longest_pathname_,
+                    get_primary_pathname_,
+                    get_shortest_pathname_;
+
+objectname:	coreload;
+ retain:		coreload;
+
+objectname:	bind_fnp;
+ retain:		bind_fnp;
+
+objectname:	poll_fnp;
+ retain:		poll_fnp;
+
+objectname:	fnp_data_summary;
+ retain:		fnp_data_summary;
+
+objectname:	test_fnp;
+ retain:		test_fnp;
+
+objectname:	trace_mcs;
+ retain:		trace_mcs;
+
+/*		END		*/

@@ -1,0 +1,710 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(86-07-31,Ex), approve(86-07-31,MCR7468), audit(86-07-31,Wong),
+     install(86-08-19,MR12.0-1133):
+     Modified by Rick Kissel to retain the print_data_ subroutine for external
+     use.
+  2) change(86-09-19,Dupuis), approve(86-09-19,MCR7401), audit(86-09-26,Blair),
+     install(86-10-02,MR12.0-1173):
+     Added the rlm_get_count and rlm_get_tuple_id entrypoints.
+                                                   END HISTORY COMMENTS */
+
+
+/* DESCRIPTION:
+
+          All of the modules of Data Management which can be bound are placed
+     in this bound segment unless they must be placed in bound_dm_firstref_.
+     Programs are placed in bound_dm_firstref_ if they reference data which is
+     initialized by a first reference trap.  Also, a program is placed in
+     bound_dm_firstref_ if it is only called by programs which are in
+     bound_dm_firstref_.
+
+*/
+
+/* HISTORY:
+Written by Lindsey Spratt, 07/29/83.
+Modified:
+08/02/83 by Lindsey Spratt:  Added the file_manager_.
+08/04/83 by Lindsey Spratt:  Converted from bound_dm_is_outer_ to
+            bound_dm_outer_.  Added all of the components for
+            relation_manager_, index_manager_, record_manager_,
+            collection_manager_, opening_manager_, data_mgmt_util_.
+08/05/83 by Lindsey Spratt:  Added many miscellaneous programs, many of which
+            are concerned with DM system initialization.
+08/18/83 by Lindsey Spratt:  Added the dm_send_request_ module, and made its
+            entries externally available.  Removed some names to stay under
+            the 30 name limit which update_seg -name imposes.  The removed
+            names are: txabn (short name for txn_abandon) and cmds (short name
+            for collmgr_display)
+08/26/83 by Lindsey Spratt: Added the dm_request_action_ module.
+08/28/83 by Lindsey Spratt:  Removed the dm_request_action_ module.  It
+            appears that CDS segments cannot be bound.
+09/14/83 by Lee A. Newcomb: removed retention of per-system init modules,
+            added some misc. things missed first time, some new rlm procs.,
+            added tm_handle_conditions (moved from bound_dm_is_inner_ as it
+            is supposed to run in the user's ring).  Also added back some
+            removed names, we have to go over the thirty name limit of
+            of update_seg.
+11/14/83 by Lindsey Spratt: Added the cm_simple_get_buf_element module.
+11/16/83 by Lindsey Spratt: Removed references to cm_find_first. It's obsolete.
+11/22/83 by Lindsey Spratt:  Added suffix_bj_.  Also, bj_suffix_info_.
+12/02/83 by Lee A. Newcomb:  Added Order statement to cause an error if an
+            object exists in the archive without an objectname statement.
+12/21/83 by Matthew Pierret: Added fm_validate_, globally retained.  This
+            module is referenced by fm_gate_, but is bound here instead of
+            in bound_dm_is_inner_ so as to avoid the first reference trap.
+01/05/84 by Matthew Pierret:  Temporarily added msf_manager_.
+02/15/84 by Matthew Pierret:  Added bj_mgr_call and before_journal_meters.
+02/16/84 by Lee A. Newcomb:  Added several dfu_cv_* programs.
+02/23/84 by Lee A. Newcomb:  Replaced data_mgmt_util_ with data_format_util_,
+            currently adding the old name to the new one.
+02/24/84 by Lee A. Newcomb:  Re-added the name data_mgmt_util_ to the bound
+            object until data_mgmt_util_ is totally replaced.
+03/01/84 by Lee A. Newcomb:  Added the transaction cmd to replace txb, etc.
+            The old tx* cmds will be left in for one week.
+03/21/84 by Matthew Pierret:  Added im_basic_search_insert, cm_get_ci_ptr.
+03/28/84 by L. A. Newcomb:  Deleted the obsolete modules dm_who and txn_begin;
+            added tm_user_shutdown, tm_get_state_description,
+            tm_get_state_info, and dm_get_daemon_info_; retained dm_util_
+            since it is referenced via gates.
+04/04/84 by Matthew Pierret:  Added cm_compact_ci.
+05/09/84 by Matthew Pierret:  Removed im_basic_search_insert
+05/14/84 by Lee A. Newcomb:  added dm_shutdown_, dm_shut_warn_handler_,
+            dm_user_shut_handler_; removed the obsolete command
+            before_journal_call (bjc), in favor of bj_mgr_call.
+05/23/84 by Lee A. Newcomb:  temporarily removed cm_put_element_portion
+            by commenting it out until it is upgraded.
+05/30/84 by Matthew Pierret:  Added rlm_get_cursor_info, rlm_get_info.
+06/13/84 by Matthew Pierret:  Deleted cm_allocate_element and cm_put_element,
+            adding cm_put and cm_modify in their stead.
+06/14/84 by Lindsey Spratt:  Changed tm_user_shutdown to tm_user_shutdown_real.
+06/25/84 by Lee A. Newcomb:  changed one usage of tm_user_shutdown to =_real.
+08/14/84 by Lee A. Newcomb:  Added dm_daemon_util_, dm_system_shutdown, and
+            dm_misc_util_.  Replaced dm_shutdown_ with dm_dmn_system_shutdown_.
+08/16/84 by Lee A. Newcomb:  Retained dm_per_system_$(set_system_state
+            start_shutdown) so dm_daemon_util_ won't walk off the stack.
+10/05/84 by Lindsey Spratt:  Removed msf_manager_, added print_dm_log and
+            dm_copy_log.
+10/11/84 by Lindsey Spratt:  Added dm_admin_util_ and
+            dm_no_fref_inner_ring_tv_.
+10/19/84 by Matthew Pierret: Re-named the collection_manager_ modules as
+            follows: cm_allocate_basic_element->cm_put_basic_element,
+            cm_allocate_cn_datum        -> cm_put_cn_datum,
+            cm_allocate_ordered_element -> cm_put_ordered_element,
+            cm_allocate_overlength_tail -> cm_put_overlength_tail,
+            cm_free_element             -> cm_delete,
+            cm_free_element_buffered    -> cm_delete_buffered,
+            cm_recursive_put            -> cm_recursive_modify,
+            cm_simple_get_buf_element   -> cm_simple_get_element.
+10/30/84 by Lee A. Newcomb:  added dm_shutdown_handler and changed
+            dm_(shut_warn user_shut)_handler_ to dm_signal_(shutdown_warning
+            user_shutdown).
+11/01/84 by Lindsey Spratt:  Removed retain of start_shutdown in
+            dm_per_system_. Entry doesn't exist.
+11/04/84 by Lindsey Spratt:  Added dm_hphcs_fake_.  Added synonyms dm_hphcs_
+            to dm_hphcs_fake_ and dm_hcs_ to dm_hcs_fake_.
+11/12/84 by Lindsey Spratt:  Renamed set_journal_stamps to
+            dm_set_journal_stamps.
+11/26/84 by Lindsey Spratt:  Changed name of bound segment to bound_dm_ from
+            bound_dm_outer_.
+11/28/84 by Matthew Pierret: Added fm_attribute_, fm_no_firstref_tv_.
+12/05/84 by Lindsey Spratt:  Removed the cmds, data_format_util_,
+            data_mgmt_util_, crf, and set_dm_aim_dir addnames. Removed
+            boot_dms, dm_aim_dir_util_, and print_dm_log entirely.  Renamed
+            create_file to create_dm_file,  dm_no_fref_inner_ring_tv_ to
+            dm_no_firstref_tv_, set_dm_system_dir to dm_set_system_dir.
+            Added dm_lock_meters, dm_lock_status, dm_vector_util_ (and its
+            associated dm_vu_* modules).
+            Replaced several "global: retain;" statements with specific
+            "retain: " statements.
+12/06/84 by Lindsey Spratt: Moved dm_get_daemon_info_ to bound_dm_firstref_.
+            Added rcm_(update get)_by_spec.
+12/07/84 by Lindsey Spratt: Removed dmsd_util_.  Added print_data_.
+12/09/84 by Lindsey Spratt: Moved dm_log_ into bound_dm_firstref_ because it
+            references dm_system_data_$log_lock, a firstref item.
+12/11/84 by Lindsey Spratt: Moved dm_request_action_ back from
+            bound_dm_firstref_.  It is referenced from the outer ring, and
+            doesn't need the firstref trap.
+12/12/84 by Lindsey Spratt: removed rcm_process_records.
+01/15/85 by Lindsey Spratt: Really removed dm_copy_log. Added bjm_attribute_
+            and bjm_no_firstref_tv_.
+01/22/85 by Matthew Pierret: Added global retain for bjm_no_firstref_tv_.
+02/13/85 by Lindsey Spratt: Renamed send_dm_request to dm_send_request.  Added
+            dm_display_version and dm_set_free_area.
+02/21/85 by Lee A. Newcomb:  Added global retain for dm_log_read_("" inner_).
+03/01/85 by Lee A. Newcomb:  To not retain dm_log_read_inner_ so links from
+            dm_no_firstref_tv_ to it get snapped by the binder.
+03/11/85 by Lindsey Spratt:  Fixed to use no_link for the dm_hcs_fake_ and
+            dm_hphcs_fake_ objects.  This corrects a bug where other objects
+            in bound_dm_ would always use *fake_ even when running in ring 2.
+03/19/85 by Lindsey Spratt:  Moved dm_log_ back into bound_dm_.
+03/25/85 by Lindsey Spratt:  Added cm_postcommit_increment.
+04/04/85 by R. Michael Tague:  Deleted dm_log_util_.
+04/12/85 by Lindsey Spratt:  Added dm_fast_lock_(meters status).
+04/17/85 by Lee A. Newcomb:  Added tm_no_firstref_tv_ (w/ global retain) and
+            tm_user_shutdown.
+05/03/85 by Lindsey Spratt:  Retained dm_vector_util_ and added its name to
+	  the bound seg.
+01/16/86 by R.J.C. Kissel:  Addnamed and retained print_data_ and its entrypoints.
+*/
+
+Objectname: bound_dm_;
+
+Global: delete;
+
+Addname:
+          before_journal_manager_,
+          before_journal_meters, bjmt,
+          before_journal_status, bjst,
+          bj_mgr_call, bjmc,
+          bjm_no_firstref_tv_,
+
+          collection_manager_,
+          collmgr_display,
+
+          index_manager_,
+
+          file_manager_,
+          fm_no_firstref_tv_,
+          fm_validate_,
+
+          lock_manager_,
+          lm_data_,
+          lm_fast_lock_list_,
+
+          opening_manager_,
+
+          record_manager_,
+
+          relation_manager_,
+
+          tm_no_firstref_tv_,
+          transaction, txn,
+          transaction_manager_,
+
+          create_dm_file,
+          cv_dmcf,
+          dm_admin_util_,
+          dm_daemon_util_,
+          dm_display_version,
+          dm_error_,
+          dm_fast_lock_meters,
+          dm_fast_lock_status,
+          dm_hcs_fake_,
+          dm_hphcs_fake_,
+          dm_lock_meters,
+          dm_lock_status,
+          dm_log_read_,
+          dm_misc_util_,
+          dm_no_firstref_tv_,
+          dm_per_system_,
+          dm_request_action_,
+          dm_send_request,
+          dm_set_free_area,
+          dm_set_journal_stamps,
+          dm_set_system_dir,
+          dm_system_shutdown,
+          dm_user_shutdown,
+	dm_vector_util_,
+          dmsd_overseer_,
+	print_data_,
+          suffix_bj_;
+
+Order:
+          before_journal_manager_,
+          before_journal_meters,
+          before_journal_status,
+          bj_mgr_call,
+          bj_suffix_info_,
+          bjm_attribute_,
+          bjm_no_firstref_tv_,
+          bjm_per_system_init_1_,
+          cm_allocate_ci,
+          cm_compact,
+          cm_compact_ci,
+          cm_create_collection,
+          cm_create_file,
+          cm_delete,
+          cm_delete_buffered,
+          cm_delete_cn_datum,
+          cm_destroy_collection,
+          cm_determine_free_space,
+          cm_find_ci_to_alloc_datum,
+          cm_find_free_slot,
+          cm_free_ci,
+          cm_free_opening_info,
+          cm_get_bci_header,
+          cm_get_ci_ptr,
+          cm_get_element,
+          cm_get_element_buffered,
+          cm_get_element_portion,
+          cm_get_header,
+          cm_get_id,
+          cm_modify,
+          cm_opening_info,
+          cm_postcommit_increment,
+          cm_put,
+          cm_put_basic_element,
+          cm_put_cn_datum,
+          cm_put_datum_in_place,
+          cm_put_datum_in_pool,
+          cm_put_header,
+          cm_put_ordered_element,
+          cm_put_overlength_tail,
+          cm_recursive_modify,
+          cm_replace_buffered_ci,
+          cm_setup_buffered_ci,
+          cm_simple_get_element,
+          collection_manager_,
+          collmgr_display,
+          dm_vector_util_,
+          dm_vu_append_simple_typed,
+          dm_vu_copy_typed_vector,
+          dm_vu_free_typed_vector,
+          dm_vu_err_no_operation,
+          dm_vu_free_tva,
+          dm_vu_init_tva,
+          dm_vu_merge_tva,
+          data_format_util_,
+          dfu_cv_attr_to_dim_table,
+          dfu_cv_dim_to_dim_table,
+          dfu_cv_dim_to_field_table,
+          dfu_cv_field_to_dim_table,
+          dfu_cv_tva_to_dim_table,
+          dmu_compare_decimal_values,
+          dmu_compare_sequential,
+          dmu_compare_strings,
+          dmu_compare_values,
+          dmu_compare_vector_to_str,
+          dmu_cv_string_to_vector,
+          dmu_cv_table_to_typed_array,
+          dmu_cv_typed_array_to_table,
+          dmu_cv_vector_to_string,
+          dmu_display_string,
+          dmu_general_modify_string,
+          dmu_get_data_bit_length,
+          file_manager_,
+          fm_attribute_,
+          fm_no_firstref_tv_,
+          fm_per_system_init_,
+          fm_validate_,
+          copy_dm_file_,
+          delete_dm_file_,
+          im_basic_search,
+          im_build_interval_spec,
+          im_compare_subset,
+          im_create_cursor,
+          im_create_index,
+          im_create_subset_index,
+          im_delete_node,
+          im_destroy_index,
+          im_general_delete,
+          im_general_insert,
+          im_general_search,
+          im_get_key_count_array,
+          im_get_opening_info,
+          im_init_branch_ci_header,
+          im_init_leaf_ci_header,
+          im_initial_insert,
+          im_make_parent_key,
+          im_process_keys,
+          im_put_key,
+          im_rotate_insert,
+          im_set_cursor,
+          im_simple_delete,
+          im_simple_insert,
+          im_split,
+          im_structural_search,
+          im_update_branches,
+          im_update_key_counts,
+          im_update_opening_info,
+          im_validate_cursor,
+          index_manager_,
+          lock_manager_,
+          lm_data_,
+          lm_fast_lock_list_,
+          lm_init_fast_lock_data_,
+          lm_per_system_init_,
+          om_free_opening,
+          om_get_opening,
+          om_init,
+          om_put_opening,
+          opening_manager_,
+          rcm_create_collection,
+          rcm_create_cursor,
+          rcm_delete_record_by_id,
+          rcm_destroy_collection,
+          rcm_destroy_cursor,
+          rcm_free_opening_info,
+          rcm_general_search,
+          rcm_get_by_spec,
+          rcm_get_field_info,
+          rcm_get_opening_info,
+          rcm_get_record_by_id,
+          rcm_modify_record_by_id,
+          rcm_process_intervals,
+          rcm_put_record_by_id,
+          rcm_update_by_spec,
+          record_manager_,
+          relation_manager_,
+          rlm_create_cursor,
+          rlm_create_index,
+          rlm_create_relation,
+          rlm_destroy_cursor,
+          rlm_destroy_index,
+          rlm_destroy_relation,
+          rlm_general_search,
+          rlm_get_approximate_count,
+	rlm_get_count,
+          rlm_get_cursor_info,
+          rlm_get_description,
+          rlm_get_info,
+          rlm_get_tuple_by_id,
+	rlm_get_tuple_id,
+          rlm_open,
+          rlm_opening_info,
+          rlm_process_tuples_by_id,
+          rlm_put_tuple,
+          rlm_set_scope,
+          rlm_unimplemented_entries,
+          rlm_update_opening_info,
+          transaction,
+          transaction_manager_,
+          tm_get_state_description,
+          tm_get_state_info,
+          tm_handle_conditions,
+          tm_no_firstref_tv_,
+          tm_per_system_init,
+          tm_user_shutdown,
+          tm_user_shutdown_real,
+          create_dm_file,
+          cv_dmcf,
+          dm_admin_util_,
+          dm_check_configuration_,
+          dm_daemon_util_,
+          dm_display_version,
+          dm_dmn_requests_,
+          dm_dmn_system_shutdown_,
+          dm_error_,
+          dm_fast_lock_meters,
+          dm_fast_lock_status,
+          dm_find_configuration_,
+          dm_gen_checksum_,
+          dm_hcs_fake_,
+          dm_hphcs_fake_,
+          dm_init_from_hardcore_,
+          dm_initializer_,
+          dm_load_configuration_,
+          dm_lock_configuration_,
+          dm_lock_meters,
+          dm_lock_status,
+          dm_log_,
+          dm_log_read_,
+          dm_log_read_inner_,
+          dm_misc_util_,
+          dm_no_firstref_tv_,
+          dm_no_firstref_util_,
+          dm_per_system_,
+          dm_recovery_,
+          dm_request_action_,
+          dm_send_request,
+          dm_set_free_area,
+          dm_set_journal_stamps,
+          dm_set_system_dir,
+          dm_shutdown_handler,
+          dm_signal_shutdown_warning,
+          dm_signal_user_shutdown,
+          dm_system_shutdown,
+          dm_translate_system_config_,
+          dm_user_shutdown,
+          dmsd_overseer_,
+          dmsd_ssu_request_tables_,
+          get_dm_free_area_,
+          hc_dm_util_,
+          print_data_,
+          suffix_bj_;
+
+objectname: before_journal_manager_;
+          global: retain;
+objectname: before_journal_meters;
+          global: retain;
+          synonym: bjmt;
+objectname: before_journal_status;
+          global: retain;
+          synonym: bjst;
+objectname: bj_mgr_call;
+          global: retain;
+          synonym: bjmc;
+objectname: bj_suffix_info_;
+objectname: bjm_attribute_;
+objectname: bjm_no_firstref_tv_;
+          global: retain;
+objectname: bjm_per_system_init_1_;
+
+objectname: cm_allocate_ci;
+objectname: cm_compact;
+objectname: cm_compact_ci;
+objectname: cm_create_collection;
+objectname: cm_create_file;
+objectname: cm_delete;
+objectname: cm_delete_buffered;
+objectname: cm_delete_cn_datum;
+objectname: cm_destroy_collection;
+objectname: cm_determine_free_space;
+objectname: cm_find_ci_to_alloc_datum;
+objectname: cm_find_free_slot;
+objectname: cm_free_ci;
+objectname: cm_free_opening_info;
+objectname: cm_get_bci_header;
+objectname: cm_get_ci_ptr;
+objectname: cm_get_element;
+objectname: cm_get_element_buffered;
+objectname: cm_get_element_portion;
+objectname: cm_get_header;
+objectname: cm_get_id;
+objectname: cm_modify;
+objectname: cm_opening_info;
+objectname: cm_postcommit_increment;
+objectname: cm_put;
+objectname: cm_put_basic_element;
+objectname: cm_put_cn_datum;
+objectname: cm_put_datum_in_place;
+objectname: cm_put_datum_in_pool;
+objectname: cm_put_header;
+objectname: cm_put_ordered_element;
+objectname: cm_put_overlength_tail;
+objectname: cm_recursive_modify;
+objectname: cm_replace_buffered_ci;
+objectname: cm_setup_buffered_ci;
+objectname: cm_simple_get_element;
+objectname: collection_manager_;
+          global: retain;
+objectname: collmgr_display;
+          retain: collmgr_display;
+
+objectname: data_format_util_;
+objectname: dfu_cv_attr_to_dim_table;
+objectname: dfu_cv_dim_to_dim_table;
+objectname: dfu_cv_dim_to_field_table;
+objectname: dfu_cv_field_to_dim_table;
+objectname: dfu_cv_tva_to_dim_table;
+objectname: dm_vector_util_;
+	global: retain;
+objectname: dm_vu_append_simple_typed;
+objectname: dm_vu_copy_typed_vector;
+objectname: dm_vu_err_no_operation;
+objectname: dm_vu_free_tva;
+objectname: dm_vu_free_typed_vector;
+objectname: dm_vu_init_tva;
+objectname: dm_vu_merge_tva;
+objectname: dmu_compare_decimal_values;
+objectname: dmu_compare_sequential;
+objectname: dmu_compare_strings;
+objectname: dmu_compare_values;
+objectname: dmu_compare_vector_to_str;
+objectname: dmu_cv_string_to_vector;
+objectname: dmu_cv_table_to_typed_array;
+objectname: dmu_cv_typed_array_to_table;
+objectname: dmu_cv_vector_to_string;
+objectname: dmu_display_string;
+objectname: dmu_general_modify_string;
+objectname: dmu_get_data_bit_length;
+
+objectname: file_manager_;
+          global: retain;
+objectname: fm_attribute_;
+objectname: fm_no_firstref_tv_;
+          global: retain;
+objectname: fm_per_system_init_;
+objectname: fm_validate_;
+          retain: check_read_ring_bracket, check_write_ring_bracket,
+                  get_ring_brackets, fm_validate_;
+objectname: copy_dm_file_;
+objectname: delete_dm_file_;
+
+objectname: im_basic_search;
+objectname: im_build_interval_spec;
+objectname: im_compare_subset;
+objectname: im_create_cursor;
+objectname: im_create_index;
+objectname: im_create_subset_index;
+objectname: im_delete_node;
+objectname: im_destroy_index;
+objectname: im_general_delete;
+objectname: im_general_insert;
+objectname: im_general_search;
+objectname: im_get_key_count_array;
+objectname: im_get_opening_info;
+objectname: im_init_branch_ci_header;
+objectname: im_init_leaf_ci_header;
+objectname: im_initial_insert;
+objectname: im_make_parent_key;
+objectname: im_process_keys;
+objectname: im_put_key;
+objectname: im_rotate_insert;
+objectname: im_set_cursor;
+objectname: im_simple_delete;
+objectname: im_simple_insert;
+objectname: im_split;
+objectname: im_structural_search;
+objectname: im_update_branches;
+objectname: im_update_key_counts;
+objectname: im_update_opening_info;
+objectname: im_validate_cursor;
+objectname: index_manager_;
+          global: retain;
+
+objectname: lock_manager_;
+          global: retain;
+objectname: lm_data_;
+          global: retain;
+objectname: lm_fast_lock_list_;
+          retain: thread_in, thread_out_first;
+objectname: lm_init_fast_lock_data_;
+objectname: lm_per_system_init_;
+
+objectname: om_free_opening;
+objectname: om_get_opening;
+objectname: om_init;
+objectname: om_put_opening;
+objectname: opening_manager_;
+          global: retain;
+
+objectname: rcm_create_collection;
+objectname: rcm_create_cursor;
+objectname: rcm_delete_record_by_id;
+objectname: rcm_destroy_collection;
+objectname: rcm_destroy_cursor;
+objectname: rcm_free_opening_info;
+objectname: rcm_general_search;
+objectname: rcm_get_by_spec;
+objectname: rcm_get_field_info;
+objectname: rcm_get_opening_info;
+objectname: rcm_get_record_by_id;
+objectname: rcm_modify_record_by_id;
+objectname: rcm_process_intervals;
+objectname: rcm_put_record_by_id;
+objectname: rcm_update_by_spec;
+objectname: record_manager_;
+          global: retain;
+
+objectname: relation_manager_;
+          global: retain;
+objectname: rlm_create_cursor;
+objectname: rlm_create_index;
+objectname: rlm_create_relation;
+objectname: rlm_destroy_cursor;
+objectname: rlm_destroy_index;
+objectname: rlm_destroy_relation;
+objectname: rlm_general_search;
+objectname: rlm_get_approximate_count;
+objectname: rlm_get_count;
+objectname: rlm_get_cursor_info;
+objectname: rlm_get_description;
+objectname: rlm_get_info;
+objectname: rlm_get_tuple_by_id;
+objectname: rlm_get_tuple_id;
+objectname: rlm_open;
+objectname: rlm_opening_info;
+objectname: rlm_process_tuples_by_id;
+objectname: rlm_put_tuple;
+objectname: rlm_set_scope;
+objectname: rlm_unimplemented_entries;
+objectname: rlm_update_opening_info;
+
+objectname: transaction;
+          global: retain;
+          synonym: txn;
+objectname: transaction_manager_;
+          global: retain;
+objectname: tm_get_state_description;
+objectname: tm_get_state_info;
+objectname: tm_handle_conditions;
+objectname: tm_no_firstref_tv_;
+          global: retain;
+objectname: tm_per_system_init;
+objectname: tm_user_shutdown;
+objectname: tm_user_shutdown_real;
+
+/* The following objects are miscellaneous DM system programs. Many are
+concerned with system initialization and administration.
+*/
+
+objectname: create_dm_file;
+          retain: create_dm_file;
+objectname: cv_dmcf;
+          global: retain;
+objectname: dm_admin_util_;
+          global: retain;
+objectname: dm_check_configuration_;
+objectname: dm_daemon_util_;
+          global: retain;
+objectname: dm_display_version;
+          retain: dm_display_version;
+objectname: dm_dmn_requests_;
+objectname: dm_dmn_system_shutdown_;
+objectname: dm_error_;
+          global: retain;
+objectname: dm_fast_lock_meters;
+          global: retain;
+objectname: dm_fast_lock_status;
+          global: retain;
+objectname: dm_find_configuration_;
+objectname: dm_gen_checksum_;
+objectname: dm_hcs_fake_;
+          synonym: dm_hcs_;
+          global: no_link;
+objectname: dm_hphcs_fake_;
+          synonym: dm_hphcs_;
+          global: no_link;
+objectname: dm_init_from_hardcore_;
+objectname: dm_initializer_;
+objectname: dm_load_configuration_;
+objectname: dm_lock_configuration_;
+objectname: dm_lock_meters;
+          retain: dm_lock_meters;
+objectname: dm_lock_status;
+          retain: dm_lock_status;
+objectname: dm_log_;
+objectname: dm_log_read_;
+          global: retain;
+objectname: dm_log_read_inner_;
+objectname: dm_misc_util_;
+          global: retain;
+objectname: dm_no_firstref_tv_;
+          global: retain;
+objectname: dm_no_firstref_util_;
+objectname: dm_per_system_;
+          retain: alloc, create, initiate;
+objectname: dm_recovery_;
+objectname: dm_request_action_;
+          global: retain;
+objectname: dm_send_request;
+          retain: dm_send_request;
+objectname: dm_set_free_area;
+          retain: dm_set_free_area;
+objectname: dm_set_journal_stamps;
+          retain: dm_set_journal_stamps;
+objectname: dm_set_system_dir;
+          retain: dm_set_system_dir;
+objectname: dm_shutdown_handler;
+objectname: dm_signal_shutdown_warning;
+objectname: dm_signal_user_shutdown;
+objectname: dm_system_shutdown;
+          retain: dm_system_shutdown;
+objectname: dm_translate_system_config_;
+objectname: dm_user_shutdown;
+          retain: dm_user_shutdown;
+objectname: dmsd_overseer_;
+          global: retain;
+objectname: dmsd_ssu_request_tables_;
+objectname: get_dm_free_area_;
+objectname: hc_dm_util_;
+objectname: print_data_;
+	global: retain;
+objectname: suffix_bj_;
+          global: retain;
+
+
+/* END */

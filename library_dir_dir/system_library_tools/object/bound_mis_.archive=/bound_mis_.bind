@@ -1,0 +1,163 @@
+
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+	/*									*/
+	/* N__a_m_e:  bound_mis_							*/
+	/*									*/
+	/*      This bound segment contains the commands and subroutines which form the Multics	*/
+	/* Installation System (MIS).							*/
+	/*									*/
+	/* S__t_a_t_u_s									*/
+	/*									*/
+	/* 1) Created:  Jun 1972 by Peter R. Bos; object segment was called bound_online_updater_	*/
+	/*				  at that time (MIS Version 1.0)		*/
+	/* 2) Modified: Jan 1973 by Gary C. Dixon; renamed to bound_mis_ (MIS Version 1.1)	*/
+	/* 3) Modified: Feb 1973 by Gary C. Dixon; automatic documentation added, 		*/
+	/*				   update_seg clear added			*/
+	/*				   update_seg list added			*/
+	/* 4) Modified: May 1973 by Peter B. Kelley; new ACL/RB primitives incorporated,	*/
+	/*				     upd_ring_task_ added.			*/
+	/* 5) Modified: Feb 1974 by Peter B. Kelley; automatic documentation enhanced by adding	*/
+	/*		capability to describe in prose, the modification.  Also, references	*/
+	/*		to 'a' segment access representation were removed. (MIS Version 1.3)	*/
+	/* 6) Modified: May 1974 by Peter B. Kelley; mod to upd_copy_seg_task_ to set the safety	*/
+	/*		switch 'on' on all new segments.  (MIS Version 1.3a)		*/
+	/* 7) Modified: Jun 1974 by Peter B. Kelley; temporary mod to upd_name_task_$free to only	*/
+	/*		keep 2 backup names on a replaced segment.  The unique name plus the	*/
+	/*		free'd primary name.  (MIS Version 1.3b)			*/
+	/* 8) Modified: Aug 1974 by Peter B. Kelley; removes restriction of number segments	*/
+	/*		which could be updated with the same installation by using	 	*/
+	/*		msa_manager_ to maintain the io segment.  Mod to upd_doc_task_	*/
+	/*		to report bindfile changes (if any).  (MIS Version 1.4)		*/
+	/* 9) Modified: Oct 1974 by Peter B. Kelley; adds UNB to documentation libraries.	*/
+	/* 10) Modified: Oct 1974 by Peter B. Kelley;  fixes "area" condition when updating an	*/
+	/*		info file.  Re-write upd_log_task_ to only lock + create ( not	*/
+	/*		attach any I/O streams ).					*/
+	/* 11) Modified: Mar 1980 by Peter B. Kelley; adds upd_acl_task_$inacl entry for use with */
+	/*		the new "-initial_acl" & "-iacl" control arguments.		*/
+	/*		MIS version number changed to 1.5				*/
+	/* 12) Modified: Sept 1984 by B. Braun; retain new entrypoints to upd_free_name_,	*/
+	/*                  retain_suffix and restore_with_suffix.				*/
+	/*									*/
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+
+Objectname:	bound_mis_;
+Addname:		backup_name_,
+		lfree_name, lfn,
+		upd_acl_task_,
+		upd_add_task_,
+		upd_copy_seg_task_,
+		upd_describe_task_,
+		upd_doc_task_,
+		upd_free_name_,
+		upd_gen_call_,
+		upd_install_task_,
+		upd_log_task_,
+		upd_message_task_,
+		upd_name_task_,
+		upd_print_acl_,
+		upd_print_err_,
+		upd_ring_task_,
+		upd_status_task_,
+		upd_subtask_,
+		upd_task_,
+		upd_task_err_,
+		upd_thread_task_,
+		update_seg, us;
+Order:		lfree_name,
+		update_seg,
+		upd_subtask_,
+		upd_task_,
+		upd_gen_call_,
+		upd_install_task_,
+		upd_add_task_,
+		upd_thread_task_,
+		upd_ring_task_,
+		upd_acl_task_,
+		upd_copy_seg_task_,
+		upd_message_task_,
+		upd_name_task_,
+		upd_free_name_,
+		backup_name_,
+		upd_status_task_,
+		upd_status_,
+		upd_describe_task_,
+		upd_doc_task_,
+		upd_log_task_,
+		upd_task_err_,
+		upd_print_err_,
+		upd_print_names_,
+		upd_print_acl_;
+
+objectname:	backup_name_;
+ retain:		backup_name_;
+objectname:	lfree_name;
+ synonym:		lfn;
+ retain:		lfree_name, lfn;
+
+objectname:	upd_print_acl_;
+ retain:		upd_print_acl_;
+
+objectname:	upd_acl_task_;
+ retain:		list, add, delete, replace, list_inacl;
+
+objectname:	upd_add_task_;
+ retain:		upd_add_task_;
+
+objectname:	upd_copy_seg_task_;
+ retain:		upd_copy_seg_task_;
+
+objectname:	upd_describe_task_;
+ retain:		upd_describe_task_;
+
+objectname:	upd_doc_task_;
+ global:		no_link;
+
+objectname:	upd_free_name_;
+ retain:		upd_free_name_, restore, 
+		retain_suffix, restore_with_suffix;
+
+objectname:	upd_gen_call_;
+ retain:		upd_gen_call_;
+
+objectname:	upd_install_task_;
+ retain:		upd_install_task_, init;
+
+objectname:	upd_log_task_;
+ retain:		lock, unlock;
+
+objectname:	upd_message_task_;
+ retain:		upd_message_task_;
+
+objectname:	upd_name_task_;
+ retain:		list, list_archive, add, delete, free;
+
+objectname:	upd_print_err_;
+ retain:		upd_print_err_;
+
+objectname:	upd_print_names_;
+
+objectname:	upd_ring_task_;
+ retain:		list, set;
+
+objectname:	upd_status_;
+
+objectname:	upd_status_task_;
+ retain:		get_uid;
+
+objectname:	upd_subtask_;
+ retain:		upd_subtask_;
+
+objectname:	upd_task_;
+ retain:		upd_task_;
+
+objectname:	upd_task_err_;
+ retain:		upd_task_err_;
+
+objectname:	upd_thread_task_;
+ retain:		upd_thread_task_;
+
+objectname:	update_seg;
+ synonym:		us;
+ retain:		update_seg, us;
+
+		/*  END  */

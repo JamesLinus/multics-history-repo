@@ -1,0 +1,123 @@
+/*  START OF:	kermit_mode_info.incl.pl1		  *  *  *  *  *  */
+  
+
+  
+
+/****^  HISTORY COMMENTS:
+  1) change(88-05-16,Huen), approve(88-05-16,MCR7841), audit(88-05-25,RWaters),
+     install(88-07-05,MR12.2-1054):
+     Fix kermit 15, 16, 17, and 18.
+                                                   END HISTORY COMMENTS */
+
+
+/************************************************************************/
+  /*							    */
+  /*l     Modified: 87-06-19  by S. Huen - Add fields for capabilities,   */
+  /*l		window_size, max_len_ext_1 and max_len_ext_2  based   */
+  /*l		on D. Kozlowski's version. (kermit 16)                */
+  /*                                                                      */
+  /************************************************************************/
+
+  dcl Permanent		fixed bin static options (constant) init (1);
+  dcl Temporary		fixed bin static options (constant) init (2);
+  
+  dcl Store_all (1:1)	fixed bin static options (constant) init (0);
+  dcl Retrieve_all (1:1)	fixed bin static options (constant) init (0);
+  
+  dcl Maxl		fixed bin static options (constant) init (1);
+  dcl Timeout		fixed bin static options (constant) init (2);
+  dcl N_pads		fixed bin static options (constant) init (3);
+  dcl Pad_char		fixed bin static options (constant) init (4);
+  dcl Eol_char		fixed bin static options (constant) init (5);
+  dcl Quote_char		fixed bin static options (constant) init (6);
+  dcl Eight_bit_char	fixed bin static options (constant) init (7);
+  dcl Repeat_char		fixed bin static options (constant) init (8);
+  dcl Start_char		fixed bin static options (constant) init (9);
+  dcl Check_type		fixed bin static options (constant) init (10);
+  dcl Parity		fixed bin static options (constant) init (11);
+  dcl Incomplete		fixed bin static options (constant) init (12);
+  dcl File_warning		fixed bin static options (constant) init (13);
+  dcl File_type		fixed bin static options (constant) init (14);
+  dcl Retry_threshold	fixed bin static options (constant) init (15);
+  dcl Line_byte_size	fixed bin static options (constant) init (16);
+  dcl Window_size		fixed bin static options (constant) init (17);
+  dcl Max_len_ext_1		fixed bin static options (constant) init (18);
+  dcl Max_len_ext_2		fixed bin static options (constant) init (19);
+  dcl Capabilities		fixed bin static options (constant) init (20);
+  
+  dcl 01 Perm_defaults	aligned static options (constant),
+       02 maxl		fixed bin (8) unal init (80),
+       02 time		fixed bin (8) unal init (15),
+       02 npad		fixed bin (8) unal init (0),
+       02 padc		char (1) unal init (""),
+       02 eol		char (1) unal init (""),
+       02 qctl		char (1) unal init ("#"),
+       02 qbin		char (1) unal init ("&"),
+       02 rept		char (1) unal init ("~"),
+       02 start		char (1) unal init (""),
+       02 chkt		fixed bin (8) unal init (1),
+       02 parity		char (1) unal init ("N"),
+       02 incomplete	char (1) unal init ("K"),
+       02 file_warning	char (1) unal init ("Y"),
+       02 file_type		char (1) unal init ("A"),
+       02 retry_threshold	fixed bin (8) unal init (5),
+       02 line_type		fixed bin (8) unal init (7),
+       02 window_size	fixed bin (8) unal init (0),
+       02 max_len_ext_1	fixed bin (8) unal init (5),
+       02 max_len_ext_2	fixed bin (8) unal init (25),
+       02 capabilities	fixed bin (8) unal init (2);
+	
+  
+  dcl I_maxl		fixed bin static options (constant) init (1);
+  dcl I_timeout		fixed bin static options (constant) init (2);
+  dcl I_n_pads		fixed bin static options (constant) init (3);
+  dcl I_pad_char		fixed bin static options (constant) init (4);
+  dcl I_eol_char		fixed bin static options (constant) init (5);
+  dcl I_quote_char		fixed bin static options (constant) init (6);
+  dcl O_maxl		fixed bin static options (constant) init (7);
+  dcl O_timeout		fixed bin static options (constant) init (8);
+  dcl O_n_pads		fixed bin static options (constant) init (9);
+  dcl O_pad_char		fixed bin static options (constant) init (10);
+  dcl O_eol_char		fixed bin static options (constant) init (11);
+  dcl O_quote_char		fixed bin static options (constant) init (12);
+  dcl G_eight_bit_char	fixed bin static options (constant) init (13);
+  dcl G_repeat_char		fixed bin static options (constant) init (14);
+  dcl G_start_char		fixed bin static options (constant) init (15);
+  dcl G_check_type		fixed bin static options (constant) init (16);
+  dcl G_parity		fixed bin static options (constant) init (17);
+  dcl G_window		fixed bin static options (constant) init (18);
+  dcl I_max_lenx1		fixed bin static options (constant) init (19);
+  dcl I_max_lenx2		fixed bin static options (constant) init (20);
+  dcl O_max_lenx1		fixed bin static options (constant) init (21);
+  dcl O_max_lenx2		fixed bin static options (constant) init (22);
+  dcl G_capabilities	fixed bin static options (constant) init (23);
+  
+  dcl 01 Temp_defaults	aligned static options (constant),
+       02 i_maxl		fixed bin (8) unal init (80),
+       02 i_time		fixed bin (8) unal init (15),
+       02 i_npad		fixed bin (8) unal init (0),
+       02 i_padc		char (1) unal init (""),
+       02 i_eol		char (1) unal init (""),
+       02 i_qctl		char (1) unal init ("#"),
+       02 o_maxl		fixed bin (8) unal init (80),
+       02 o_time		fixed bin (8) unal init (15),
+       02 o_npad		fixed bin (8) unal init (0),
+       02 o_padc		char (1) unal init (""),
+       02 o_eol		char (1) unal init (""),
+       02 o_qctl		char (1) unal init ("#"),
+       02 qbin		char (1) unal init ("N"),
+       02 rept		char (1) unal init (" "),
+       02 start		char (1) unal init (""),
+       02 chkt		fixed bin (8) unal init (1),
+       02 parity		char (1) unal init ("N"),
+       02 window		fixed bin (8) unal init (0),
+       02 i_maxlx1		fixed bin (8) unal init (5),
+       02 i_maxlx2		fixed bin (8) unal init (25),
+       02 o_maxlx1		fixed bin (8) unal init (5),
+       02 o_maxlx2		fixed bin (8) unal init (25),
+       02 capabilities	fixed bin (8) unal init (2);
+	
+  dcl Ext_Headers		bit (9) static options (constant) init ("002"b3);
+	
+
+/*  END OF:	kermit_mode_info.incl.pl1		  *  *  *  *  *  */

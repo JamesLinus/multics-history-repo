@@ -1,0 +1,17 @@
+02/07/85 dm_set_free_area
+
+Syntax:  .  PATH {-control_args}
+
+
+Function:  This command sets the directory in which the dm_free_area is
+placed.  If there is an existing dm_free_area known to the process, it
+can optionally be released.
+
+
+Control arguments:
+-area_directory pathname, -adr pathname
+   specifies the pathname of the directory to contain dm free area.
+-release_old_area, -roa
+   releases the existing dm_free_area.
+-no_release_old_area, -nroa
+   prevents the existing dm_free_area from being released.

@@ -1,0 +1,35 @@
+/*bind file for heals.
+Produced March 1976 by A. Downing.*/
+/*Modified by A. R. Downing July 1978 for MR7.0*/
+
+	Objectname: bound_heals_;
+	Addname: heals_report, print_heals_message, update_heals_log, truncate_heals_log;
+	Global: delete;
+	Order: heals_report,
+		heals_cpu_reports_,
+		heals_mos_edac_reports_,
+		heals_io_reports_,
+		heals_scan_config_,
+		heals_gen_ioerr_log_,
+		heals_io_report_gen_,
+		heals_sorted_report_gen_,
+		heals_media_sort_gen_,
+		print_heals_message,
+		update_heals_log,
+		heals_collect_data_;
+	objectname: heals_report;
+	retain: heals_report, hr;
+	objectname: heals_collect_data_;
+	objectname: heals_io_reports_;
+	objectname: heals_scan_config_;
+	objectname: heals_gen_ioerr_log_;
+	objectname: heals_sorted_report_gen_;
+	objectname: heals_media_sort_gen_;
+	objectname: heals_io_report_gen_;
+	objectname: heals_cpu_reports_;
+	objectname: heals_mos_edac_reports_;
+	objectname: print_heals_message;
+	retain: print_heals_message, phm;
+	objectname: update_heals_log;
+	retain: update_heals_log, truncate_heals_log, test;
+/*end of bound_heals_.bind*/

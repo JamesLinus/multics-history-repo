@@ -1,0 +1,285 @@
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) Honeywell Bull Inc., 1987                *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+/* Overstriking canonicalization (can_type=overstrike):  This procedure takes a line of ASCII characters as input, and
+   replaces it with a canonical version of the same line.  It sorts characters by column position, and by ASCII value
+   within column position, ensuring that kill and erase characters come out last in their respective column positions.
+   NUL (\000) characters are discarded; columns overstruck with an erase character are likewise deleted */
+
+/* Modified: 19 September 1980 by G. Palter as part of fix to MCS bug #203 */
+/* Modified: 11 November 1980 by G. Palter to rename to tty_overstrike_canon */
+
+
+tty_overstrike_canon:
+     procedure (a_ptr, a_len, a_max_len, a_erase, a_kill, code);
+
+
+	/* PARAMETERS */
+
+dcl  a_ptr ptr;					/* pointer to string to be canonicalized */
+dcl  a_len fixed bin;				/* current length of string (INPUT/OUTPUT) */
+dcl  a_max_len fixed bin;				/* maximum allowable length of string */
+dcl  a_erase char (1) aligned;			/* erase character */
+dcl  a_kill char (1) aligned;				/* kill character */
+dcl  code fixed bin (35);				/* status code (OUTPUT) */
+
+
+	/* AUTOMATIC */
+
+dcl  stringp ptr;					/* local copy of a_ptr */
+dcl  stringl fixed bin;				/*   "     "   " a_len */
+dcl  max_len fixed bin;				/*   "     "   " a_max_len */
+dcl  erase_char char (1);				/*   "     "   " a_erase */
+dcl  kill_char char (1);				/*   "     "   " a_kill */
+
+dcl  start_col fixed bin;				/* left margin column no. */
+dcl  current_col fixed bin;
+dcl  next_col fixed bin;
+dcl  char_x fixed bin;				/* index into character string */
+dcl  last_x fixed bin;
+dcl  col_x fixed bin;				/* index into column_array */
+
+dcl  current_char char (1);
+dcl  n_items fixed bin;
+dcl  temp fixed bin;
+dcl  i fixed bin;
+dcl  end_of_tab fixed bin;				/* column position of next tab stop */
+
+dcl 1 column_array (a_max_len) aligned,			/* temporary storage for sorting by column */
+      2 column fixed bin (17) unal,
+      2 flags unal,
+        3 erase bit (1) unal,
+        3 kill bit (1) unal,
+        3 vertical bit (1) unal,			/* character involves vertical paper motion */
+        3 pad bit (5) unal,
+        3 not_tab bit (1) unal,			/* on for all characters EXCEPT horizontal tab */
+      2 char char (1) unal;
+
+
+	/* INTERNAL STATIC CONSTANTS */
+
+dcl  nul_char char (1) int static aligned init ("");	/* NUL */
+dcl  cr char (1) int static aligned init		/* carriage return */
+		("");
+
+dcl  bs char (1) int static aligned init ("");		/* backspace */
+dcl  ht char (1) int static aligned init ("	");	/* horizontal tab */
+dcl  nl char (1) int static aligned init ("
+");
+						/* newline */
+dcl  vt char (1) int static aligned init			/* vertical tab */
+		("");
+dcl  ff char (1) int static aligned init		/* form-feed */
+		("");
+dcl  sp char (1) int static aligned init (" ");
+
+dcl  HTSP character (2) static options (constant) initial ("	 "); /* horizontal tab and space */
+
+dcl  biggest_num fixed bin int static aligned init (131071);
+
+
+	/* BASED */
+
+dcl  based_string char (stringl) based (stringp);
+dcl  items (10) based (addr(column_array));		/* overlay for column_array used in sorting */
+
+
+	/* EXTERNAL STATIC */
+
+dcl  error_table_$long_record ext static aligned fixed bin (35);
+
+
+	/* BUILTINS */
+
+dcl  (addr, length, max, mod, rtrim, string, substr) builtin;
+
+/**/
+	start_col, current_col = 0;
+	stringp = a_ptr;
+	stringl = a_len;
+	max_len = a_max_len;
+	erase_char = a_erase;
+	kill_char = a_kill;
+
+	col_x = 1;
+
+	do char_x = 1 to stringl;			/* examine all input characters */
+	     string (column_array (col_x).flags) = "000000001"b; /* turn on not_tab, other flags off */
+	     current_char = substr (stringp -> based_string, char_x, 1);
+
+	     if current_char = cr			/* carriage return, just reset column */
+	     then current_col = start_col;
+
+	     else
+	     if current_char = bs
+	     then current_col = max (start_col, current_col - 1);	/* back up one for backspace */
+
+	     else
+	     if current_char = sp
+	     then current_col = current_col + 1;
+
+	     else
+	     if current_char = nul_char
+	     then;
+
+	     /* other characters will be stored */
+
+	     else do;
+		if current_char = nl		/* newline */
+		then do;
+		     column_array (col_x).column = biggest_num; /* make sure it sorts to end */
+		     column_array (col_x).vertical = "1"b;
+		end;
+
+		else
+		if current_char = vt |
+		   current_char = ff
+		then do;
+		     current_col,
+		     start_col = start_col + 1000;
+		     column_array (col_x).column = start_col - 1;
+		     column_array (col_x).vertical = "1"b;
+		end;
+
+		else do;
+		     column_array (col_x).column = current_col; /* graphic goes in next column */
+		     if current_char = ht		/* horizontal tab */
+		     then do;
+			column_array (col_x).not_tab = "0"b;
+			current_col = current_col + 10 - mod (current_col, 10); /* advance to next tab stop */
+		     end;
+
+		     else do;
+			if current_char >= sp	/* if not control char */
+			then current_col = current_col + 1; /* ordinary graphic, advances column by 1 */
+			if current_char = erase_char
+			then column_array (col_x).erase = "1"b;
+
+			else if current_char = kill_char
+			then column_array (col_x).kill = "1"b;
+		     end;
+		end;
+
+		column_array (col_x).char = current_char;
+		col_x = col_x + 1;
+	     end;
+	end;
+
+	/* now sort */
+
+	n_items = col_x - 1;			/* we incremented an extra time at the end */
+
+	/* we will use dumb kind of sort, since columns will usually be mostly in order */
+
+	do col_x = 1 to n_items - 1;
+	     if items (col_x) > items (col_x+1)		/* out of order */
+	     then do;
+		temp = items (col_x+1);		/* save item we're moving */
+		do i = col_x to 1 by -1 while (items (i) > temp); /* find its place */
+		     items (i+1) = items (i);		/* move everyone else over */
+		end;
+
+		items (i+1) = temp;
+	     end;
+	end;
+
+	/* now put characters back in string in right order */
+
+	char_x = 1;
+	current_col = 0;
+
+	do col_x = 1 to n_items;
+	     next_col = column_array (col_x).column;	/* place where next graphic goes */
+
+	     do while (current_col < next_col);		/* insert spaces if needed */
+		if column_array (col_x).vertical
+		then do;
+		     current_col = next_col;
+		     char_x = length (rtrim (substr (based_string, 1, char_x-1), HTSP)) + 1;
+		end;				/* remove trailing whitepsace from just completed line */
+
+		else do;
+		     call insert_char (sp);
+		     current_col = current_col + 1;
+		end;
+	     end;
+
+	     last_x = char_x;			/* place to back up to in case of erase */
+
+	     if ^column_array (col_x).not_tab		/* horizontal tab */
+	     then do;
+		end_of_tab = current_col + 10 - mod (current_col, 10);
+		if col_x < n_items			/* if there are characters after it */
+		then if column_array (col_x+1).column >= end_of_tab /* and tab is not overwritten */
+		     then do;
+			call insert_char (ht);
+			current_col = end_of_tab;
+		     end;
+
+		     /* otherwise next time around will insert spaces if needed */
+
+	     end;
+
+	     else do;				/* not tab */
+
+		call insert_char ((column_array (col_x).char));
+
+		do while (column_array (col_x+1).column = current_col & col_x < n_items);
+		     col_x = col_x + 1;
+		     if column_array (col_x).erase	/* column position is erased */
+		     then char_x = last_x;		/* pretend it never happened */
+
+		     else do;
+			if column_array (col_x).char ^= substr (based_string, char_x-1, 1)
+			then do;			/* don't store multiple instances of same graphic */
+			     call insert_char (bs);
+			     call insert_char ((column_array (col_x).char));
+			end;
+		     end;
+		end;
+
+		current_col = current_col + 1;	/* finished with that column position */
+	     end;
+	end;
+
+	/* all done */
+
+	a_len = char_x - 1;				/* we incremented after every insertion */
+	code = 0;
+	return;
+
+
+blew_it:						/* we come here if we overflowed max_len */
+	code = error_table_$long_record;
+	return;
+/**/
+insert_char:	proc (a_char);
+
+/* this procedure inserts a character into the final string and updates the index into the string */
+/* it checks to make sure we don't overflow */
+
+dcl  a_char char (1) aligned;
+
+	if char_x > max_len
+	then go to blew_it;
+
+	substr (based_string, char_x, 1) = a_char;
+	char_x = char_x + 1;
+	return;
+
+	end insert_char;
+
+     end tty_overstrike_canon;
+
+
+

@@ -1,0 +1,210 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+   *                                                         *
+   * Copyright (c) 1972 by Massachusetts Institute of        *
+   * Technology and Honeywell Information Systems, Inc.      *
+   *                                                         *
+   *********************************************************** */
+
+
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+	/*									*/
+	/* Name:  bound_library_tools_						*/
+	/*									*/
+	/*      This bound segment contains library maintenance tools which use a library	*/
+	/* descriptor segment to obtain information about the structure and contents of the	*/
+	/* libraries on which they operate.						*/
+	/*									*/
+	/* Status:								*/
+	/* 0) Created on:  June 30, 1976  by Gary C. Dixon				*/
+	/* 1) Modified on: Nov 17, 1981 by Gary C. Dixon - added library_pathname command/af	*/
+	/* 2) Modified: 26 February 1982 by G. Palter to delete tct_ which has been moved to	*/
+	/*	         bound_full_cp_ now that abbrev calls it				*/
+	/* 3) Modified: 26 October 1983 by Jim Lippard to add entry points to			*/
+	/*                 multics_library_search_					*/
+	/*									*/
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+
+Objectname:	bound_library_tools_;
+
+Addname:		library_cleanup, lcln,
+		library_descriptor, lds,
+		library_descriptor_compiler, ldc,
+		library_fetch, lf,
+		library_info, li,
+		library_map,
+		library_pathname, lpn,
+		library_print, lpr,
+		lib_access_mode_,
+		lib_args_,
+		lib_descriptor_,
+		lib_error_list_, lib_array_list_,
+		lib_fetch_,
+		lib_free_node_,
+		lib_get_tree_,
+		lib_next_name_,
+		lib_node_path_,
+		lib_output_node_,
+		lib_output_node_list_,
+		lib_paged_output_,
+		lib_ptr_and_bc_,
+		lib_sort_tree_,
+		multics_library_search_,
+		status_data_;
+
+Global:		delete;
+
+Order:		library_print,
+		library_cleanup,
+		library_map,
+		library_descriptor,
+		library_info,
+		library_fetch,
+		lib_fetch_,
+		library_pathname, 
+		lib_pathname_,
+		lib_args_,
+		lib_descriptor_,
+		lib_get_tree_,
+		multics_library_search_,
+		lib_ptr_and_bc_,
+		lib_free_node_,
+		lib_sort_tree_,
+		lib_output_node_list_,
+		lib_paged_output_,
+		lib_node_path_,
+		lib_output_node_,
+		lib_next_name_,
+		status_data_,
+		lib_access_mode_,
+		lib_error_list_,
+		library_descriptor_compiler;
+
+objectname:	lib_access_mode_;
+  retain:		get,
+		set,
+		unset;
+
+objectname:	lib_args_;
+  retain:		lib_args_;
+
+objectname:	lib_descriptor_;
+  retain:		cleanup,
+		default_values,
+		fetch,
+		info,
+		libraries,
+		map,
+		name,
+		print,
+		set_name,
+		validate_library;
+
+objectname:	lib_error_list_;
+  synonym:	lib_array_list_;
+  retain:		lib_error_list_,
+		lib_array_list_,
+		return_string;
+
+objectname:	lib_fetch_;
+  retain:		lib_fetch_;
+
+objectname:	lib_free_node_;
+  retain:		array,
+		descriptors;
+
+objectname:	lib_get_tree_;
+  retain:		lib_get_tree_,
+		lib_root_node,
+		root_array,
+		root_array_info,
+		root_node;
+
+objectname:	lib_next_name_;
+  retain:		lib_next_name_;
+
+objectname:	lib_node_path_;
+  retain:		lib_node_path_,
+		absolute;
+
+objectname:	lib_output_node_;
+  retain:		cleanup,
+		cross_reference,
+		info,
+		map,
+		print;
+
+objectname:	lib_output_node_list_;
+  retain:		info,
+		map,
+		print;
+
+objectname:	lib_paged_output_;
+  retain:		lib_paged_output_;
+
+objectname:	lib_ptr_and_bc_;
+  retain:		lib_ptr_and_bc_;
+
+objectname:	lib_sort_tree_;
+  retain:		make_name_list,
+		make_node_list,
+		name_list;
+
+objectname:	library_cleanup;
+  synonym:	lcln;
+  retain:		library_cleanup, lcln;
+
+objectname:	library_descriptor;
+  synonym:	lds;
+  retain:		library_descriptor, lds;
+
+objectname:	library_descriptor_compiler;
+  synonym:	ldc;
+  retain:		library_descriptor_compiler, ldc;
+
+objectname:	library_fetch;
+  synonym:	lf;
+  retain:		library_fetch, lf;
+
+objectname:	library_info;
+  synonym:	li;
+  retain:		library_info, li;
+
+objectname:	library_map;
+  retain:		library_map;
+
+objectname:	library_pathname;
+  synonym:	lpn;
+  retain:		library_pathname,
+		lpn;
+
+objectname:	library_print;
+  synonym:	lpr;
+  retain:		library_print, lpr;
+
+objectname:	multics_library_search_;
+  retain:		execution_dirs,
+		list_info_dirs,
+		object_dirs,
+		source_dirs,
+		hardcore_bc_dir,
+		hardcore_object_dir,
+		hardcore_source_dir,
+		offline_execution_dirs,
+		offline_list_info_dirs,
+		offline_object_dirs,
+		offline_source_dirs,
+		online_execution_dirs,
+		online_list_info_dirs,
+		online_object_dirs,
+		online_source_dirs;
+
+objectname:	status_data_;
+  retain:		mode,
+		dir_mode;
+
+/* end; */
+
+
+

@@ -1,0 +1,117 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1984 *
+   *                                                         *
+   *********************************************************** */
+
+
+
+/* HISTORY COMMENTS:
+  1) change(84-02-10,Falksenj), approve(), audit(), install():
+     Pre-hcom comments.
+     10 Feb 1984         J A Falksen         created.
+  2) change(87-04-09,Lippard), approve(86-11-24,MCR7576),
+     audit(87-04-21,Dickson), install(87-04-26,MR12.1-1026):
+     Delete set_time_zone and time_table_.
+                                                   END HISTORY COMMENTS */
+
+
+/* bound_time_rtns_
+
+   This bound segment contains non-hardcore date/time stuff
+*/
+
+Objectname:	bound_time_rtns_;
+
+Global:		delete;
+
+Order:		datebin_,
+		date_time,
+		date_time_equal,
+		date_time_interval,
+		display_time_info,
+		set_time_default;
+
+
+Addname:		calendar_clock,
+			dsti,
+		clock,
+		date,
+		date_time,
+		date_time_after,
+		date_time_before,
+		date_time_equal,
+		date_time_interval,
+		date_time_valid,
+		datebin_,
+		day,
+		day_name,
+		display_time_info,
+		dtaf,
+		dtbe,
+		dteq,
+		dti,
+		dtv,
+		hour,
+		long_date,
+		long_year,
+		minute,
+		month,
+		month_name,
+		print_time_default,
+		print_time_defaults,
+		ptd,
+		set_time_default,
+		std,
+		taf,
+		tbe,
+		teq,
+		time,
+		time_after,
+		time_before,
+		time_equal,
+		year;
+
+
+objectname:	datebin_;
+    retain:	datebin_, shift, wkday, time, dayr_clk, revert, revertabs,
+		clockathr, next_shift_change, datofirst, dayr_mo,
+		last_midnight, this_midnight, preceding_midnight,
+		following_midnight;
+
+objectname:	date_time;
+   synonym:	date, day, day_name, hour, long_date, long_year,
+		calendar_clock, clock,
+		minute, month, month_name, time, year;
+    retain:	date_time,
+		date, day, day_name, hour, long_date, long_year,
+		calendar_clock, clock,
+		minute, month, month_name, time, year;
+
+objectname:	date_time_equal;
+   synonym:	date_time_after, dtaf,
+		date_time_before, dtbe,
+		date_time_equal, dteq,
+		date_time_valid, dtv;
+    retain:	date_time_after, dtaf,	time_after, taf,
+		date_time_before, dtbe,	time_before, tbe,
+		date_time_equal, dteq,	time_equal, teq,
+		date_time_valid, dtv;
+
+
+objectname:	display_time_info;
+   synonym:	display_time_info, dsti;
+    retain:	display_time_info, dsti;
+
+objectname:	date_time_interval;
+   synonym:	date_time_interval, dti;
+    retain:	date_time_interval, dti;
+
+
+objectname:	set_time_default;
+   synonym:	std, set_time_default,
+		print_time_default, print_time_defaults, ptd;
+    retain:	std, set_time_default,
+		print_time_default, print_time_defaults, ptd;
+
+/* END */

@@ -1,0 +1,30 @@
+
+/* HISTORY COMMENTS:
+  1) change(87-04-15,Blair), approve(87-04-15,MCR7666),
+     audit(87-06-25,Fawcett), install(87-07-15,MR12.1-1040):
+     Install to fulfill SCP6308.  Originally written by Olin Sibert in 1983,
+     modified by J. Blair in 1987.
+  2) change(87-07-08,Blair), approve(87-07-08,MCR7731),
+     audit(87-07-08,Fawcett), install(87-07-15,MR12.1-1040):
+     Change the copy_disk command to copy_disk_volume and add -pv_name CA.
+                                                   END HISTORY COMMENTS */
+
+Objectname:	bound_copy_disk_vol_;
+
+
+Order:
+		copy_disk_volume,
+		copy_disk_copy_,
+		copy_disk_io_;
+
+Global:		delete;
+
+Addname:		copy_disk_volume;
+
+objectname:	copy_disk_volume;
+retain:		copy_disk_volume;
+
+/* 		END 		*/
+
+
+

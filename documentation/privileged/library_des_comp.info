@@ -1,0 +1,37 @@
+03/31/83  library_descriptor_compiler, ldc
+
+Syntax:  ldc desc_name {-control_arg}
+
+
+Function:  compiles a library description to produce a library
+descriptor data segment.
+
+Refer to "Library Description Language" in the Multics Library
+Maintenance (AN80) manual for a discussion of the syntax and semantics
+of the library description language.
+
+
+Arguments:
+desc_name
+   is the relative pathname of the segment containing the library
+   description to be compiled.  If this pathname does not end with an
+   ld suffix, then one is assumed.
+
+
+Control arguments:
+-brief, -bf
+   indicates that the brief form of error messages is to be used for
+   all errors diagnosed during the compilation.  (See "Notes" below.)
+-long, -lg
+   indicates that the long form of error messages is to be used for all
+   errors diagnosed during the compilation.  (See "Notes" below.)
+
+
+Notes:  If the segment being compiled is called descriptor_name.ld,
+then the compilation generates a segment called descriptor_name.alm in
+the working directory.  This segment can be assembled by the alm
+command to produce the library descriptor data segment.
+
+If neither -brief nor -long is used, then the long form of error
+messages is used for the first occurrence of an error, and the brief
+form is used for subsequent occurrences of that error.

@@ -1,0 +1,123 @@
+/*	Bindfile for bound_rcp_support_.
+*	Created on 06/26/75 by Bill Silver.
+*	Changed on 04/09/76 by Bill Silver to add alv and dlv.
+*	Modified 04/05/78 by C. D. Tavares to add list_resource_types.
+*	Modified 11/08/78 by C. D. Tavares to add resource_status and
+*	  register_resource et al.
+*	and to rename it bound_rcp_support_ (used to be bound_rcp_commands_)
+*	Modified 12/78 by R.J.C. Kissel to add reserve_resource and
+*	  cancel_resource and the reserve entry in build_resource_desc_.
+*	Modified 06/81 by CDT to retain list_resources$test.
+*         Modified 84-01-16 by BIM to retain resource_control_$canncel_id_string.
+*/
+
+Objectname:	bound_rcp_support_;
+
+Addname:		assign_resource, ar,
+		attach_lv, alv,
+		detach_lv, dlv,
+		list_resources, lr,
+		list_resource_types, lrt,
+		register_resource, rgr,
+		deregister_resource, drr,
+		acquire_resource, aqr,
+		release_resource, rlr,
+		set_resource, setr,
+		resource_status, rst,
+		clear_resource, clr,
+		unassign_resource, ur,
+		reserve_resource, rsr,
+		cancel_resource, cnr,
+		interpret_resource_desc_,
+		build_resource_desc_,
+		parse_resource_desc_,
+		resource_control_;
+
+Order:		list_resources,
+		attach_lv,
+		detach_lv,
+		assign_resource,
+		unassign_resource,
+		register_resource,
+		reserve_resource,
+		cancel_resource,
+		build_resource_desc_,
+		resource_status,
+		interpret_resource_desc_,
+		list_resource_types,
+		resource_control_,
+		parse_resource_desc_;
+
+Global:		delete;
+
+objectname:	assign_resource;
+ synonym:		ar;
+ retain:		assign_resource, ar;
+
+objectname:	attach_lv;
+ synonym:		alv;
+ retain:		attach_lv, alv;
+
+objectname:	detach_lv;
+ synonym:		dlv;
+ retain:		detach_lv, dlv;
+
+objectname:	list_resources;
+ synonym:		lr;
+ retain:		list_resources, lr,
+		test;	/* debug entry */
+
+objectname:	list_resource_types;
+ synonym:		lrt;
+ retain:		list_resource_types, lrt;
+
+objectname:	register_resource;
+ synonym:		rgr,
+		deregister_resource, drr,
+		acquire_resource, aqr,
+		release_resource, rlr,
+		set_resource, setr,
+		clear_resource, clr;
+ retain:		register_resource, rgr,
+		deregister_resource, drr,
+		acquire_resource, aqr,
+		release_resource, rlr,
+		set_resource, setr,
+		clear_resource, clr,
+		test;	/* debug entry */
+
+objectname:	reserve_resource;
+ retain:		reserve_resource, rsr;
+
+objectname:	cancel_resource;
+ retain:		cancel_resource, cnr;
+
+objectname:	build_resource_desc_;
+ retain:		build_resource_desc_,
+		reserve,
+		from_arglist;
+
+objectname:	resource_status;
+ synonym:		rst;
+retain:		resource_status, rst,
+		test;	/* debug entry */
+
+objectname:	interpret_resource_desc_;
+ retain:		interpret_resource_desc_;
+
+objectname:	unassign_resource;
+ synonym:		ur;
+ retain:		unassign_resource, ur;
+
+objectname:	parse_resource_desc_;
+ retain:		parse_resource_desc_,
+		check;
+
+objectname:	resource_control_;
+ retain:		reserve,
+ 		cancel_id_string;
+
+/*	END	*/
+
+
+

@@ -1,0 +1,27 @@
+/* Bindfile for bound_rcp_tools_ */
+/* Created 01/12/78 by C. D. Tavares */
+
+Objectname:	bound_rcp_tools_;
+Addname:		delete_registry,
+		remove_registry,
+		copy_registry,
+		reconstruct_registry;
+Order:		delete_registry,
+		copy_registry,
+		reconstruct_registry;
+Global:		delete;
+
+objectname:	delete_registry;
+ retain:		delete_registry,
+		remove_registry;
+
+objectname:	copy_registry;
+ retain:		copy_registry;
+
+objectname:	reconstruct_registry;
+ retain:		reconstruct_registry;
+
+/* end */
+
+
+

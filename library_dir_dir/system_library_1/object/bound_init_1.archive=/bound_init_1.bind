@@ -1,0 +1,69 @@
+/* *	80-06-01, P. B. Kelley: Moved tape_checksum_ to bound_sss_wired_
+   *	80-11-23, W. Olin Sibert: to add tape_io (formerly unbound)
+   * 	81-01-01, CAH: rename tape_io to boot_tape_io
+   *	81-02-01, JJB: Added init_hc_part
+   *	82-07-01, BIM: Merge WOS & other changes, including real_initializer.
+   *	83-06-01, KPL: Modified for bootload Multics 10.2: Added
+   *	   disk_reader and moved tape_reader and boot_tape_io to bound_temp_1
+   *	84-10-17, WOS: Moved map_onto_disk here from bound_temp_1, deleted
+   *	   symbol_table definitions to conserve definitions_ space
+   *	85-02-15, KPL: Moved init_clocks into bound_bce_paged.
+   */
+
+Objectname:	bound_init_1;
+Global:		retain;			/* Init-segs */
+
+Order:		real_initializer,
+		initial_error_handler,
+		tc_init,
+		initialize_faults,
+		initialize_faults_data,
+		make_sdw,
+		map_onto_disk,
+	          init_hc_part,
+		pre_link_hc,
+		slt_manager,
+		segment_loader,
+		disk_reader,
+		hc_load_mpc;
+
+objectname:	real_initializer;
+ delete:		symbol_table;
+
+objectname:	initial_error_handler;
+ delete:		symbol_table;
+
+objectname:	tc_init;
+ delete:		symbol_table;
+
+objectname:	initialize_faults;
+ delete:		symbol_table;
+
+objectname:	initialize_faults_data;
+ delete:		symbol_table;
+
+objectname:	make_sdw;
+ delete:		symbol_table;
+
+objectname:	map_onto_disk;
+ delete:		symbol_table;
+
+objectname:	init_hc_part;
+ delete:		symbol_table;
+
+objectname:	pre_link_hc;
+ delete:		symbol_table;
+
+objectname:	slt_manager;
+ delete:		symbol_table;
+
+objectname:	segment_loader;
+ delete:		symbol_table;
+
+objectname:	disk_reader;
+ delete:		symbol_table;
+
+objectname:	hc_load_mpc;
+ delete:		symbol_table;
+
+/*		END		*/

@@ -1,0 +1,399 @@
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+/****^  HISTORY COMMENTS:
+  1) change(76-11-23,GDixon), approve(), audit(), install():
+     Program created.
+  2) change(86-05-17,GDixon), approve(86-05-17,MCR7357),
+     audit(86-07-10,Farley), install(86-07-18,MR12.0-1098):
+     Change call to tct_$translate to reference
+     find_char_$translate_first_in_table instead.  This subroutine was renamed.
+                                                   END HISTORY COMMENTS */
+
+
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+	/*									*/
+	/* NAME:  lib_paged_output_							*/
+	/*									*/
+	/*      This subroutine splits a segment up into printable pages, and outputs each page	*/
+	/* on a given I/O switch.  It provides for variable line length, page length, for	*/
+	/* top and bottom margin settings, for a caller-supplied end-of-page routine, and for	*/
+	/* processing of MSF component segments which are to be treated as part of a logical	*/
+	/* MSF.									*/
+	/*									*/
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+
+lib_paged_output_:
+	procedure (APch, ALch, PPOD, Acode);
+
+     dcl						/*	Parameters			*/
+	APch			ptr,		/* ptr to char string to be output with paging. 	*/
+						/*   (In)					*/
+	ALch			fixed bin(21),	/* length of char string. (In)		*/
+/*	PPOD			ptr,		/* ptr to input data structure. (In)		*/
+	Acode			fixed bin(35);	/* return code.	(Out)			*/
+
+     dcl	Cbreak 			char(512) varying,	/* temporary string in which break table built.	*/
+	Cop			char(1),		/* character from break table corresponding to	*/
+						/*   break which was found.			*/
+	Iat_column		fixed bin,	/* current column of current line.		*/
+	Icolumns_used		fixed bin,	/* number of columns usedin current line.	*/
+	J			fixed bin(21),	/* index value.				*/
+	Lch			fixed bin(21),	/* length of unoutput part of input char str.	*/
+	Lline			fixed bin,	/* length of processed part of current line.	*/
+	Lprocessed		fixed bin(21),	/* length of processed part not output yet.	*/
+	Lunprocessed		fixed bin(21),	/* length of unprocessed part of input char str.	*/
+	Nheading_lines		fixed bin,	/* estimated number of lines required to print	*/
+						/*   the heading.				*/
+	Nlines			fixed bin,	/* number of print lines with the current line	*/
+						/*   will take up when printed.		*/
+	Nlines_page		fixed bin,	/* number of lines from input char str which will	*/
+						/*   fit on each page.			*/
+	Nvert_tabs		fixed bin,
+	Pch			ptr,		/* ptr to unoutput part of input char str.	*/
+	Punprocessed		ptr,		/* ptr to unprocessed part of input char str.	*/
+	Send_of_line		bit(1) aligned,	/* on if end of current line reached.		*/
+	Send_of_page		bit(1) aligned,	/* on if end of current page reached.		*/
+	Spartial			bit(1) aligned,	/* copy of POD.Spartial_last_page.		*/
+	Sprint			bit(1) aligned,	/* on if within page boundaries to be printed.	*/
+	Svertical_tab		bit(1) aligned,	/* on if vertical tab encountered.		*/
+	cleanup			condition,
+	code 			fixed bin(35),	/* status code.				*/
+	op			fixed bin(35),	/* binary value of Cop.			*/
+	vert_tab_lines (20)		fixed bin;	/* lines to skip for each vertical tab on this	*/
+						/*   page.  These ARE NOT TAB STOP SETTINGS.  	*/
+						/*   Tab stops assumed at 13,23,33... skipping	*/
+						/*   2 lines at top of each page for heading 	*/
+						/*   lines, just as the printer does.		*/
+	
+	
+     dcl						/*	based variables.			*/
+	ch_array (Lch)		char(1) based (Pch),
+	unprocessed		char(Lunprocessed) based(Punprocessed),
+	unprocessed_array (Lunprocessed)
+				char(1) based(Punprocessed);
+
+%include lib_paged_output_data_;
+
+     dcl (addr, binary, copy, divide, length, max, mod, substr, unspec)
+				builtin;
+
+     dcl	find_char_$translate_first_in_table
+				entry (char(*), char(512) aligned, fixed bin(21)) returns (char(1)),
+	ioa_$ioa_switch_nnl		entry() options(variable),
+	iox_$put_chars		entry (ptr, ptr, fixed bin(21), fixed bin(35));
+
+     dcl (ONE_POS			init (""),	/* \000 - ignored by find_char_.		*/
+	IGNORE			init ("1"),	/* "1"  - returned by find_char_.		*/
+	ESCAPE			init ("2"),	/* "2"  - returned by find_char_.		*/
+	BS			init ("3"),	/* "3"  - returned by find_char_.		*/
+	HT			init ("4"),	/* "4"  - returned by find_char_.		*/
+	NL			init ("5"),	/* "5"  - returned by find_char_.		*/
+	NP			init ("6"),	/* "6"  - returned by find_char_.		*/
+	CR			init ("7"),	/* "7"  - returned by find_char_.		*/
+	VT			init ("8"))	/* "8"  - returned by find_char_.		*/
+				char(1) int static options(constant),
+	False			bit(1) aligned int static options(constant) init ("0"b),
+	NLs			char(200) aligned int static options(constant) init ((200)"
+"),
+	VTchar			char(1) aligned int static options(constant) init(""),
+	NPchar			char(1) aligned int static options(constant) init (""),
+	Sfirst			bit(1) aligned int static init ("1"b),
+						/* on if pgm invoked for first time in process.	*/
+	True			bit(1) aligned int static options(constant) init ("1"b),
+	break_table		char(512) aligned int static,
+	error_table_$unimplemented_version
+				fixed bin(35) ext static;
+						/* static copy of Cbreak, the break table used	*/
+						/*   by find_char_$translate_first_in_table.	*/
+
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  **  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  */
+
+
+	if Sfirst then do;				/* construct search table.			*/
+	     Cbreak = IGNORE;			/* 000    :  NUL is ignored wrt print positions.	*/
+	     Cbreak = Cbreak || copy(ESCAPE,6);		/* 001-006:  are escape sequences.		*/
+	     Cbreak = Cbreak || ESCAPE;		/* 007    :  BEL is escaped.			*/
+	     Cbreak = Cbreak || BS;			/* 010    :  BS is a -1 print positions.	*/
+	     Cbreak = Cbreak || HT;			/* 011    :  HT is variable number of print pos.	*/
+	     Cbreak = Cbreak || NL;			/* 012    :  NL is after last print position.	*/
+	     Cbreak = Cbreak || VT;			/* 013    :  VT ends line, skips to next VT stop. */
+	     Cbreak = Cbreak || NP;			/* 014    :  NP ends line and page.		*/
+	     Cbreak = Cbreak || CR;			/* 015    :  CR sets position to col 1.		*/
+	     Cbreak = Cbreak || copy(ESCAPE,2);		/* 016-017:  BRS-RRS are escaped.		*/
+	     Cbreak = Cbreak || copy(ESCAPE,16);	/* 020-037:  are escape sequences.		*/
+	     Cbreak = Cbreak || copy(ONE_POS,95);	/* 040-176:  are printable, taking 1 position.	*/
+	     Cbreak = Cbreak || IGNORE;		/* 177    :  PAD is ignored.			*/
+	     Cbreak = Cbreak || copy(ESCAPE,384);	/* 200-777:  are escape sequences.		*/
+	     break_table = Cbreak;			/* copy into internal static break table.	*/
+	     Sfirst = False;
+	     end;
+
+	if POD.version ^= VPOD_1 then   do;
+	     Acode = error_table_$unimplemented_version;
+	     return;
+	     end;
+	Acode = 0;
+	Pch = APch;				/* copy input args so we can change them.	*/
+	Lch = ALch;
+	Iat_column = POD.Iat_column;
+	Icolumns_used = POD.Icolumns_used;
+	Nlines_page = POD.Lpage - POD.Lbottom_margin;
+
+	if POD.Sheader & POD.Imsf_comp < 1 then do;
+	     Nheading_lines = 2 + divide(length(POD.heading) + (POD.Lline-1), POD.Lline, 17, 0);
+						/* estimate number of lines occupied by heading.	*/
+						/* exclude widowed heading lines by requiring at	*/
+						/*   least 2 text lines on page with heading.	*/
+	     if Nheading_lines > Nlines_page then;	/* heading can never fit on a page. Ignore it.	*/
+	     else do;
+		if Nheading_lines + POD.Iline > Nlines_page then do;
+		     if Sprint then do;		/* heading won't fit on current page. Force EOP.	*/
+			if (POD.Lpage-POD.Iline > 0) then do;
+			     call iox_$put_chars (POD.switch, addr(NLs), (POD.Lpage - POD.Iline), code);
+			     if code ^= 0 then go to FATAL_ERROR;
+			     end;
+			if POD.Send_page then call end_page (POD.Ipage);
+			end;
+		     POD.Ipage = POD.Ipage + 1;
+		     POD.Iline = 0;
+		     end;
+		Spartial = POD.Spartial_last_page;
+		on cleanup begin;
+		     POD.Sheader = True;
+		     POD.Spartial_last_page = Spartial;
+		     end;
+		POD.Sheader = False;
+		POD.Spartial_last_page = True;
+		Punprocessed = addr(substr(POD.heading,1));
+		Lunprocessed = length(POD.heading);
+		call lib_paged_output_ (Punprocessed, Lunprocessed, PPOD, code);
+		if code ^= 0 then go to FATAL_ERROR;
+		POD.Sheader = True;
+		POD.Spartial_last_page = Spartial;
+		revert cleanup;
+		end;
+	     end;
+
+	do while (((POD.Ipage <= POD.Nto) | (POD.Nto = 0)) & (Lch > 0)); 
+						/* Process input looking for pages to print.	*/
+	     if (POD.Nfrom <= POD.Ipage) & ((POD.Ipage <= POD.Nto) | (POD.Nto = 0)) then
+		Sprint = True;
+	     else Sprint = False;			/* Determine printability.			*/
+	     if (POD.Iline < POD.Ltop_margin) then do;
+		if Sprint then do;
+		     call iox_$put_chars (POD.switch, addr(NLs), (POD.Ltop_margin-POD.Iline), code);
+		     if code ^= 0 then go to FATAL_ERROR;
+		     end;
+		POD.Iline = POD.Ltop_margin;		/* output top margin.			*/
+		end;
+
+	     Send_of_page = False;			/* Prepare to process each page.		*/
+	     Punprocessed = Pch;
+	     Lunprocessed = Lch;
+	     Lprocessed = 0;
+	     Nlines = 0;
+	     Nvert_tabs = 0;
+	     do while ((POD.Iline + Nlines <= Nlines_page) & (Lunprocessed > 0) & ^Send_of_page);
+		Send_of_line = False;		/* Scan input until a page has been processed.	*/
+		Svertical_tab = False;
+		Lline = 0;			/* Note that lines are not output at this time.	*/
+		do while ((Lunprocessed > 0) & ^Send_of_line);
+						/* This loop processes each printed line.	*/
+		     Cop = find_char_$translate_first_in_table (unprocessed, break_table, J);
+		     if J = 0 then do;		/* end of input detected with no NL char.	*/
+			J = Lunprocessed;
+			Iat_column = Iat_column + J;
+			go to END_NOT_BREAK;
+			end;
+		     else op = binary (unspec(Cop), 9);
+		     go to DO(op);
+
+DO(49):		     Iat_column = Iat_column + (J - 1);	/* 49 = \061 = "1" = IGNORE.			*/
+		     go to END;
+
+DO(50):		     Iat_column = Iat_column + (J + 3);	/* 50 = \062 = "2" = ESCAPE.			*/
+		     go to END;
+
+DO(51):		     Iat_column = Iat_column + (J - 2);	/* 51 = \063 = "3" = BS (backspace).		*/
+		     Icolumns_used = max (Icolumns_used, Iat_column+1);
+		     go to END;
+
+DO(52):		     Iat_column = Iat_column + (J - 1);	/* 52 = \064 = "4" = HT (horizontal tab).	*/
+		     Iat_column = Iat_column + (10 - mod(Iat_column,10));
+		     go to END;
+
+DO(53):		     Iat_column = Iat_column + (J - 1);	/* 53 = \065 = "5" = NL (new line).		*/
+		     Send_of_line = True;
+		     go to END;
+
+DO(54):		     Iat_column = Iat_column + (J - 1);	/* 54 = \066 = "6" = NP (new page).		*/
+		     Send_of_line = True;
+		     Send_of_page = True;
+		     go to END;
+
+DO(55):		     Iat_column = Iat_column + (J - 1);	/* 55 = \067 = "7" = CR (carriage return).	*/
+		     Icolumns_used = max (Icolumns_used, Iat_column);
+		     Iat_column = 0;
+		     go to END;
+
+DO(56):		     Iat_column = Iat_column + (J - 1); /* 56 = \068 = "8" = VT (vertical tab)		*/
+		     Send_of_line = True;
+		     Svertical_tab = True;
+		     go to END;
+
+END:		     if ^Send_of_line then do;
+			Punprocessed = addr (unprocessed_array(J+1));
+			Lunprocessed = Lunprocessed - J;
+			Lline = Lline + J;
+			J = 0;			/* clear used value, in case do group ends.	*/
+			end;
+		     end;
+END_NOT_BREAK:	Icolumns_used = max (Icolumns_used, Iat_column);
+		Nlines = divide (Icolumns_used + (POD.Lline-1), POD.Lline, 17, 0);
+		if Send_of_line then Nlines = max(Nlines,1);
+		if POD.Iline + Nlines > Nlines_page then do;
+		     Iat_column = POD.Iat_column;	/* record where we were for subsequent invocation.*/
+		     Icolumns_used = POD.Icolumns_used;
+		     end;
+		else do;
+		     if ((Lunprocessed - J <= 0) & ^Send_of_line & POD.Spartial_last_page) then
+			POD.Iline = POD.Iline + Nlines-1;
+						/* Last line didn't end in NL or NP (final page)	*/
+						/*   and partial last pages are allowed.	*/
+		     else do;			/* Otherwise--				*/
+			POD.Iline = POD.Iline + Nlines;
+			Iat_column = 0;
+			Icolumns_used = 0;
+			end;
+		     POD.Iat_column = Iat_column;
+		     POD.Icolumns_used = Icolumns_used;
+		     if (Lunprocessed - J > 0) then
+			Punprocessed = addr (unprocessed_array(J+1));
+		     Lunprocessed = Lunprocessed - J;
+		     Lline = Lline + J;
+		     Lprocessed = Lprocessed + Lline;
+		     if Svertical_tab then do;	/* Process vertical table to count its extra lines*/
+			Nvert_tabs = Nvert_tabs + 1;
+			vert_tab_lines(Nvert_tabs) = 10 - mod(POD.Iline-POD.Ltop_margin-1, 10);
+			Nlines = vert_tab_lines(Nvert_tabs);
+			POD.Iline = POD.Iline - 1;	/* Omit line containing VT from line count.	*/
+			if  POD.Iline + Nlines < Nlines_page  then
+			     POD.Iline = POD.Iline + Nlines;
+						/*   The computed value of Nlines includes a NL	*/
+						/*   at end of line containing VT.		*/
+			else Send_of_page = True;	/*   Or else, the end-of-page routine will supply */
+			end;			/*   this NL.				*/
+		     Nlines = 0;			/* line just processed definitely on this page.	*/
+		     end;
+		end;
+
+	     if Sprint & (Lprocessed > 0) then		/* If we are to output anything, do it now.	*/
+		if ch_array(Lprocessed) = NPchar then do;
+		     call out (Lprocessed-1);
+		     call iox_$put_chars (POD.switch, addr(NLs), 1, code);
+		     if code ^= 0 then go to FATAL_ERROR;
+		     end;
+		else if ch_array(Lprocessed) = VTchar then do;
+		     call out (Lprocessed-1);
+		     end;
+		else do;
+		     call out (Lprocessed);
+		     end;
+	     if (Lch - Lprocessed > 0) then		/* Forget now about what's been processed.	*/
+		Pch = addr (ch_array (Lprocessed+1));
+	     Lch = Lch - Lprocessed;
+
+	     if (Lch > 0 | Send_of_page | ^POD.Spartial_last_page) then do;
+		if Sprint then do;
+		     if (POD.Lpage-POD.Iline > 0) then do;
+						/* Output footing for all but last page.  On last	*/
+						/*   page, output footing only if partial page	*/
+						/*   is not desired.			*/
+			call iox_$put_chars (POD.switch, addr(NLs), (POD.Lpage - POD.Iline), code);
+			if code ^= 0 then go to FATAL_ERROR;
+			end;
+		     if POD.Send_page then call end_page (POD.Ipage);
+		     end;
+		POD.Ipage = POD.Ipage + 1;
+		POD.Iline = 0;
+		end;
+	     end;
+
+	return;
+	
+FATAL_ERROR:
+	Acode = code;
+	return;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  */
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  */
+
+
+out:	proc (L);
+	
+     dcl	L			fixed bin(21),
+	Lstr			fixed bin(21),
+	Pstr			ptr,
+	str			char(Lstr) based(Pstr),
+	str_array (Lstr)		char(1) based(Pstr);
+
+	Nvert_tabs = 0;
+	Pstr = Pch;
+	Lstr = L;
+	do while(Lstr > 0);
+	     Cop = find_char_$translate_first_in_table (str, break_table, J);
+	     if J = 0 then do;
+		call iox_$put_chars (POD.switch, Pstr, Lstr, code);
+		if code ^= 0 then go to FATAL_ERROR;
+		Lstr = 0;
+		end;
+	     else do;
+		op = binary (unspec(Cop), 9);
+		go to OUT(op);
+		
+OUT(49):						/* IGNORE					*/
+OUT(51):						/* BS					*/
+OUT(52):						/* HT					*/
+OUT(53):						/* NL					*/
+OUT(54):						/* NP (should never process one of these.	*/
+OUT(55):						/* CR					*/
+		call iox_$put_chars (POD.switch, Pstr, J, code);
+		if code ^= 0 then go to FATAL_ERROR;
+		go to END_OUT;
+		
+OUT(50):		if J > 1 then do;			/* ESCAPE SEQUENCE.				*/
+		     call iox_$put_chars (POD.switch, Pstr, J-1, code);
+		     if code ^= 0 then go to FATAL_ERROR;
+		     end;
+		call ioa_$ioa_switch_nnl (POD.switch, "\^3.3b", unspec(str_array(J)));
+		go to END_OUT;
+		
+OUT(56):		if J > 1 then do;			/* VT					*/
+		     call iox_$put_chars (POD.switch, Pstr, J-1, code);
+		     if code ^= 0 then go to FATAL_ERROR;
+		     end;
+		Nvert_tabs = Nvert_tabs + 1;
+		call ioa_$ioa_switch_nnl (POD.switch, "^v/", vert_tab_lines(Nvert_tabs));
+		go to END_OUT;
+
+END_OUT:		if J < Lstr then
+		     Pstr = addr(str_array(J+1));
+		Lstr = Lstr - J;
+		end;
+	     end;
+	end out;
+
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  */
+
+
+	end lib_paged_output_;

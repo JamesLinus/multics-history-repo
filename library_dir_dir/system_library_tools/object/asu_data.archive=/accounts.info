@@ -1,0 +1,110 @@
+LEGAL COMMANDS
+
+add_anon PROJ INITPROC HDIR {PASSWORD}	add anonymous user to PROJ 
+			with initial procedure INITPROC,
+			default directory HDIR,
+			and  optional password PASSWORD
+
+bill accept DATE		accept bill
+
+bill prepare		set up to run bill
+
+bill run MM DD YY {ARG}	run bill
+
+chaddr PERS {"New Address"}	change a user's mailing address
+
+chalias PERS {ALIAS}	change a user's login alias
+
+change {PERS}		change a field of a registered user
+
+charge			enter a miscellaneous charge
+
+chdf_proj PERS PROJ	change a user's default project
+
+check_log PERS		find all log entries pertaining to PERS
+
+chname PERS {"New name"}	change a user's mailing-list name
+
+chpass PERS		change a user's password
+
+chprog PERS {PROG}		change a user's programmer number
+
+credit			enter a miscellaneous credit
+
+cu PERS PROJ		cr user directory for PERS.PROJ
+
+day			print output from accounting absentee run
+
+dayok			delete output from accounting absentee run
+
+delegate PROJ PATH PERS.PROJ	delegate PROJ to run by PERS.PROJ in PATH
+
+disk_report		run a disk report
+
+dmisc			delete a miscellaneous charge
+drp
+
+dolog LOGnn		process log to get printed copy
+
+dpmf PROJ PERS		delete PERS from project PROJ
+
+dproj PROJ		delete project PROJ
+
+edit_proj PROJ {KEY {NEWVAL}} edit project registration data for PROJ
+
+help {COMMAND}		get help on COMMAND or on all commands
+
+install TABLE		install the specified table
+
+ison PERS		check if user PERS is registered
+
+labels			print mailing labels for projects
+
+later COMMAND ARG1 ARG2 ...	schedule later processing of COMMAND
+
+list			list file directory
+
+listacl			list access control list
+
+logout {-hold}		log out from Multics
+
+mail			print mailbox
+
+mail * PERS PROJ		send mail to another user
+
+new_proj PROJ 		register new project PROJ
+
+new_smf			same as "install sat"
+
+pmf PROJ			edit pmf for PROJ
+
+pmisc			print misclellaneous charges
+
+proj_mtd PROJ		produce month-to-date report for PROJ
+
+recov PROJ		recover lost pmf for PROJ
+
+register			register a user on Multics
+
+rename_proj PRJ1 PRJ2 {AL2}	rename project PRJ1 to PRJ2 with optional alias AL2
+
+rqm FILE			request copies of FILE for Multics dist.
+
+setcrank			schedule accounting run, if it bombed
+
+setdisk			schedule disk run, if it bombed
+
+status PATH		get storage system info on PATH
+
+undelegate PROJ		undelegate project PROJ
+
+upmf PROJ PERS		add person PERS to project PROJ
+
+value$dump {VALUE NAME}	print value of VALUE NAME or of all values
+
+who -lg			find out who is on
+
+who_delg {PROJ}		print administrator(s) of specified, or all, delegated project(s)
+
+
+

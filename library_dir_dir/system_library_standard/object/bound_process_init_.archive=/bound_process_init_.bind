@@ -1,0 +1,77 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+   *                                                         *
+   *********************************************************** */
+
+/* HISTORY COMMENTS:
+  1) change(86-04-17,Herbst), approve(87-07-24,MCR7697),
+     audit(87-07-24,Martinson), install(87-08-04,MR12.1-1055):
+     Added system_message_handler_$get, $reset, and $set.
+  2) change(86-04-24,Fawcett), approve(86-09-04,MCR7530),
+     audit(86-09-10,Lippard), install(86-09-15,MR12.0-1155):
+     Retain mme2_fault_handler in process_overseer_ (phx11462).
+  3) change(87-03-18,Brunelle), approve(87-07-24,MCR7697),
+     audit(87-07-24,Martinson), install(87-08-04,MR12.1-1055):
+     Removed system_message_handler_$get, $reset, and $set.
+                                                   END HISTORY COMMENTS */
+
+Objectname:	bound_process_init_;
+Global:		delete;
+Perprocess_Static;
+	
+/* HISTORY:
+Written by C. Hornig, June 1982.
+Modified:
+08/22/84 by R. Michael Tague:  Added system_shutdown_handler_.
+09/23/84 by R. Michael Tague:  Added dm_shutdown_handler_.
+12/11/84 by Matthew Pierret:   Moved dm_shutdown_handler_ to 
+            bound_dm_.3.
+11/14/85 by Steve Herbst:  Added system_message_handler_.
+*/
+
+Addname:	          initialize_process_,
+		no_save_on_disconnect,
+		print_abs_msg_,
+		process_overseer_,
+		project_start_up_,
+		reconnect_ec_disable,
+		reconnect_ec_enable,
+		save_on_disconnect,
+		sus_signal_handler_,
+		system_message_handler_,
+		system_shutdown_handler_;
+
+Order:		initialize_process_,
+		print_abs_msg_,
+		process_overseer_,
+		project_start_up_,
+		sus_signal_handler_,
+		system_message_handler_,
+		system_shutdown_handler_;
+		
+objectname:	initialize_process_;
+ retain:		initialize_process_;
+
+objectname:	print_abs_msg_;
+ retain:		login, logout;
+
+objectname:	process_overseer_;
+ retain:		process_overseer_, mme2_fault_handler_;
+
+objectname:	project_start_up_;
+ retain:		project_start_up_;
+
+objectname:	sus_signal_handler_;
+ synonym:		save_on_disconnect, no_save_on_disconnect,
+		reconnect_ec_enable, reconnect_ec_disable;
+ retain:		sus_signal_handler_,
+		save_on_disconnect, no_save_on_disconnect,
+		reconnect_ec_enable, reconnect_ec_disable;
+
+objectname:	system_message_handler_;
+ retain:		system_message_handler_;
+
+objectname:	system_shutdown_handler_;
+ retain:		system_shutdown_handler_;
+

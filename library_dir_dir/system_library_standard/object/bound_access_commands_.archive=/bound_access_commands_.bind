@@ -1,0 +1,226 @@
+/* Bindfile for bound_access_commands_ */
+/* This bound segment contains commands to perform access control functions
+   and some of the subroutines which these commands use. */
+
+/* Modified Mar 1973 by A. Kobziar - add Initial ACL commands.
+   Modified Jul 1973 by P. B. Kelley - add cv_acl_, cv_mode_, cv_userid_
+   Modified Aug 1973 by M. A. Meer - add hpsetacl/hpdeleteacl entry points to
+   acl_commands
+   Modified Aug 1973 by C. L. Wong - add set_ring_brackets
+   Modified Feb 1974 by E Stone to remove the CACL commands
+   Modified Oct 1974 by Steve Herbst to replace acl_commands with set_acl,
+     replace match_acl_names_ with find_common_acl_names_, and add ms_create.
+   Modified Apr 1975 by L. J. Scheffler to add print_auth_names and
+     print_proc_auth.
+   Modified Jan 1979 by C. D. Tavares to add ...dir_ring_brackets entries to
+     set_ring_brackets.
+*/
+/* MCR 4232 Add names l_set_ring_brackets, etc. 12/13/79 S. Herbst */
+/* Moved mbx & ms ACL commands from ms_create to set_acl 09/10/82 S. Herbst */
+/* Add get_effective_access 10/31/83 Jim Lippard */
+/* Modified 1984-11-05 by E. Swenson to add check_gate_access_. */
+/* Added inter_multics_aim_ 10/30/84 Paul Leatherman */
+/* Replaced set_acl with acl_commands_ and cv_acl_type_ 841108 M. Pandolf */
+/* 01/23/85 by Lee A. Newcomb:  MCR 7116: Added the new encode_access_class
+/*	     (eac) and decode_access_class (dac) cmds/AFs.
+*/
+
+Objectname:	bound_access_commands_;
+
+Order:		acl_commands_,
+		cv_acl_type_,
+		ms_create,
+		find_common_acl_names_,
+		check_path_name_,
+                    find_acl_names_,
+		cv_acl_,
+		cv_mode_,
+		cv_userid_,
+		inter_multics_aim_,
+                    set_ring_brackets,
+		print_auth_names,
+		print_proc_auth,
+		encode_access_class,
+		check_iacl,
+		get_effective_access,
+		check_gate_access_;
+
+Addname:		check_gate_access_,
+		check_path_name_,
+		cv_acl_,
+		cv_dir_acl_,
+		cv_dir_mode_,
+		cv_mode_,
+		cv_userid_,
+		delete_iacl_dir, did,
+		delete_iacl_seg, dis,
+		delete_acl, deleteacl, da,
+		find_acl_names_,
+		find_common_acl_names_,
+		inter_multics_aim_,
+		get_system_aim_attributes_,
+	          compute_common_aim_ceiling_,
+		translate_aim_attributes_,
+		list_iacl_dir, lid,
+		list_iacl_seg, lis,
+		list_acl, listacl, la,
+		mbx_add_name, mban,
+		mbx_create, mbcr,
+		mbx_delete, mbdl,
+		mbx_delete_acl, mbda,
+		mbx_delete_name, mbdn,
+		mbx_list_acl, mbla,
+		mbx_rename, mbrn,
+		mbx_safety_switch_off, mbssf,
+		mbx_safety_switch_on, mbssn,
+		mbx_set_acl, mbsa,
+		mbx_set_max_length, mbsml,
+		ms_add_name, msan,
+		ms_create, mscr,
+		ms_delete, msdl,
+		ms_delete_acl, msda,
+		ms_delete_name, msdn,
+		ms_list_acl, msla,
+		ms_rename, msrn,
+		ms_safety_switch_off, msssf,
+		ms_safety_switch_on, msssn,
+		ms_set_acl, mssa,
+		ms_set_max_length, mssml,
+		print_auth_names, pan,
+		print_proc_auth, ppa,
+		encode_access_class, eac, decode_access_class, dac,
+		set_iacl_dir, sid,
+		set_iacl_seg, sis,
+		set_ring_brackets, srb,
+		set_dir_ring_brackets, sdrb,
+		set_acl, setacl, sa,
+		check_iacl,
+		get_effective_access, gea,
+		list_accessible, lac, list_not_accessible, lnac;
+
+Global:		delete;
+
+objectname:	acl_commands_;
+ synonym:		list_acl, listacl, la, delete_acl, deleteacl, da, set_acl, setacl, sa,
+		list_iacl_seg, lis, list_iacl_dir, lid, set_iacl_seg, sis,
+		set_iacl_dir, sid, delete_iacl_seg, dis, delete_iacl_dir, did,
+		list_accessible, lac, list_not_accessible, lnac,
+		mbx_delete_acl, mbda, mbx_list_acl, mbla, mbx_set_acl, mbsa,
+		ms_delete_acl, msda, ms_list_acl, msla, ms_set_acl, mssa;
+ retain:		set_acl, setacl, sa,
+		list_acl, listacl, la,
+		delete_acl, deleteacl, da,
+		delete_iacl_seg, dis,
+		delete_iacl_dir, did,
+		set_iacl_seg, sis,
+		set_iacl_dir, sid,
+		list_iacl_seg, lis,
+		list_iacl_dir, lid,
+		list_accessible, lac, list_not_accessible, lnac,
+		mbx_delete_acl, mbda, mbx_list_acl, mbla, mbx_set_acl, mbsa,
+		ms_delete_acl, msda, ms_list_acl, msla, ms_set_acl, mssa,
+		hp_set_acl, hpsetacl, hpsa,
+		hp_delete_acl, hpdeleteacl, hpda,
+		l_set_acl, lsetacl, lsa,
+		l_delete_acl, ldeleteacl, lda;
+
+objectname:	cv_acl_type_;
+  global:		retain;
+  delete:		cv_acl_type_;
+
+objectname:	ms_create;
+ synonym:		mbx_add_name, mban, mbx_create, mbcr, mbx_delete, mbdl,
+		mbx_delete_name, mbdn, mbx_rename, mbrn,
+		mbx_set_max_length, mbsml,
+		ms_add_name, msan, ms_create, mscr, ms_delete, msdl,
+		ms_delete_name, msdn, ms_rename, msrn,
+		ms_set_max_length, mssml;
+ retain:		mbx_add_name, mban,
+		mbx_create, mbcr,
+		mbx_delete, mbdl,
+		mbx_delete_name, mbdn,
+		mbx_rename, mbrn,
+		mbx_safety_switch_off, mbssf,
+		mbx_safety_switch_on, mbssn,
+		mbx_set_max_length, mbsml,
+		ms_add_name, msan,
+		ms_create, mscr,
+		ms_delete, msdl,
+		ms_delete_name, msdn,
+		ms_rename, msrn,
+		ms_safety_switch_off, msssf,
+		ms_safety_switch_on, msssn,
+		ms_set_max_length, mssml;
+
+objectname:	find_common_acl_names_;
+ retain:		find_common_acl_names_,
+		init;
+
+objectname:	check_path_name_;
+ retain:		check_path_name_,
+		indiv;
+
+objectname:	find_acl_names_;
+ retain:		find_acl_names_,
+		find_type_;
+
+objectname:	cv_acl_;
+ retain:		cv_acl_,
+		cv_dir_acl_;
+
+objectname:	cv_mode_;
+ retain:		cv_mode_,
+		cv_dir_mode_;
+
+objectname:	cv_userid_;
+ retain:		cv_userid_;
+
+objectname:	inter_multics_aim_;
+retain:		get_system_aim_attributes_,
+		compute_common_aim_ceiling_,
+		translate_aim_attributes_;
+
+objectname:         set_ring_brackets;
+ synonym:		srb;
+ retain:            set_ring_brackets,
+                    srb,
+		hp_set_ring_brackets,
+		hpset_ring_brackets,
+		hpsrb,
+		l_set_ring_brackets,
+		lset_ring_brackets,
+		lsrb,
+		set_dir_ring_brackets,
+                    sdrb,
+		hp_set_dir_ring_brackets,
+		hpset_dir_ring_brackets,
+		hpsdrb,
+		l_set_dir_ring_brackets,
+		lset_dir_ring_brackets,
+		lsdrb;
+
+objectname:	print_auth_names;
+ synonym:		pan;
+ retain:		print_auth_names,
+		pan;
+
+objectname:	print_proc_auth;
+ synonym:		ppa;
+ retain:		print_proc_auth,
+		ppa;
+
+objectname:	encode_access_class;
+ synonym:		eac, decode_access_class, dac;
+ retain:		encode_access_class, eac, decode_access_class, dac;
+
+objectname:	check_iacl;
+ retain:		check_iacl;
+
+objectname:	get_effective_access;
+ synonym:		gea;
+ retain:		get_effective_access, gea;
+
+objectname:	check_gate_access_;
+ retain:		check_gate_access_;
+
+/* end of bound_access_commands_    */

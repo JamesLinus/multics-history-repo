@@ -1,0 +1,130 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+   *                                                         *
+   *********************************************************** */
+
+
+/* Bindfile for: bound_mail_system_ -- the Multics Mail System */
+
+/* Created:  June 1981 by G. Palter */
+/* Modified: September 1982 by G. Palter to add have_mail and mlsys_search_list_default_ */
+/* Modified: August 1983 by G. Palter to remove mail_system_ (now a gate) and add/rename numerous modules */
+/* Modified: 1984-08-17 by E. Swenson for convert_v2_mail_table_ */
+
+
+Objectname:	bound_mail_system_;
+   Global:	   delete;
+   Perprocess_Static;
+
+   Addname:	   add_mail_table_entry,
+		   canonicalize_mailbox,
+		   compact_mail_table,
+		   convert_v2_mail_table_,
+		   create_mail_table,
+		   delete_mail_table_entry,
+		   display_mailing_address, dsmla,
+		   have_mail, have_messages,
+		   mail_system.search, mlsys.search,
+		   mail_system_r2_tv_,
+		   mail_table_mgr_,
+		   mlsys_data_,
+		   mlsys_et_,
+		   mlsys_utils_,
+		   salvage_mail_table,
+		   set_mailing_address, smla,
+		   update_mail_table_entry;
+
+   Order:		   mlsys_et_,
+		   mlsys_data_,
+		   mlsys_trap_,
+		   mlsys_initialize_,
+		   mail_system_r2_tv_,
+		   mlsys_utils_,
+		   mlsys_storage_mgr_,
+		   mlsys_mailbox_mgr_,
+		   mlsys_fips98_,
+		   mlsys_parse_text_,
+		   mlsys_message_mgr_,
+		   mlsys_field_id_mgr_,
+		   mlsys_message_id_mgr_,
+		   mlsys_hash_,
+		   mlsys_address_list_mgr_,
+		   mlsys_address_mgr_,
+		   mlsys_address_route_mgr_,
+		   mlsys_psp_,
+		   mlsys_nit_interface_,
+		   mail_table_mgr_,
+		   mlsys_user_mte_syntax_,
+		   mlsys_transmit_,
+		   mlsys_format_,
+		   mlsys_parse_control_args_,
+		   mlsys_mailbox_utils_,
+		   mlsys_misc_utils_,
+		   have_mail,
+		   add_mail_table_entry,
+		   compact_mail_table,
+		   create_mail_table,
+		   set_mailing_address,
+		   canonicalize_mailbox,
+		   convert_v2_mail_table_,
+		   mlsys_search_list_default_;
+
+
+/* Instructions for individual components */
+
+objectname:	add_mail_table_entry;
+   synonym:	   delete_mail_table_entry, update_mail_table_entry;
+   retain:	   add_mail_table_entry, delete_mail_table_entry,
+		   update_mail_table_entry;
+
+objectname:	canonicalize_mailbox;
+   retain:	   canonicalize_mailbox;
+
+objectname:	compact_mail_table;
+   synonym:	   salvage_mail_table;
+   retain:	   compact_mail_table, salvage_mail_table;
+
+objectname:	create_mail_table;
+   retain:	   create_mail_table;
+
+objectname:	have_mail;
+   synonym:	   have_messages;
+   retain:	   have_mail, have_messages;
+
+objectname:	mail_system_r2_tv_;
+   global:	   retain;
+   delete:	   symbol_table;
+
+objectname:	mail_table_mgr_;
+   global:	   retain;
+   delete:	   mail_table_mgr_, symbol_table;
+
+objectname:	mlsys_data_;
+   retain:	   system_directory, mailbox_link_directory,
+		   mailer_directory, user_default_mailbox_address,
+		   user_mail_table_address, user_logbox_address;
+
+objectname:	mlsys_et_;
+   global:	   retain;
+   delete:	   symbol_table;
+
+objectname:	mlsys_search_list_default_;
+   synonym:	   mail_system.search, mlsys.search;
+   retain:	   mail_system, mlsys;
+
+objectname:	mlsys_utils_;
+   global:	   retain;
+   delete:	   symbol_table;
+
+objectname:	set_mailing_address;
+   synonym:	   smla, display_mailing_address, dsmla;
+   retain:	   set_mailing_address, smla, 
+		   display_mailing_address, dsmla;
+
+objectname:	convert_v2_mail_table_;
+   global:	   retain;
+
+/* end; */
+
+

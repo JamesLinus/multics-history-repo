@@ -1,0 +1,67 @@
+/* *	BOUND_SYSTEM_TEST_
+   *
+   *	This segment contains commands used to test the current performance of
+   *	the system or a process, and which are not otherwise metering functions.
+   *
+   *	This is part of the familiy of metering/analysis bound segments:
+   *	   bound_metering_cmds_	bound_meter_util_
+   *	   bound_comm_meters_	bound_tuning_
+   *	   bound_system_test_	bound_hc_display_
+   *	   bound_hardcore_db_
+   *
+   *	Reorganized to be this way, 04/11/81, W. Olin Sibert
+   *	Modified June 1981 by J. Bongiovanni to add flush
+   *      Modified June 1984 by R. A. Fawcett to add write_notify_test.
+   *      Modified Sept 1984 by R. A. Fawcett to add test_cpu
+   */
+
+Objectname:	bound_system_test_;
+
+Order:		check_cpu_speed,
+		flush,
+		instr_speed,
+		meter_signal,
+		print_sample_refs,
+		sample_refs,
+		test_speed,
+		test_cpu,
+		write_notify_test;
+
+Addname:		check_cpu_speed,
+		flush,
+		instr_speed,
+		meter_signal,
+		print_sample_refs,
+		sample_refs,
+		test_cpu,
+		write_notify_test;
+
+Global:		delete;
+
+objectname:	check_cpu_speed;
+ retain:		check_cpu_speed;
+
+objectname:	flush;
+ retain:		flush;
+
+objectname:	instr_speed;
+ retain:		instr_speed;
+
+objectname:	meter_signal;
+ retain:		meter_signal;
+
+objectname:	print_sample_refs;
+ retain:		print_sample_refs;
+
+objectname:	sample_refs;
+ retain:		sample_refs;
+
+objectname:	test_speed;
+
+objectname:	test_cpu;
+ retain:		test_cpu,deactivate_tempseg;
+
+objectname:	write_notify_test;
+ retain:		write_notify_test;
+
+/*		END		*/

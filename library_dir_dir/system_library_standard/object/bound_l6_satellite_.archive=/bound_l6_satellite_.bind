@@ -1,0 +1,54 @@
+/* BEGIN bindfile for bound_l6_satellite_. */
+
+/*
+	Written 6/82 by R.J.C. Kissel
+*/
+
+Objectname:	bound_l6_satellite_;
+
+Global:		delete;
+
+Order:
+		l6_tran_,
+		l6_tran_overseer_,
+		l6_tran_receive_file_,
+		l6_tran_send_file_,
+		l6_tran_util_,
+		network_request,
+		net_info_table_,
+		rbf_;
+
+Addname:		l6_tran_,
+		l6_tran_overseer_,
+		network_request,
+		nr,
+		rbf_;
+
+objectname:	l6_tran_;
+ retain:		l6_tran_,
+		parser,
+		execute,
+		cancel,
+		modify,
+		list,
+		info;
+
+objectname:	l6_tran_overseer_;
+ retain:		l6_tran_overseer_;
+
+objectname:	l6_tran_receive_file_;
+
+objectname:	l6_tran_send_file_;
+
+objectname:	l6_tran_util_;
+
+objectname:	network_request;
+ synonym:		nr;
+ retain:		network_request, nr;
+
+objectname:	net_info_table_;
+
+objectname:	rbf_;
+ retain:		rbf_attach;
+		
+/* END bindfile for bound_l6_satellite_. */

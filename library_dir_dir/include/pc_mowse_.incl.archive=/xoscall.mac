@@ -1,0 +1,36 @@
+;/* BEGIN INCLUDE FILE: xoscall.mac */
+
+; HISTORY COMMENTS:
+;  1) change(85-12-30,ASmith), approve(87-07-13,mcr7580),
+;     audit(87-07-13,Leskiw), install(87-08-07,MR12.1-1072):
+;     Created.
+;                                                      END HISTORY COMMENTS
+
+;/* : FUNCTION
+;
+;Provide macros to generate DOS and BIOS calls to the operating system
+;*/
+
+@bioscall MACRO call_num,parm
+
+;; Generates an 'int call_num', with parm in AH
+
+        ifnb <parm>             ;True if parm not blank
+        mov AH,parm
+        endif
+        int call_num            ;Generate interrupt call_num
+        ENDM
+
+
+@doscall MACRO function,parm
+
+;; Generates a DOS function call with parm in AL
+
+        ifnb <parm>             ;True if parm not blank
+        mov AL,parm
+        endif
+        @bioscall 21h,function  ;Generate bios call to DOS
+        ENDM
+
+; /* END INCLUDE FILE: xoscall.mac */
+

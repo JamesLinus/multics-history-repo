@@ -1,0 +1,28 @@
+/* HISTORY COMMENTS:
+  1) change(87-06-23,TLNguyen), approve(87-06-23,MCR7692),
+     audit(87-07-14,Blair), install(87-07-28,MR12.1-1048):
+     convert read_tape_and_query nonstandard subsystem to a standard subsystem.
+                                                   END HISTORY COMMENTS */
+
+Objectname:  bound_rtq_;
+Global:      delete;
+Order:       read_tape_and_query,
+             rtq_request_table_,
+	   rtq_;
+
+Addname:     read_tape_and_query,
+             rtq;
+
+objectname:  read_tape_and_query;
+synonym:     rtq;
+retain:      read_tape_and_query,
+             rtq;
+
+objectname:  rtq_;
+
+objectname:  rtq_request_table_;
+
+/*           END               */
+
+
+

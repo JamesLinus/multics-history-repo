@@ -1,0 +1,70 @@
+/* *	73-09-30, Bill Silver: ???
+   *	75-11-01, Larry Johnson: Added new syserr entries
+   *	83-07-01, E. A. Ranzenbach: Changed for new ocdcm_
+   *	84-10-17, WOS: Replaced syserr_logger with syserr_log_daemon
+	84-11-05, E. A. Ranzenbach for ocdcm_$printer_(on off) entrypoints.
+   *	1984-11-26, BIM: added syserr_copy_wired_log.
+	1984-12-21, EJ Sharpe: added multiple_binary and ring1_multiple_binary entrypoints
+   *	1985-01-15, EJ Sharpe: removed illegal_procedure entry
+   *	1985-01-25, Keith Loepere, split to form bound_error_wired_(1 2).
+   *	85-03-27, Keith Loepere to break out privileged routine set, rename
+		to bound_wired_1.
+   *	85-04-24, E. Swenson to move syserr to bound_priv_1 since it contains
+   *      	privileged instructions.
+   */
+
+Objectname:	bound_wired_1;
+Global:		delete;
+
+Order:		vtoc_interrupt,
+		disk_emergency,
+		ocdcm_,
+		scr_util,
+		debug_check,
+		wired_plm,
+		wired_shutdown,
+		pc_recover_sst;
+
+objectname:	vtoc_interrupt;
+ retain:		vtoc_interrupt;
+
+objectname:	disk_emergency;
+ retain:		disk_emergency, test_all_drives, test_all_drives_masked;
+
+objectname:	ocdcm_;
+ retain:		console_free,
+		console_info,
+		drain_io,
+		err_event_chan,
+		esd_reset,
+		get_input,
+		get_mc_output,
+		init_all_consoles,
+		interrupt_handler,
+		ocdcm_,
+		poll_for_timeout,
+		priority_io,
+		printer_off,
+		printer_on,
+		queue_io,
+		reconfigure,
+		set_prompt;
+
+objectname:	scr_util;
+ retain:		read_cfg, set_cfg, assign_mask, unassign_mask, reassign_mask,
+		set_mask, set_port_enable, set_port_enable_bit, enable_ports, disable_ports,
+		isolts_scu_p1, isolts_scu_p2, isolts_scu_p3, update_export_xipmsk, set_export_enable;
+
+objectname:	debug_check;
+ retain:		debug_check, copy_card;
+
+objectname:	wired_plm;
+ retain:		load;
+
+objectname:	wired_shutdown;
+ retain:		enable, wired_emergency;
+
+objectname:	pc_recover_sst;
+ retain:		pc_recover_sst;
+
+/* end */

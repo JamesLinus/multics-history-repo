@@ -1,0 +1,411 @@
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) Honeywell Bull Inc., 1987                *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+/* format: style2 */
+window_display_:
+	procedure (P_window, P_image, P_code);
+
+/* Written by James R.Davis February 1981 
+   SKrupp was here
+     5/7/81  fixed bug where image_memory.assoc(*).window should be
+             initialized to null when image_memory is allocated.
+   Maintained by Kyzivat.SST
+     6/11/81 corrected a problem where data was transmitted via ioa_,
+	   and thus had trailing blanks removed.  Also added a minimal
+	   form of redisplay which works on changed lines but doesn't
+	   detect inserted or deleted lines.  Also made change to clear
+	   changed part of the window when the size of the image changes.
+	   Also added an entrypoint to totally refresh the window.
+     6/12/81 Made minor tweaks to improve the efficiency of access to the
+	   image arrays.
+  Stolen by Benson I. Margulies
+         Updated to new window_ calling sequence, July 1981.
+         IPS masking added in august.
+         Changed to use terminal control's screen image, September 2, 1981. 
+Adopted by William M. York in 1982. */
+
+/* Modified 20 October 1982 by WMY to use clear_to_end_of_line rather than
+   overwriting with spaces. */
+/* Modified 21 October 1982 by WMY to perform simple insert/delete characters
+   optimizations. */
+/* Modified 25 October 1982 by WMY to clear regions, not just line-at-a-time. */
+/* Modified 9 December 1982 by WMY to restrict the cases where insert/delete
+   characters is used in response to complaints from XMAIL users. */
+/* Modified 8 January 1983 by Jon A. Rochlis to add support for partial width 
+   windows (i.e. windows who don't start at col 1, or who are shorter than
+   screen width). */
+
+dcl  P_window		pointer parameter;
+dcl  P_image		(*) char (*) unaligned parameter;
+dcl  P_code		fixed binary (35) parameter;
+
+dcl  saved_mask		bit (36) aligned;
+dcl  terminal_iocb_ptr	pointer;
+dcl  video_data_$as_only_mask bit (36) aligned external static;
+dcl  cleanup		condition;
+dcl  nlines		fixed bin;
+dcl  ncols		fixed bin;
+dcl  lx			fixed bin;
+dcl  long_string		character (256) unaligned;
+dcl  start_col		fixed bin;
+dcl  start_line		fixed bin;
+dcl  region_start_line	fixed bin;
+dcl  short_image		bit (1) aligned;
+
+dcl  hcs_$set_ips_mask	entry (bit (36) aligned, bit (36) aligned);
+dcl  hcs_$reset_ips_mask	entry (bit (36) aligned, bit (36) aligned);
+
+dcl  (addr, hbound, length, min, null, string)
+			builtin;
+
+dcl  1 wpi		aligned like window_position_info;
+
+%page;
+%include tc_screen_image;
+%page;
+%include window_dcls;
+%page;
+%include window_control_info;
+%page;
+%include iox_dcls;
+
+
+	saved_mask = ""b;
+	on cleanup
+	     begin;
+		if saved_mask ^= ""b
+		then call hcs_$reset_ips_mask (saved_mask, ""b);
+	     end;
+
+	P_code = 0;
+
+show_block:
+	begin;
+
+dcl  temp_line		char (length (P_image (1))) defined (long_string) position (1);
+
+	     nlines = hbound (P_image, 1);
+	     ncols = length (P_image (1));
+
+	     call iox_$control (P_window, "get_terminal_iocb_ptr", terminal_iocb_ptr, P_code);
+	     if P_code ^= 0
+	     then go to RETURN;
+
+	     wpi.version = window_position_info_version_1;
+	     call iox_$control (P_window, "get_window_info", addr (wpi), P_code);
+	     if P_code ^= 0
+	     then go to RETURN;
+
+	     start_col = wpi.origin.column;
+	     start_line = wpi.origin.line;
+
+/* We mask down, to prevent async changes from invalidating the image we
+   are using */
+/* Perhaps a pclock would be more polite */
+
+	     call hcs_$set_ips_mask (video_data_$as_only_mask, saved_mask);
+
+	     /* First try some global optimization.  Clear any groups of
+	        lines in the new image that are blank. */
+
+	     do lx = 1 to wpi.extent.height;
+		region_start_line = lx;
+		/* skip blank lines */
+		do lx = lx to wpi.extent.height while (P_image(lx) = "");
+		end;
+		if lx > region_start_line
+		     then do;
+			call window_$clear_region (P_window, region_start_line, 1, lx - region_start_line, wpi.extent.width, P_code);
+			if P_code ^= 0
+			     then goto RETURN;
+		     end;
+	     end;
+
+	     call iox_$control (terminal_iocb_ptr, "get_screen_image_ptr", screen_ptr, P_code);
+	     if P_code ^= 0
+	     then go to RETURN;
+
+	     short_image = (ncols < wpi.extent.width);
+
+	     do lx = start_line to start_line + nlines - 1;
+		begin;
+
+	/* lx is terminal screen line no */
+dcl  cur_image		character (wpi.extent.width) defined (screen.lines (lx)) position (start_col) unaligned;
+
+dcl  image_line_no		fixed bin;
+
+		     image_line_no = lx - start_line + 1;
+		     if cur_image ^= P_image (image_line_no)
+			then call redisplay_one_line (cur_image, P_image (image_line_no), temp_line,
+			     image_line_no /* Window line */, P_code);
+		     if P_code ^= 0
+			then go to RETURN;
+		end;
+	     end;
+
+	     /*** !!  See >udd>m>bsg>mepap for details of the (better) Emacs redisplay ***/
+
+	     call hcs_$reset_ips_mask (saved_mask, ""b);
+	     saved_mask = ""b;
+
+	     if nlines < wpi.extent.height
+		then do;
+		     call window_$clear_region (P_window, nlines + 1, (1), wpi.extent.height - nlines,
+			wpi.extent.width, P_code);
+		     if P_code ^= 0
+		     then go to RETURN;
+		end;
+
+
+RETURN:
+	     if saved_mask ^= ""b
+	     then call hcs_$reset_ips_mask (saved_mask, ""b);
+	     return;
+
+/* Real guts of redisplay.  The basic algorithm is to first check for a
+simple insertion or deletion of characters at one point in the new string.
+If we find one, fix it up and go on to the next step.  That next step is
+to find all the sections of the current screen image (old line) that
+differ from the new line and overwrite the new stuff. */
+
+redisplay_one_line:
+	proc (old_arg, new_arg, diff_arg, lineno, code);
+
+dcl  old_arg		char (*) parameter;
+dcl  new_arg		char (*) parameter;
+dcl  diff_arg		char (*) parameter;
+dcl  lineno		fixed bin parameter;
+dcl  code			fixed bin (35) parameter;
+
+dcl  diff_l		fixed bin;
+dcl  new_l		fixed bin;
+dcl  SPACE		char (1) init (" ") static options (constant);
+dcl  SAME			char (1) init ("" /* byte (0) */) static options (constant);
+dcl  RUN_OF_SAME		char (4) init ("") internal static options (constant);
+
+dcl  pos			fixed bin;
+dcl  i			fixed bin;
+dcl  real_len		fixed bin;
+dcl  len			fixed bin;
+
+dcl  diff_string		char(diff_l) based (addr (diff_arg));
+
+dcl  (addr, before, length, rtrim, substr, verify)
+				 builtin;
+
+	if new_arg = ""
+	     then do;
+		call window_$position_cursor (P_window, lineno, 1, code);
+		if code ^= 0
+		     then return;
+		call window_$clear_to_end_of_line (P_window, code);
+		return;
+	     end;
+
+/* we consider as much as the shorter string. */
+
+	diff_l = min (length (old_arg), length (new_arg));
+
+	/* The PL/1 code for the bool bif is horrible.
+	   unspec (diff) = bool (unspec (old), unspec (new), "0110"b ); */
+
+/* XOR produces "000000000"b (^@) for equality */
+dcl  video_alm_util_$XOR_chars entry (fixed bin, pointer, pointer, pointer);
+
+	/* Find the place where they are different */
+
+	call video_alm_util_$XOR_chars (diff_l, addr (old_arg), addr (new_arg), addr (diff_arg));
+
+	/* Now try to be clever about simple insert/delete characters
+	   optimizations. */
+
+	pos = verify (diff_string, SAME);	/* Skip common stuff */
+	if pos = 0
+	     then go to CHECK_SHORT_IMAGE;
+
+	len = length (rtrim (diff_string, SAME));
+
+crossmatch:
+	begin;
+
+dcl  old_in_new		fixed bin;
+dcl  new_in_old		fixed bin;
+dcl  count		fixed bin;
+
+dcl  old_string		char(len - pos + 1) defined (old_arg) position (pos);
+dcl  new_string		char(len - pos + 1) defined (new_arg) position (pos);
+
+	     if (old_string = "") | (new_string = "")
+		then goto no_crossmatch;
+
+	     /* check for simple delete chars. */
+	     new_in_old = index (old_string, substr (new_string, 1, 4));
+	     /* and simple insert chars. */
+	     old_in_new = index (new_string, substr (old_string, 1, 4));
+
+	     /* Make sure the match extends to the end of the string */
+	     if new_in_old > 0
+		then if substr (old_string, new_in_old) ^= substr (new_string, 1, length (old_string) - new_in_old + 1)
+		     then new_in_old = 0;
+
+	     if old_in_new > 0
+		then if substr (new_string, old_in_new) ^= substr (old_string, 1, length (new_string) - old_in_new + 1)
+		     then old_in_new = 0;
+		     
+
+	     /* find shortest distance for a match */
+	     if (new_in_old = 0) & (old_in_new = 0)
+		then goto no_crossmatch;
+		else if (new_in_old = 0)
+		     then count = old_in_new;
+		     else if (old_in_new = 0)
+			then count = -(new_in_old);
+			else if (old_in_new < new_in_old)
+			     then count = old_in_new;
+			     else count = -(new_in_old);
+
+	     if (count > 0)
+		then do;
+		     /* Insert chars case. */
+		     /* first clear out stuff at end */
+		     if length (old_string) > wpi.extent.width - (count - 1) then do;
+			call window_$position_cursor (P_window, lineno, wpi.extent.width - (count - 1) + 1, code);
+			if code ^= 0 then return;
+			call window_$clear_to_end_of_line (P_window, code);
+			if code ^= 0 then return;
+		     end;
+		     /* now insert new stuff in middle */
+		     call window_$position_cursor (P_window, lineno, pos, code);
+		     if code ^= 0 then return;
+		     call window_$insert_text (P_window, substr (new_string, 1, count - 1), code);
+		     if code ^= 0 then return;
+		end;
+		else do;
+		     /* Delete chars case. */
+		     count = - count;
+		     call window_$position_cursor (P_window, lineno, pos, code);
+		     if code ^= 0 then return;
+		     call window_$delete_chars (P_window, count - 1, code);
+		     if code ^= 0 then return;
+		end;
+
+	     /* Now we have to re-try the match. */
+	     call video_alm_util_$XOR_chars (diff_l, addr (old_arg), addr (new_arg), addr (diff_arg));
+
+no_crossmatch:
+	end crossmatch;
+
+	diff_l = length (rtrim (diff_string, SAME));
+	/* Can't be zero or verify above would fail. */
+
+	/* Get length of new neglecting number of trailing spaces. */
+	new_l = length (rtrim (new_arg, SPACE));
+	/* new_l can't = 0 or check for new = "" above would have caught it. */
+
+	/* We only want to process the different characters, or until we
+	   run out of new stuff. */
+
+	real_len = min (new_l, diff_l);
+
+overwrite_changes:
+	begin;
+
+dcl  new			char (real_len) defined (new_arg) position (1);
+dcl  diff			char (real_len) defined (diff_arg) position (1);
+
+dcl  trimmed		fixed bin;
+
+	     /* Find the first spot where the strings differ. */
+	     pos = verify (diff, SAME);
+	     if pos = 0
+		then goto CLEAR_IF_NECESSARY;
+
+	     call window_$position_cursor (P_window, lineno, pos, code);
+	     if code ^= 0
+		then return;
+
+	     /* Loop through rest of string overwriting parts that are
+	        different with new stuff.  Stop when we have passed all
+	        the common stuff of reached the end of the new string. */
+
+	     do while (pos <= real_len);
+
+		/* How many characters before a run of 4 characters that
+		   are the same in both strings? */
+
+		i = length (before (substr (diff, pos), RUN_OF_SAME));
+
+		/* If we overshoot the end of the new stuff, back up. */
+		if (pos + i - 1) > real_len
+		     then i = real_len - pos + 1;
+
+		call window_$overwrite_text (P_window, substr (new, pos, i), code);
+		if code ^= 0
+		     then return;
+
+		pos = pos + i;
+
+		/* Now skip over the next chunk the new and old have in
+		   common. */
+
+		i = verify (substr (diff, pos), SAME) - 1;
+		if i < 0
+		     then pos = real_len + 1;	/* all same to end */
+		     else do;
+			/* Skip over stuff that's the same. */
+			call window_$position_cursor_rel (P_window, 0, i, code);
+			if code ^= 0
+			     then return;
+			pos = pos + i;
+		     end;
+
+	     /* We are now either all done, or at the beginning of some
+	        stuff that's different between the two strings. */
+
+	     end;		/* do while */
+
+	end overwrite_changes;
+
+CLEAR_IF_NECESSARY:
+
+	/* If the new line ends in whitespace and is shorter than the
+	   old stuff, clear the rest of the line. */
+
+	if real_len = new_l		/* see assignment of real_len above */
+	     then do;
+		call window_$position_cursor (P_window, lineno, new_l + 1, code);
+		if code ^= 0
+		     then return;
+
+		call window_$clear_to_end_of_line (P_window, code);
+		if code ^= 0
+		     then return;
+	     end;
+
+CHECK_SHORT_IMAGE:
+
+	/* If the supplied screen image is shorter than the width of the
+	   window, clear to the end of line. */
+	if short_image
+	     then call window_$clear_region (P_window, lineno, ncols + 1, (1), wpi.extent.width - ncols, code);
+
+	return;
+
+end redisplay_one_line;
+
+end show_block;
+
+end window_display_;
+
+
+

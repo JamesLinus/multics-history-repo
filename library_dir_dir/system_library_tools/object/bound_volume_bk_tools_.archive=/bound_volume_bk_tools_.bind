@@ -1,0 +1,22 @@
+/* bind file for bound_volume_bk_tools_ */
+/* by D R Vinograd 7/76 */
+Objectname:	bound_volume_bk_tools_;
+Global:		delete;
+Addname:		merge_volume_log, purge_volume_log, purge_volume_log_,  set_volume_log, verify_dump_volume, 
+		delete_volume_log, rebuild_pvolog, rebuild_pvolog_, display_pvolog, volume_cross_check;
+objectname:	merge_volume_log;
+ retain:		merge_volume_log;
+objectname:	purge_volume_log;
+ retain:		purge_volume_log, purge_volume_log_;
+objectname:	set_volume_log;
+ retain:		set_volume_log;
+objectname:         verify_dump_volume;
+ retain:            verify_dump_volume;
+objectname:	delete_volume_log;
+ retain:		delete_volume_log;
+objectname:	rebuild_pvolog;
+ retain:		rebuild_pvolog, rebuild_pvolog_;
+objectname:	display_pvolog;
+ retain:		display_pvolog;
+objectname:	volume_cross_check;
+ retain:		volume_cross_check;

@@ -1,0 +1,34 @@
+/* Bindfile for: bound_bce_probe_ -- bce's version of probe for hardcore */
+
+/* Keith Loepere, December 1983 */
+/* Modified by Allen Ball June 1984 for bce_get_defptr_ and bce_name_to_segnum. */
+/* Modified by Keith Loepere March 1985 to remove bce/Multics dual objects. */
+
+Objectname:	bound_bce_probe_;
+Global:		delete;
+
+Order:		bce_probe,
+		bce_component_to_wordnum_,
+		bce_display_instruction_,
+		bce_display_scu_,
+		bce_get_defptr_,
+		bce_inst_length_,
+		bce_name_to_segnum_;
+
+objectname:	bce_probe;
+   retain:	bce_probe;
+
+objectname:	bce_component_to_wordnum_;
+
+objectname:	bce_display_instruction_;
+
+objectname:	bce_display_scu_;
+
+objectname:	bce_get_defptr_;
+
+objectname:	bce_inst_length_;
+
+objectname:	bce_name_to_segnum_;
+   synonym:	bce_segnum_to_name_, bce_segptr_to_name_;
+
+/* end; */

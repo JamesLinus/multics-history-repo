@@ -1,0 +1,39 @@
+/* Bind file for bound_mdir_control */
+/* Modified by EJ Sharpe 84-09-04 - renamed update_hvid to update_lvid */
+/* Modified by EJ Sharpe 84-11-06 - added dirx_acct entry to mdc_create_ */
+
+Objectname:	bound_mdir_control;
+Global:		delete;
+
+Order:		mdcs_util_,
+		mdc_create_,
+		mdc_set_,
+		mdc_repair_,
+		mdc_check_mdcs_,
+		mdc_lock_,
+		mdc_parse_acct_,
+		mdc_set_path_,
+		mdc_util_,
+		mdc_status_,
+		mdc_init_;
+
+objectname:	mdc_create_;
+ retain:		dir, dirx, dirx_acct, delete;
+
+objectname:	mdc_set_;
+ retain:		volume_quota, delete_volume_quota, mdir_owner, mdir_quota, mdir_account, dmpr_usage;
+
+objectname:	mdc_repair_;
+ retain:		make_mdcs, copy_mdcs, register_mdir, delete_mdcs, rename_mdcs,
+		update_lvid, recreate_mdcs, set_mdcsdir, validate_uidpaths;
+
+objectname:	mdc_set_path_;
+ retain:		volume_default, account_restrict, volume_restrict;
+
+objectname:	mdc_status_;
+ retain:		list;
+
+objectname:	mdc_init_;
+ retain:		mdc_init_;
+
+/* end */

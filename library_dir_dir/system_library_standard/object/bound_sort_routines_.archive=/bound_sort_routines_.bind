@@ -1,0 +1,68 @@
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+	/*									*/
+	/*  N__a_m_e:  bound_sort_routines_						*/
+	/*									*/
+	/*  0) Created:  30 May 1974 by R.E. Klinger					*/
+	/*  1) Modified: 15 Oct 1975 by C. D. Tavares - retain new entries			*/
+	/*     sort_items_$varying_char and sort_items_indirect_$varying_char			*/
+	/*  2) Modified: 25 Aug 1982 by G. C. Dixon - add access_ subroutine, retain sort_seg_	*/
+	/*     subroutine entry points.						*/
+	/*  3) Modified: 1 Sep 1983 by D. J. Schimke - add linus_table entry point on sort_seg_	*/
+	/*  4) Modified: 8 May 1984 by G. C. Dixon - add sort_strings entrypoint to sort_seg.	*/
+	/*									*/
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+
+Objectname:	bound_sort_routines_;
+
+Addname:		access_, 
+		sort_items_,
+		sort_items_indirect_, 
+		sort_seg, ss, sort_file, sf,
+		sort_seg_,
+		sort_strings, sstr;
+
+Order:		sort_seg,
+		sort_seg_,
+		access_, 
+		sort_items_,
+		sort_items_indirect_;
+
+Global:		delete;
+
+objectname:	access_;
+  retain:		set_temporarily,
+		reset;
+
+objectname:	sort_items_;
+ retain:		bit,
+		char,
+		fixed_bin,
+		float_bin,
+		varying_char,
+		general;
+
+objectname:	sort_items_indirect_;
+ retain:		bit,
+		char,
+		fixed_bin,
+		float_bin,
+		general,
+		varying_char,
+		adj_char;
+
+objectname:	sort_seg;
+ synonym:		ss,
+		sort_file, sf, 
+		sort_strings, sstr;
+ retain:		sort_seg, ss,
+		sort_file, sf, 
+		sort_strings, sstr;
+
+objectname:	sort_seg_;
+ retain:		seg,
+		string,
+                    linus_table,
+		debug_on,
+		debug_off;
+
+/* END */

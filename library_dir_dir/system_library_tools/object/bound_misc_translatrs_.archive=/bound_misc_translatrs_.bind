@@ -1,0 +1,59 @@
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+	/*									*/
+	/* N__a_m_e:  bound_misc_translatrs_.bind						*/
+	/*									*/
+	/*      This bound segment contains tools which translate special-purpose languages.	*/
+	/*									*/
+	/* S__t_a_t_u_s									*/
+	/*									*/
+	/* 1) Modified by:  Arlene Scherer  on  January 11, 1973				*/
+	/*    a) shorten name of bound segment.						*/
+	/* 2) Modified by:  Gary C. Dixon   on  February 11, 1975				*/
+	/*    a) add reduction_compiler (rdc), reduction_compiler_, lex_string_, lex_error_,	*/
+	/*       and translator_temp_.						*/
+	/* 3) Modified by:  Bernard S. Greenberg  on  February 24, 1976			*/
+	/*    a) add create_data_segment_, and command interface, create_data_segment.	*/
+	/* 4) Modified by:  Gary C. Dixon on August 10, 1983				*/
+	/*    a) add name reductions to reduction_compiler.				*/
+	/*									*/
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+
+
+Objectname:	bound_misc_translatrs_;
+
+Addname:		create_data_segment, cds,		/* Please keep these names ordered alphabetically.*/
+		create_data_segment_,
+		extract_message_doc,
+		gate_sw,
+		reduction_compiler, reductions, rdc;
+
+Global:		delete;
+
+Order:		create_data_segment,
+		create_data_segment_,
+		reduction_compiler,
+		reduction_compiler_,
+		gate_sw,
+		extract_message_doc,
+		extract_msg_doc_;
+
+
+objectname:	create_data_segment;
+ retain:		create_data_segment, cds;
+
+objectname:	create_data_segment_;
+ retain:		create_data_segment_;
+
+objectname:	extract_message_doc;
+ retain:		extract_message_doc;
+
+objectname:	gate_sw;
+ retain:		gate_sw;
+
+objectname:	reduction_compiler;
+ synonym:		reductions, rdc;
+ retain:		reduction_compiler, reductions, rdc;
+
+objectname:	reduction_compiler_;
+
+/* End */

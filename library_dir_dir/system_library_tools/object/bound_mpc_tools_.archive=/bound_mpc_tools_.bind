@@ -1,0 +1,92 @@
+/* Bind file for bound_mpc_tools_ */
+/* Written August 1975 by Larry Johnson */
+/* Modified March 1976 by Larry Johnson to add dump_mpc */
+/* Modified August 1976 by Larry Johnson to add patch_firmware */
+/* Modified March 1977 by Larry Johnson to add char_mpc_ */
+/* Modified May 1978 by James A. Bush to add the gload_  subroutine */
+/* Modified April 1979 by James A. Bush to delete the lff command and add the load_tandd_library command */
+/* Modified May 1980 by Larry Johnson to add poll_mpc and load_mpc */
+/* Modified by Rich Coppola Jan 1981 to add display_mpc_data_ and
+   decode_mpc_stats_ */
+/* Modified by Rich Fawcett June 1981 to add mpc_data_summary and print_mpc_summary */
+/* Modified 8/31/81 by J. A. Bush to add the gload_cksum_ subroutine */
+
+
+/* HISTORY COMMENTS:
+  1) change(86-12-22,Fakoury), approve(86-12-22,MCR7515),
+     audit(87-01-07,Farley), install(87-01-08,MR12.0-1263):
+     Make gload_ entry point "allow_zero_checksums" available to external
+     callers and removed load_tandd_library as it is being replaced by
+     deckfile_manager.
+                                                   END HISTORY COMMENTS */
+
+
+
+Objectname:	bound_mpc_tools_;
+
+Order:		dump_mpc,
+		dump_mpc_,
+		trace_mpc_,
+		stat_mpc_,
+		char_mpc_,
+		load_mpc,
+		load_mpc_fw_info_,
+		poll_mpc,
+		attach_mpc_,
+		patch_firmware,
+		mpc_data_summary,
+		print_mpc_summary,
+		display_mpc_data_,
+		decode_mpc_stats_,
+		gload_,
+		gload_cksum_;
+
+
+Addname:		dump_mpc,
+		patch_firmware,
+		dump_firmware,
+		gload_,
+		attach_mpc_,
+		detach_mpc_,
+		decode_mpc_stats_,
+		mpc_data_summary,
+		load_mpc,
+		poll_mpc;
+
+Global:		delete;
+
+objectname:	dump_mpc;
+ retain:		dump_mpc;
+
+objectname:	patch_firmware;
+ retain:		patch_firmware, dump_firmware;
+
+objectname:	gload_;
+ retain:		gload_, allow_zero_checksums;
+
+objectname:	gload_cksum_;
+
+objectname:	load_mpc;
+ retain:		load_mpc;
+
+objectname:	poll_mpc;
+ retain:		poll_mpc;
+
+objectname:	attach_mpc_;
+ synonym:		detach_mpc_;
+ retain:		attach_mpc_, detach_mpc_;
+
+objectname:	display_mpc_data_;
+delete:		display_mpc_data_;
+
+objectname:	mpc_data_summary;
+retain:		mpc_data_summary;
+
+objectname:	decode_mpc_stats_;
+retain:		decode_mpc_stats_, err_data_;
+
+/* End of bind file for bound_mpc_tools_ */
+
+
+
+

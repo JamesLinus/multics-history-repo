@@ -1,0 +1,49 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(89-03-02,Vu), approve(89-03-02,MCR8070), audit(89-04-25,Lee),
+     install(89-05-10,MR12.3-1040):
+     Not to retain audit_ entrypoint.
+                                                   END HISTORY COMMENTS */
+
+
+/*        BINDFILE for bound_audit_                */
+/*        Recreated 03/02/89 Phuong Vu             */
+
+Objectname:	bound_audit_;
+
+Order:		audit_,
+		audit_editor,
+		audit_file_position_,
+		display_audit_file,
+		attach_audit,
+		detach_audit;
+
+Addname:		audit_, audit_attach,
+		display_audit_file, daf,
+		attach_audit, ata,
+		detach_audit, dta;
+
+Global: 		delete;
+
+Perprocess_Static;
+
+
+objectname:	audit_;
+ global:		retain;
+ delete:            audit_;
+ synonym:		audit_attach;
+
+objectname:	display_audit_file;
+ synonym:		daf;
+ retain:		display_audit_file, daf;
+
+objectname:	attach_audit;
+ synonym:		ata;
+ retain:		attach_audit, ata;
+
+objectname:	detach_audit;
+ synonym:		dta;
+ retain:		detach_audit, dta;
+
+/*                  END                         */

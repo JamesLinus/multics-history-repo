@@ -1,0 +1,21 @@
+/* Originally written by R. J. Feiertag on August 24, 1971
+   to include broadcast_ and broadcaster_.
+   Last modified 30 Nov 1971 by C Garman.
+   */
+
+Objectname:	bound_broadcaster_;
+Addname:		broadcast_,
+		discard_output_;
+Global:		delete;
+
+objectname:	broadcast_;
+ retain:		broadcast_module;
+
+objectname:	broadcaster_;
+
+objectname:	discard_output_;
+ retain:		discard_output_module;
+
+objectname:	discard_output_util_;
+
+/* End */

@@ -1,0 +1,77 @@
+/* -------- BEGIN include file graphic_code_dcl.incl.pl1 ---------- */
+
+/* The following structure maintains a nonobvious positional relationship
+  with respect to the LSM block types as defined by the graphic compiler.
+  It therefore has an intimiate and delicate relationship with certain tables
+  defined in graphic_comp_specs.incl.pl1. */
+
+dcl 1 Graphic_Code_Structure aligned static options (constant),
+    2 Dynamic_and_structural_effectors aligned,
+      3 (Pause_char initial ("$"),
+         Reference_char initial ("%"),
+         Increment_char initial ("&"),
+         Alter_char initial ("'"),
+         Node_begin_char initial ("("),
+         Node_end_char initial (")"),
+         Control_char initial ("*"),
+         Display_char initial ("+"),
+         Query_char initial (","),
+         Erase_char initial ("-"),
+         Synchronize_char initial ("."),
+         Delete_char initial ("/")) char (1) unaligned,
+    2 Graphic_effectors aligned,
+      3 (Setposition_char initial ("0"),
+         Setpoint_char initial ("1"),
+         Vector_char initial ("2"),
+         Shift_char initial ("3"),
+         Point_char initial ("4")) char (1) unaligned,
+      3 Illegal_pad char (3) unaligned initial ((3)"U"),
+    2 Mapping_effectors aligned,
+      3 (Scaling_char initial ("5"),
+         Rotation_char initial ("6"),
+         Clipping_char initial ("7")) char (1) unaligned,
+      3 Illegal_pad char (5) unaligned initial ((5)"U"),
+    2 Mode_effectors aligned,
+      3 (Intensity_char initial ("8"),
+         Linetype_char initial ("9"),
+         Sensitivity_char initial (";"),
+         Blinking_char initial (":"),
+         Color_char initial ("<")) char (1) unaligned,
+      3 Illegal_pad char (3) unaligned initial ((3)"U"),
+    2 Special_effectors aligned,
+      3 (Symbol_char initial ("="),
+         Text_char initial (">"),
+         Datablock_char initial ("?")) char (1) unaligned,
+      3 Illegal_pad char (9) unaligned initial ((9)"U");
+
+dcl 1 Graphic_Defaults aligned static options (constant),
+    2 Mode_defaults aligned,
+      3 Intensity_default fixed bin initial (7),
+      3 Linetype_default fixed bin initial (0),
+      3 Blinking_default fixed bin initial (0),
+      3 Sensitivity_default fixed bin initial (0),
+      3 Color_default (3) fixed bin initial ((3)16),
+    2 Mapping_defaults aligned,
+      3 Scaling_default (3) float bin initial ((3)1e0),
+      3 Rotation_default (3) fixed bin initial ((3)0),
+      3 Clipping_default (3, 2) fixed bin initial ((3) (-2048, 2048)),
+    2 Identity_matrix (3, 3) float bin initial (1e0, (3)0e0, 1e0, (3)0e0, 1e0);
+
+dcl  Graphic_Element_Lengths (32 : 63) aligned static options (constant) initial
+     ((4)-1,									/* not used */
+     1,	/* pause */	4,	/* reference */	9,	/* increment */	9,	/* alter */
+     5,	/* node begin */	1,	/* node end */	4,	/* control */	4,	/* display */
+     3,	/* query */	1,	/* erase */	1,	/* synchronize */	4,	/* delete */
+     10,	/* setposition */	10,	/* setpoint */	10, 	/* vector */	10,	/* shift */
+     10,	/* point */	10,	/* scaling */	7,	/* rotation */	13,	/* clipping */
+     2,	/* intensity */	2,	/* line type */	2,	/* blinking */	2,	/* sensitivity */
+     4, 	/* color */	0,	/* symbol */	0,	/* text */	0	/* data */);
+
+dcl  zero_node_id char (3) static initial ("@@@") options (constant);
+
+dcl  request_for_status char (1) static aligned initial ("") options (constant);
+
+dcl (List_char initial ("@"),
+     Array_char initial ("A")) char (1) aligned static options (constant);
+
+/* --------- END include file graphic_code_dcl.incl.pl1 ----------- */

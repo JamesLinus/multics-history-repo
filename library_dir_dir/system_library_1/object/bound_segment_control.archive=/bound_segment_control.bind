@@ -1,0 +1,112 @@
+/* Bindfile for bound_segment_control.  Those modules associated with
+the maintenance of aste's, activation, segment states and such.
+
+Formed from bound_file_system, bound_priv_procs and bound_system_faults
+by Keith Loepere, October 1984.
+Added limit_covert_channel, January 1985 by Keith Loepere.
+1985-02-21, EJ Sharpe: added condition_nolog entry to verify_lock
+Modified April 1985 by Keith Loepere for better ordering.
+*/
+
+Objectname:	bound_segment_control;
+Global:		delete;
+Order:		alm_syserr_caller,
+		mountedp,
+		private_logical_volume,
+		setfaults,
+		search_ast,
+		seg_fault,
+		activate,
+		lock,
+		meter_ast_lock,
+		get_aste,
+		segment_mover,
+		deactivate,
+		put_aste,
+		limit_covert_channel,
+		deactivate_for_demount,
+		shutdown_file_system,
+		switch_shutdown_file_system,
+		access_viol,
+		boundfault,
+		outward_call_handler,
+		hc_exponent_control,
+		verify_lock,
+		flush_ast_pool;
+
+objectname:	access_viol;
+ retain:		am_fault;
+
+objectname:	activate;
+ retain:		activate, backup_activate;
+
+objectname:	alm_syserr_caller;
+
+objectname:	boundfault;
+ synonym: 	ill_op_code;
+ retain:		boundfault, ill_op_code;
+
+objectname:	deactivate;
+ retain:		deactivate, for_delete;
+
+objectname:         deactivate_for_demount;
+ retain:            lv;
+
+objectname:	flush_ast_pool;
+ retain:		flush_ast_pool;
+
+objectname:	get_aste;
+ retain:		get_aste;
+
+objectname:	hc_exponent_control;
+ retain:		exponent_control_get, exponent_control_set,
+		hex_exponent_control_get, hex_exponent_control_set,
+		set_hexfp_control;
+
+objectname:	limit_covert_channel;
+ retain:		limit_covert_channel;	/* for nayone else who wants it */
+
+objectname:	lock;
+ retain:		dir_lock_read, dir_lock_salvage, dir_lock_write,
+		dir_try, dir_unlock, dir_unlock_given_uid, dir_wait,
+		lock_ast, lock_fast, try,
+		unlock, unlock_ast, unlock_fast, wait;
+
+objectname:	meter_ast_lock;
+
+objectname:	mountedp;
+ retain:		mountedp;
+
+objectname:	outward_call_handler;
+ retain:		outward_call_handler;
+
+objectname:	private_logical_volume;
+ retain:		connect, disconnect;
+
+objectname:	put_aste;
+ retain:		put_aste;
+
+objectname:	search_ast;
+ retain:		check, hash_in, hash_out, search_ast;
+
+objectname:	seg_fault;
+ retain:		makeknown_activate, seg_fault;
+
+objectname:	segment_mover;
+ retain:		demand_segmove;
+
+objectname:	setfaults;
+ retain:		cache, deltrailer, disconnect, if_256K, if_active, 
+		setfaults;
+
+objectname:         shutdown_file_system;
+ retain:            shutdown_file_system;
+
+objectname:         switch_shutdown_file_system;
+ retain:		switch_shutdown_file_system;
+
+objectname:         verify_lock;
+ retain:            condition, condition_nolog, verify_lock, verify_lock_bad_dir;
+
+
+

@@ -1,0 +1,130 @@
+/* *	BOUND_METERING_CMDS_
+   *
+   *	This segment contains commands for metering system and process behaviour
+   *	over timed intervals. General-purpose subroutines are not included here,
+   *	nor are commands which merely display the current state of the system.
+   *	Communications metering commands are in a different segment, as well.
+   *
+   *	This is part of the familiy of metering/analysis bound segments:
+   *	   bound_misc_metering_	bound_meter_util_
+   *	   bound_comm_meters_	bound_tuning_
+   *	   bound_system_test_	bound_hc_display_
+   *	   bound_hardcore_db_
+   *
+   *	Reorganized to be this way, 04/11/81, W. Olin Sibert
+   *	Modified June 1981 by J. Bongiovanni for response_meters
+   *	Modified February 1982 by J. Bongiovanni for hc_pf_meters
+   *	Modified October 1983 by R. Coppola for cache_meters
+   *	Modified April 1984 by Greg Texada for cache_meters_, monitor_cache, and display_cache_threshold.
+   *	Modified September 1984 by Chris Jones to delete device_meters
+   */
+
+Objectname:	bound_metering_cmds_;
+
+
+Addname:            alarm_clock_meters,
+                    disk_meters,
+                    fim_meters,
+		cache_meters,
+		cache_meters_,
+		monitor_cache,
+		display_cache_threshold,
+                    file_system_meters, fsm,
+		hc_pf_meters,
+                    interrupt_meters, intm,
+                    link_meters,
+                    meter_gate, mg,
+                    meter_rcp,
+                    post_purge_meters,
+		response_meters,
+                    system_link_meters,
+                    total_time_meters, ttm,
+                    traffic_control_meters, tcm,
+                    vtoc_buffer_meters,
+                    work_class_meters, wcm;
+
+Order:		alarm_clock_meters,
+		cache_meters,
+                    disk_meters,
+                    fim_meters,
+                    file_system_meters,
+		hc_pf_meters,
+                    interrupt_meters,
+                    link_meters,
+                    meter_gate,
+                    meter_rcp,
+		monitor_cache,
+                    post_purge_meters,
+		response_meters,
+                    system_link_meters,
+                    total_time_meters,
+                    traffic_control_meters,
+                    vtoc_buffer_meters,
+                    work_class_meters;
+
+Global:             delete;
+
+objectname:         vtoc_buffer_meters;
+ retain:            vtoc_buffer_meters;
+
+objectname:         meter_gate;
+ synonym:           mg;
+ retain:            meter_gate, mg;
+
+objectname:         traffic_control_meters;
+ synonym:           tcm;
+ retain:            traffic_control_meters, tcm;
+
+objectname:         file_system_meters;
+ synonym:           fsm;
+ retain:            file_system_meters, fsm;
+
+objectname:         total_time_meters;
+ synonym:           ttm;
+ retain:            total_time_meters, ttm;
+
+objectname:         post_purge_meters;
+ retain:            post_purge_meters;
+
+objectname:         disk_meters;
+ retain:            disk_meters;
+
+objectname:         fim_meters;
+ retain:            fim_meters;
+
+objectname:	cache_meters;
+ retain:		cache_meters, for_monitor;
+
+objectname:	monitor_cache;
+ retain:		monitor_cache, display_cache_threshold;
+
+objectname:         interrupt_meters;
+ synonym:           intm;
+ retain:            interrupt_meters, intm;
+
+objectname:         alarm_clock_meters;
+ retain:            alarm_clock_meters;
+
+objectname:         link_meters;
+ retain:            link_meters;
+
+objectname:         system_link_meters;
+ retain:            system_link_meters;
+
+objectname:         meter_rcp;
+ retain:            meter_rcp;
+
+objectname:         work_class_meters;
+ synonym:           wcm;
+ retain:            work_class_meters, wcm;
+
+objectname:	response_meters;
+ retain:		response_meters;
+
+objectname:	hc_pf_meters;
+ retain:		hc_pf_meters;
+
+/* End */
+
+
+

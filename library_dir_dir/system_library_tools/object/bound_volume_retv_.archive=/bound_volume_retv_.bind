@@ -1,0 +1,37 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(86-11-17,GWMay), approve(86-11-17,MCR7445), audit(86-11-20,GDixon),
+     install(86-11-21,MR12.0-1223):
+     added entry point "test" to the retained names for retriever.
+                                                   END HISTORY COMMENTS */
+
+
+/* Bind file bound_volume_retv_ */
+/* DRVinograd 8/76 */
+
+Objectname:	bound_volume_retv_;
+Order:		retriever,
+		retv_account_,
+		retv_vol_control_,
+		retv_report_,
+		retv_notify_,
+		retrieve_from_volume_;
+
+Addname:		retrieve_from_volume, retv;
+
+Global:		delete;
+
+
+objectname:	retriever;
+retain:		retrieve_from_volume, retv,  test;
+synonym:		retrieve_from_volume, retv;
+
+objectname:	retv_account_;
+objectname:	retv_vol_control_;
+
+objectname:	retrieve_from_volume_;
+
+objectname:	retv_report_;
+
+objectname:	retv_notify_;

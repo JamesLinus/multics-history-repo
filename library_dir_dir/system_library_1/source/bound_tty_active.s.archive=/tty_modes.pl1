@@ -1,0 +1,663 @@
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) Honeywell Bull Inc., 1987                *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+/* format: style4,delnl,insnl,^ifthendo */
+
+tty_modes:
+     proc (pm_wtcbp, pm_modes_infop, pm_code);
+
+/* A procedure to handle modes changing and related trivia. */
+
+/* Coded 4/9/79 by J. Stern */
+/* Modified: 11 November 1980 by G. Palter to handle can_type and implement MCS suggestions #64 and #65 */
+/* Modified: 16 November 1981 by G. Palter to fix bug in interaction of init and can_type modes */
+/* Modified: 9/14/84 by John Mills to fix bug in enteraction of can_type and can modes */
+/* Modified: 9/25/84 by Robert Coren to enforce the requirement that flow control
+   characters must be set before the modes can be turned on, and to remove prefixnl from the list
+   of modes turned on by "default" mode */
+
+
+/****^  HISTORY COMMENTS:
+  1) change(86-06-19,Kissel), approve(86-07-30,MCR7475), audit(86-08-04,Coren),
+     install(86-10-09,MR12.0-1181):
+     Changed to support the new tty event message format declared in
+     net_event_message.incl.pl1 which replaces tty_event_message.incl.pl1.
+                                                   END HISTORY COMMENTS */
+
+
+/* Parameters */
+
+dcl  pm_code fixed bin (35);				/* error code */
+dcl  pm_modes_infop ptr;				/* ptr to modes_info structure */
+dcl  pm_wtcbp ptr;					/* ptr to wtcb of channel to which modes change applies */
+
+
+/* Automatic */
+
+dcl  code fixed bin (35);
+dcl  force_sw bit (1);
+dcl  i fixed bin;
+dcl  j fixed bin;
+dcl  idx fixed bin;
+dcl  lock_keyboard bit (1) aligned;
+dcl  mclx fixed bin;
+dcl  mode_name char (32) varying;
+dcl  1 modes_change_list aligned like mcl;
+dcl  modes_infop ptr;
+dcl  modes_len fixed bin;
+dcl  mpx_only_sw bit (1);
+dcl  off_modes (36) bit (1);
+dcl  on_modes (36) bit (1);
+dcl  saved_force_sw bit (1);
+dcl  saved_ll fixed bin;
+dcl  saved_modes bit (36);
+dcl  saved_mpx_modes char (192);
+dcl  saved_pl fixed bin;
+dcl  saved_can_type fixed bin;
+dcl  send_delay_table_sw bit (1);
+dcl  sw bit (1);
+dcl  temp_modes char (576) varying;
+
+
+/* Based */
+
+dcl  1 modes_info aligned based (modes_infop),
+       2 len fixed bin,
+       2 str char (0 refer (modes_info.len));
+
+
+/* Constants */
+
+dcl  NUL char (1) int static options (constant) init ("");
+
+
+/* External static */
+
+dcl  error_table_$bad_mode fixed bin (35) ext;
+dcl  error_table_$bigarg fixed bin (35) ext;
+dcl  error_table_$improper_data_format fixed bin (35) ext;
+dcl  error_table_$smallarg fixed bin (35) ext;
+
+
+/* Builtins */
+
+dcl  (addr, after, bin, hbound, index, lbound, length, ltrim, reverse, rtrim, string, substr, verify) builtin;
+
+
+/* Entries */
+
+dcl  pxss$ring_0_wakeup entry (bit (36) aligned, fixed bin (71), fixed bin (71), fixed bin (35));
+dcl  tty_index$printer_on_off entry (ptr, bit (1));
+dcl  tty_index$send_delays entry (ptr);
+
+%include mcs_modes_change_list;
+
+%include tty_mode_names;
+
+%include tty_can_types;
+
+%include wtcb;
+
+%include tcb;
+
+%include net_event_message;
+
+%include channel_manager_dcls;
+
+%include mcs_echo_neg_sys;
+
+	mpx_only_sw = "0"b;
+	go to join;
+
+
+/* for this entry, modes are merely forwarded to the multiplexer
+   no local action is taken and no old modes are returned
+*/
+
+mpx_only:
+     entry (pm_wtcbp, pm_modes_infop, pm_code);
+
+	mpx_only_sw = "1"b;
+
+join:
+	pm_code = 0;
+	wtcbp = pm_wtcbp;
+	tcbp = wtcb.tcb_ptr;
+	modes_infop = pm_modes_infop;
+
+	saved_modes = string (tcb.modes);		/* save current modes */
+	saved_ll = tcb.colmax;
+	saved_pl = tcb.linemax;
+	saved_can_type = tcb.can_type;
+
+/* initialize modes change list */
+
+	mclp = addr (modes_change_list);
+	mcl.version = mcl_version_2;
+	mcl.n_entries = 0;
+	mcl.line_len = -1;
+	mcl.page_len = -1;
+	mcl.can_type = -1;
+	string (mcl.flags) = ""b;
+
+/* parse the modes string */
+
+	modes_len = length (rtrim (modes_info.str));
+	if modes_len > 0
+	then if substr (modes_info.str, modes_len, 1) = "."
+	     then modes_len = modes_len - 1;
+
+	if modes_len <= 0
+	then do;
+	     if mpx_only_sw
+	     then return;
+	     call get_mpx_modes;
+	     go to build_old_modes;
+	end;
+
+	if index (substr (modes_info.str, 1, modes_len), ".") ^= 0
+						/* imbedded period */
+	     | index (substr (modes_info.str, 1, modes_len), " ") ^= 0
+						/* imbedded space */
+	then go to bad_format;
+
+	force_sw = "0"b;
+	mclx = 0;
+	i = 1;
+	do while (i <= modes_len);			/* scan modes string until reaching the end */
+	     j = index (substr (modes_info.str, i), ",") - 1;
+						/* find next mode boundary */
+	     if j = -1				/* end of string */
+	     then j = modes_len - (i - 1);
+	     if j <= 0				/* skinny mode */
+	     then go to bad_format;
+
+	     if substr (modes_info.str, i, 1) = "^"	/* OFF indicator */
+	     then do;
+		i = i + 1;
+		j = j - 1;
+		if j <= 0
+		then go to bad_format;
+		sw = "0"b;
+	     end;
+	     else sw = "1"b;			/* if not OFF, then ON */
+
+	     mode_name = substr (modes_info.str, i, j);
+	     if j > length (mode_name)
+	     then go to bad_mode;
+	     if mode_name = "init"
+	     then do;
+		if ^sw
+		then go to bad_mode;
+		mcl.init = "1"b;
+		mcl.line_len = 50;
+		mcl.page_len = 0;
+		mcl.can_type = CAN_TYPE_OVERSTRIKE;
+	     end;
+	     else if mode_name = "force"
+	     then force_sw = sw;
+	     else if mode_name = "default"
+	     then do;
+		if ^sw
+		then go to bad_mode;
+		saved_force_sw = force_sw;
+		force_sw = "1"b;			/* force all default modes */
+		do mode_name = "esc", "can", "erkl";	/* add default ON modes */
+		     call add_mode_change;
+		end;
+		sw = "0"b;
+		do mode_name = "rawi", "rawo", "breakall", "wake_tbl";
+						/* add default OFF modes */
+		     call add_mode_change;
+		end;
+		force_sw = saved_force_sw;
+	     end;
+	     else if substr (mode_name, 1, 2) = "ll"
+	     then mcl.line_len = convert_len ();
+	     else if substr (mode_name, 1, 2) = "pl"
+	     then mcl.page_len = convert_len ();
+	     else if length (mode_name) > 9		/* to ensure validity of substr */
+		& (substr (mode_name, 1, 9) = "can_type=")
+	     then do;
+		if ^sw
+		then go to bad_mode;
+		mcl.can_type = -1;			/* about to get a new value */
+		do idx = lbound (CAN_TYPE_NAMES, 1) to hbound (CAN_TYPE_NAMES, 1) while (mcl.can_type = -1);
+		     if (mode_name = CAN_TYPE_NAMES (idx))
+		     then mcl.can_type = idx;		/* found it */
+		end;
+		if (mcl.can_type = -1)
+		then				/* don't recognize the user's canonicalization type */
+		     go to bad_mode;
+	     end;
+	     else call add_mode_change;
+
+	     i = i + j + 1;				/* skip to next mode */
+	end;
+	mcl.n_entries = mclx;			/* fill in mode change count */
+
+/* let multiplexer check mode changes */
+
+	call channel_manager$check_modes ((wtcb.devx), mclp, code);
+	if code ^= 0
+	then if code ^= error_table_$bad_mode		/* if bad_mode, look for more errors before returning */
+	     then do;
+		pm_code = code;
+		return;
+	     end;
+
+/* find modes that we must change rather than multiplexer */
+
+	send_delay_table_sw = "0"b;
+	on_modes (*) = "0"b;
+	off_modes (*) = "0"b;
+	if mcl.init
+	then off_modes (*) = "1"b;
+
+	do mclx = 1 to mcl.n_entries;
+	     mclep = addr (mcl.entries (mclx));
+	     do i = 1 to n_modes while (modestr (i) ^= mcle.mode_name);
+	     end;
+	     if i <= n_modes			/* this is a standard mode */
+	     then do;
+		if MPX_MODES (i) & ^mcle.mpx_mode	/* need multiplexer help for this mode */
+		then do;
+		     if mcle.mode_switch ^= substr (saved_modes, i, 1)
+						/* this is a real change */
+		     then if ^mcle.force
+			then go to mode_error;
+		end;
+		else do;
+
+		     if substr (saved_modes, i, 1) = mcle.mode_switch & ^mpx_only_sw & ^mcl.init
+						/* this is not a change */
+		     then mcle.mpx_mode = "0"b;	/* so make sure multiplexer doesn't try to do it */
+
+		     else if mcle.mode_switch
+		     then do;			/* be careful when turning on certain modes */
+			if mcle.mode_name = "echoplex" | mcle.mode_name = "crecho" | mcle.mode_name = "lfecho"
+			then send_delay_table_sw = "1"b;
+			else if mcle.mode_name = "blk_xfer"
+			then do;
+			     if tcb.frame_end = NUL
+			     then go to mode_error;
+			end;
+
+			else if mcle.mode_name = "oflow"
+			then do;			/* make sure characters have been set */
+			     if tcb.output_suspend_etb_seq.count = 0 | tcb.output_resume_ack_seq.count = 0
+			     then go to mode_error;
+			end;
+
+			else if mcle.mode_name = "iflow"
+			then do;			/* as above */
+			     if tcb.input_suspend_seq.count = 0 | tcb.input_resume_seq.count = 0
+			     then go to mode_error;
+			end;
+
+			else if mcle.mode_name = "wake_tbl"
+			then do;
+			     if wtcb.waketp = ""b
+			     then go to mode_error;
+			end;
+		     end;
+
+		     on_modes (i) = mcle.mode_switch;
+		     off_modes (i) = ^mcle.mode_switch;
+		end;
+	     end;
+	     else if ^mcle.mpx_mode			/* nobody knows this mode */
+	     then do;
+		if ^mcle.force
+		then do;
+mode_error:
+		     mcle.error = "1"b;
+		     code = error_table_$bad_mode;
+		end;
+	     end;
+	end;
+	if code ^= 0
+	then go to mcl_error;			/* take care of all accumulated mode errors */
+
+/* now go change the modes */
+
+	if ^mpx_only_sw
+	then call get_mpx_modes;
+
+	call channel_manager$set_modes ((wtcb.devx), mclp, code);
+	if code ^= 0
+	then do;
+	     if code = error_table_$bad_mode
+	     then go to mcl_error;
+	     pm_code = code;
+	     return;
+	end;
+	if mpx_only_sw
+	then return;
+
+	if send_delay_table_sw
+	then call tty_index$send_delays (wtcbp);
+
+	do j = 1 to n_modes;			/* we've checked the mode string, now implement it */
+	     if on_modes (j)
+	     then sw = "1"b;
+	     else if off_modes (j)
+	     then sw = "0"b;
+	     else go to end_of_mode;
+	     if substr (saved_modes, j, 1) = sw		/* no change to this mode */
+	     then go to end_of_mode;
+
+	     substr (string (tcb.modes), j, 1) = sw;
+	     go to set_modes (j);
+
+set_modes (13):					/* hndlquit */
+	     wtcb.flags.hndlquit = sw;
+
+set_modes (14):					/* full_duplex */
+	     if tcb.keyboard_locking
+	     then do;				/* turn keyboard locking on/off if appropriate */
+		lock_keyboard = ^sw;		/* fulldpx ON => unlock keyboard and vice versa */
+		call channel_manager$control ((wtcb.devx), "lock", addr (lock_keyboard), code);
+	     end;
+	     go to end_of_mode;
+
+set_modes (15):					/* echoplex */
+	     call tty_index$printer_on_off (wtcbp, ^sw);
+	     go to end_of_mode;
+
+set_modes (21):					/* breakall */
+	     wtcb.flags.breakall = sw;
+	     if sw = "0"b
+	     then do;				/* Turn off echnego */
+		wtcb.negotiating_echo = "0"b;
+		if wtcb.echdp ^= "000000"b3
+		then do;
+		     echo_datap = ptr (wtcbp, wtcb.echdp);
+		     echo_data.synchronized = "0"b;
+		end;
+	     end;
+	     go to end_of_mode;
+
+set_modes (22):					/* scroll */
+	     wtcb.flags.scroll = sw;
+	     go to end_of_mode;
+
+set_modes (24):					/* wake_tbl */
+	     wtcb.flags.wake_tbl = sw;
+	     wtcb.allow_wakeup = "0"b;
+	     if wtcb.rflag & (wtcb.fblock ^= 0)		/* waiting for wakeup and has input */
+	     then do;				/* play it safe, send wakeup now */
+		unspec (net_event_message) = "0"b;
+		net_event_message.version = NET_EVENT_MESSAGE_VERSION_1;
+		net_event_message.network_type = MCS_NETWORK_TYPE;
+		net_event_message.handle = wtcb.devx;
+		net_event_message.type = MCS_READ_MSG;
+		call pxss$ring_0_wakeup (wtcb.uproc, wtcb.event, net_event_message_arg, code);
+	     end;
+	     go to end_of_mode;
+
+set_modes (1):
+set_modes (2):
+set_modes (3):
+set_modes (4):
+set_modes (5):
+set_modes (6):
+set_modes (7):
+set_modes (8):
+set_modes (9):
+set_modes (10):
+set_modes (11):
+set_modes (12):
+set_modes (16):
+set_modes (17):
+set_modes (18):
+set_modes (19):
+set_modes (20):
+set_modes (23):
+set_modes (25):
+set_modes (26):
+set_modes (27):
+set_modes (28):
+set_modes (29):
+end_of_mode:
+	end;
+
+	if mcl.line_len ^= -1
+	then tcb.colmax = mcl.line_len;
+	if mcl.page_len ^= -1
+	then do;
+	     tcb.linemax = mcl.page_len;
+	     wtcb.count_lines = (mcl.page_len ^= 0);
+	end;
+	if mcl.can_type ^= -1
+	then tcb.can_type = mcl.can_type;
+
+
+/* build string of old modes to return */
+
+build_old_modes:
+	temp_modes = "";
+	call append_ll (saved_ll);
+	call append_pl (saved_pl);
+	call append_can_type (saved_can_type);
+
+	do i = 1 to n_modes;
+	     call append_mode ((modestr (i)), substr (saved_modes, i, 1));
+	end;
+
+	if saved_mpx_modes ^= ""
+	then temp_modes = temp_modes || "," || rtrim (saved_mpx_modes);
+	temp_modes = temp_modes || ".";
+
+	modes_info.str = temp_modes;
+	if length (temp_modes) > modes_info.len
+	then do;					/* doesn't fit: truncate to last complete mode */
+	     idx = modes_info.len - index (reverse (modes_info.str), ",") + 1;
+	     if (idx = modes_info.len + 1)
+	     then modes_info.str = "";		/* not even the first mode fits */
+	     else substr (modes_info.str, idx) = ".";	/* truncate mode string at last comma */
+	     pm_code = error_table_$smallarg;
+	end;
+
+	return;
+
+
+
+bad_format:
+	pm_code = error_table_$improper_data_format;
+	return;
+
+bad_mode:
+	pm_code = error_table_$bad_mode;
+	if sw
+	then modes_info.str = mode_name;
+	else modes_info.str = "^" || mode_name;
+	return;
+
+mcl_error:
+	pm_code = error_table_$bad_mode;
+	temp_modes = "";
+	if mcl.flags.ll_error
+	then call append_ll (mcl.line_len);
+	if mcl.flags.pl_error
+	then call append_pl (mcl.page_len);
+	if mcl.flags.can_type_error
+	then call append_can_type (mcl.can_type);
+	do i = 1 to mcl.n_entries;
+	     mclep = addr (mcl.entries (i));
+	     if mcle.error
+	     then call append_mode (mcle.mode_name, mcle.mode_switch);
+	end;
+	modes_info.str = temp_modes;
+	return;
+
+error_exit:
+	return;
+
+/* subroutine to add an entry to the mode change list */
+
+add_mode_change:
+     proc;
+
+dcl  i fixed bin;
+
+/* avoid duplicate entries for the same mode */
+
+	do i = 1 to mclx while (mcl.entries (i).mode_name ^= mode_name);
+	end;
+	if i > mclx				/* not a repeat */
+	then do;
+	     mclx = i;
+	     if mclx > hbound (modes_change_list.entries, 1)
+	     then do;
+		pm_code = error_table_$bigarg;
+		go to error_exit;
+	     end;
+	end;
+
+	mclep = addr (mcl.entries (i));
+	if mclx = i				/* first time for this mode */
+	then do;
+	     mcle.mode_name = mode_name;
+	     string (mcle.flags) = ""b;
+	end;
+	mcle.mode_switch = sw;
+	mcle.force = force_sw;
+
+     end;
+
+
+
+/* subroutine to get multiplexer modes */
+
+get_mpx_modes:
+     proc;
+
+	call channel_manager$get_modes ((wtcb.devx), saved_mpx_modes, code);
+	if code ^= 0
+	then do;
+	     pm_code = code;
+	     go to error_exit;
+	end;
+
+     end;
+
+/* subroutine to convert from chars to fixed bin */
+
+convert_len:
+     proc returns (fixed bin);
+
+dcl  len fixed bin;
+dcl  size condition;
+
+	if ^sw
+	then do;
+	     if length (mode_name) > 2
+	     then go to bad_mode;
+	     return (0);
+	end;
+
+	if length (mode_name) < 3
+	then go to bad_mode;
+	if verify (substr (mode_name, 3), "0123456789") ^= 0
+	then go to bad_mode;
+
+	on size go to bad_mode;
+	len = bin (substr (mode_name, 3), 17);
+	revert size;
+	if len ^= 0
+	then if len < 5 | len > 255
+	     then go to bad_mode;
+
+	return (len);
+     end;
+
+
+
+/* subroutine to append mode to mode string */
+
+append_mode:
+     proc (name, switch);
+
+dcl  name char (*);
+dcl  switch bit (1);
+
+	if length (temp_modes) > 0
+	then temp_modes = temp_modes || ",";
+	if ^switch
+	then temp_modes = temp_modes || "^";
+	temp_modes = temp_modes || rtrim (name);
+
+	return;
+     end;
+
+
+
+/* subroutine to append can_type mode to mode string */
+
+append_can_type:
+     procedure (P_can_type);
+
+dcl  P_can_type fixed binary parameter;
+
+	if length (temp_modes) > 0
+	then temp_modes = temp_modes || ",";
+
+	if (P_can_type < lbound (CAN_TYPE_NAMES, 1)) | (P_can_type > hbound (CAN_TYPE_NAMES, 1))
+	then temp_modes = temp_modes || rtrim (CAN_TYPE_NAMES (lbound (CAN_TYPE_NAMES, 1)));
+	else temp_modes = temp_modes || rtrim (CAN_TYPE_NAMES (P_can_type));
+
+	return;
+
+     end append_can_type;
+
+/* subroutine to append line length to mode string */
+
+append_ll:
+     proc (ll);
+
+dcl  ll fixed bin;
+dcl  pic999 picture "999";
+
+	if length (temp_modes) > 0
+	then temp_modes = temp_modes || ",";
+	if ll = 0
+	then temp_modes = temp_modes || "^ll";
+	else do;
+	     pic999 = ll;
+	     temp_modes = temp_modes || "ll" || ltrim (pic999, "0");
+	end;
+
+     end;
+
+
+
+/* subroutine to append page length to mode string */
+
+append_pl:
+     proc (pl);
+
+dcl  pl fixed bin;
+dcl  pic999 picture "999";
+
+	if length (temp_modes) > 0
+	then temp_modes = temp_modes || ",";
+	if pl = 0
+	then temp_modes = temp_modes || "^pl";
+	else do;
+	     pic999 = pl;
+	     temp_modes = temp_modes || "pl" || ltrim (pic999, "0");
+	end;
+     end;
+
+
+     end;

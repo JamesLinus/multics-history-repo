@@ -1,0 +1,52 @@
+/* bindfile for bound_display_, BLW 30 July 1972 */
+
+Objectname:	bound_display_;
+
+Addname:		display, di, display_exp, display_statement, dix, display_xeq,
+		show_declaration, show_statement, stop_at, show_ms, peek,
+		meter_token_table;
+
+Order:		display_stat_, display, display_any_node_name, display_array, display_block,
+		display_constant, display_exp, display_list, display_source,
+		display_statement, display_symbol, peek, show_declaration,
+		show_ms, show_statement, stop_at, display_xfer_vector,
+		meter_token_table;
+
+Global:		delete;
+
+objectname:	show_declaration;
+retain:		show_declaration;
+
+objectname:	show_statement;
+retain:		show_statement;
+
+objectname:	display_exp;
+retain:		display_exp;
+
+objectname:	display;
+synonym:		di, display_xeq, dix;
+global:		retain;
+
+objectname:	display_statement;
+retain:		display_statement;
+
+objectname:	stop_at;
+retain:		stop_at;
+
+objectname:	show_ms;
+retain:		show_ms;
+
+objectname:	peek;
+retain:		peek, set;
+
+objectname:	display_xfer_vector;
+synonym:		decode_node_id;
+global:		retain;		/* must be RETAIN, FATAL IF NOT */
+
+objectname:	meter_token_table;
+retain:		meter_token_table;
+
+/* end; */
+
+
+

@@ -1,0 +1,63 @@
+/* Bindfile for bound_word_generator_ */
+/* Modified 750520 by PG for installation */
+
+Objectname:	bound_word_generator_;
+
+Order:	generate_words,
+	generate_word_,
+	random_unit_,
+	random_word_,
+	convert_word_,
+	convert_word_char_,
+	digrams,
+	random_unit_stat_,
+	hyphen_test,
+	hyphenate_,
+	digram_table_compiler,
+	read_table_;
+
+Addname:	generate_words, gw,
+	generate_word_,
+	hyphen_test,
+	hyphenate_,
+	digram_table_compiler,
+	print_digram_table;
+
+Global:	delete;
+
+objectname:	generate_words;
+   synonym:	gw;
+    retain:	generate_words, gw;
+
+objectname:	hyphen_test;
+    retain:	hyphen_test;
+
+objectname:	generate_word_;
+    retain:	generate_word_, init_seed;
+
+objectname:	hyphenate_;
+    retain:	hyphenate_, probability, debug_on, debug_off, reset;
+
+objectname:	convert_word_;
+    retain:	convert_word_;
+
+objectname:	convert_word_char_;
+    retain:	convert_word_char_;
+
+objectname:	random_word_;
+    retain:	random_word_, debug_on, debug_off;
+
+objectname:	digrams;
+    retain:	digrams, n_units, letters, rules;
+
+objectname:	random_unit_;
+    retain:	random_unit_, probabilities;
+
+objectname:	random_unit_stat_;
+
+objectname:	digram_table_compiler;
+   synonym:	print_digram_table;
+    retain:	digram_table_compiler,
+		print_digram_table;
+
+/* end; */

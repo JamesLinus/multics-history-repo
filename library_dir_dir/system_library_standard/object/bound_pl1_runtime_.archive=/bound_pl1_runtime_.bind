@@ -1,0 +1,36 @@
+/* bindfile for bound_pl1_runtime_
+   BLW 30 October 1972 */
+/* Modified March 1985 by Keith Loepere to move pl1_decat_char_ to bound_multics_bce_. */
+
+Objectname:	bound_pl1_runtime_;
+
+Addname:		decimal_op_, complex_decimal_op_, multi_decimal_op_,
+		complex_binary_op_, decimal_sqrt_,
+		pl1_after_bit_, pl1_after_char_,
+		pl1_before_bit_, pl1_before_char_,
+		pl1_decat_bit_,
+		pl1_date_, pl1_time_, translate_,
+	bound_,
+		on_data_,
+		decimal_exp_,
+		decimal_exp2_,
+		pl1_snap_;
+
+Global:		retain;		/* the components are bound for convience only */
+				/* all entries must be accessible */
+
+Order:		complex_decimal_op_, decimal_op_, multi_decimal_op_,
+		decimal_sqrt_, complex_binary_op_, fixed_ops_,
+		pl1_after_bit_, pl1_after_char_,
+		pl1_before_bit_, pl1_before_char_,
+		pl1_decat_bit_,
+		pl1_date_, pl1_time_, translate_,
+	bound_,
+		picture_edit_,
+		get_oncode, getonsource, get_onchar,
+		setonsource,
+		decimal_exp_, decimal_exp2_, pl1_snap_;
+
+objectname:	fixed_ops_;
+synonym:		size_check_, float_round_, fixed_round_, fixed_divide_, scaler_;
+global:		delete;

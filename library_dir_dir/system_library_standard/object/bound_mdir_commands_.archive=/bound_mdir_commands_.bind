@@ -1,0 +1,47 @@
+/* Bind file for bound_mdir_command_ */
+
+/* Created May 1976 by Larry Johnson */
+
+Objectname:	bound_mdir_commands_;
+
+Order:		set_mdir_account,
+		set_mdir_owner,
+		set_mdir_quota,
+		set_volume_quota,
+		list_mdir,
+		delete_volume_quota;
+
+Addname:		set_mdir_account,
+		smda,
+		set_mdir_owner,
+		smdo,
+		set_mdir_quota,
+		smdq,
+		set_volume_quota,
+		svq,
+		list_mdir,
+		lmd,
+		delete_volume_quota,
+		dlvq;
+
+Global:		delete;
+
+objectname:	set_mdir_account;
+ retain:		set_mdir_account, smda;
+
+objectname:	set_mdir_owner;
+ retain:		set_mdir_owner, smdo;
+
+objectname:	set_mdir_quota;
+ retain:		set_mdir_quota, smdq;
+
+objectname:	set_volume_quota;
+ retain:		set_volume_quota, svq;
+
+objectname:	list_mdir;
+ retain:		list_mdir, lmd;
+
+objectname:	delete_volume_quota;
+ retain:		delete_volume_quota, dlvq;
+
+/* end bind file for bound_mdir_commands_ */

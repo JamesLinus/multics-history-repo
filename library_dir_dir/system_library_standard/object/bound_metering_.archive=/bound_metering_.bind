@@ -1,0 +1,38 @@
+/* Bindfile for bound_metering_.
+   Created 30 Nov 1971 by C Garman.
+   Modified June 1974 by J Gintell for MCR's 598 & 102.
+   Modified 08/02/79 W. Olin Sibert to move ring_zero_peek_ from >tools to here.
+   Modified 10/17/79 by M. Weaver to turn on perprocess static.
+   Modified 03/03/81, W. Olin Sibert, for new ring_zero_peek_ entrypoints.
+   */
+
+Objectname:	bound_metering_;
+
+Perprocess_Static;
+
+Order:		page_trace, cumulative_page_trace, ring_zero_peek_;
+Addname:		page_trace, pgt,
+		cumulative_page_trace,cpt,
+		ring_zero_peek_;
+Global:		delete;
+
+
+objectname:	page_trace;
+ synonym: 	pgt;
+ retain:		page_trace, pgt;
+
+objectname:	cumulative_page_trace;
+ synonym:		cpt;
+ retain:		cumulative_page_trace, cpt;
+
+objectname:	ring_zero_peek_;
+ retain:		ring_zero_peek_,
+		by_name,
+		by_definition,
+		get_max_length,
+		get_max_length_ptr;
+
+/* End */
+
+
+

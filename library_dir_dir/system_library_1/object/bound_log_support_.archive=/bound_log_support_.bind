@@ -1,0 +1,79 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(85-12-20,EJSharpe), approve(86-02-20,MCR7334),
+     audit(86-02-26,Kissel), install(86-04-23,MR12.0-1044):
+     Retain log_read_$register/deregister entrypoints.
+                                                   END HISTORY COMMENTS */
+
+
+/* *	Modification history:
+   *	84-10-05, W. Olin Sibert: Initial collection
+   *	84-11-11, WOS: Added log_move_
+   *      84-12-19, BIM: Retained log_read_$open_long, free_message, and hold_message.
+   *      84-12-21, BIM: renamed to bound_log_support_ and moved to collection 3.
+		Note that log_read_ et. al. are candidates for inclusion
+		     in bound_log_tools_ in TOOLS if space is tight.
+   *	85-03-04, EJ Sharpe: added entry single_dir_oldest_and_newest to log_list_history_
+   *	85-04-16, EJ Sharpe: added log_salvage_
+   */
+
+Objectname:	bound_log_support_;
+
+Global:		delete;
+
+Order:		log_read_,
+		log_list_history_,
+		log_initiate_,
+		log_write_,
+		log_create_,
+		log_salvage_,
+		log_move_;
+
+
+objectname:	log_create_;
+  retain:		new_segment,
+		duplicate_segment,
+		get_info;
+
+objectname:	log_initiate_;
+  retain:		log_initiate_;
+
+objectname:	log_list_history_;
+  retain:		all,
+		single_dir,
+		single_dir_oldest_and_newest;
+
+objectname:	log_read_;
+  retain:		open,
+		open_long,
+		close,
+		next_message,
+		prev_message,
+		position_sequence,
+		position_time,
+		update,
+		hold_message,
+		free_message,
+		get_log_uid,
+		register,
+		deregister;
+
+objectname:	log_write_;
+  retain:		open,
+		close,
+		message,
+		data,
+		general,
+		open_for_migrate;
+
+objectname:	log_salvage_;
+  retain:		log_salvage_;
+
+objectname:	log_move_;
+  retain:		message;
+
+/* 		END		*/
+
+
+

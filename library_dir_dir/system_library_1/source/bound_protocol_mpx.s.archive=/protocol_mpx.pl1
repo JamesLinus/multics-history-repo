@@ -1,0 +1,1613 @@
+/****^  *********************************************************
+        *                                                       *
+        * Copyright, (C) BULL HN Information Systems Inc., 1989 *
+        *                                                       *
+        ********************************************************* */
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(89-02-21,Parisek), approve(89-10-25,MECR0012),
+     audit(89-10-25,Farley), install(89-10-25,MR12.3-1100):
+     Implement protocol multiplexer.
+                                                   END HISTORY COMMENTS */
+
+/* Pseudo-multiplexor implementing the interface between the MCS environment and the */
+/*		         ISO Transport level                                 */
+/*	         C. Claveleira - CICB - 18 september 1985                       */
+
+
+/* format: style4,delnl,insnl,^ifthendo,indattr */
+
+protocol_mpx:
+     proc;
+
+/*	Date Last Modified and Reason
+
+
+   7  oct 1985 : C. Claveleira - Version 0.0
+   19 oct 1985 : C. Claveleira - Version 0.1
+   30 oct 1985 : C. Claveleira - Version 0.2
+   05 nov 1985 : C. Claveleira - Version 0.3
+   12 nov 1985 : C. Claveleira - Version 0.4
+   27 nov 1985 : C. Claveleira - Version 0.5
+   27 dec 1985 : C. Claveleira - Version 0.6 (Changes for padding x25 packets and using USER_INTERRUPT for n_con_conf)
+   14 fev 1986 : C. Claveleira - Version 0.7
+   14 mar 1986 : C. Claveleira - Version 0.8
+   20 mar 1986 : C. Claveleira - Version 1.0 (multiprotocole version)
+   02 avr 1986 : C. Claveleira - Version 1.1 (correction bug liee au timers)
+   21 avr 1986 : C. Claveleira - Version 1.2 (     "      "  lors needs_space
+   31 mai 1986 : C. Claveleira - Version 1.3 (modifs de ntd_req et ndis_req, ajout de write et read)
+   10 jui 1986 : C. Claveleira - Version 1.4 (correction passage lastp lors appel copy_chars dans send_common)
+   11 aou 1986 : C. Claveleira - Version 1.5 (decompte de buffers ds write/ndt_req, modif. max_chain_len et
+   check-up connections)
+   02 sep 1986 : C. Claveleira - Version 1.6 (test taille nsdu, modif. decl. user_index, cor. bug
+   check_orphan_connections et timer)
+   19 sep 1986 : C. Claveleira - Version 1.7 (correction bug remplissage paquets x25)
+   26 nov 1986 : C. Claveleira - Version 1.8 (ajouts/modifs concernant le listening)
+*/
+
+/* PARAMETRES */
+dcl  a_argptr	        ptr;
+dcl  a_data_base_ptr        ptr;
+dcl  a_partial	        bit (1);
+dcl  a_event	        fixed bin (71);		/* event channel name */
+dcl  a_from_na	        char (15) varying;		/* address of calling network */
+dcl  a_to_na	        char (15) varying;		/* addresse of network called */
+dcl  a_user_index	        fixed bin (17);		/* user index */
+dcl  a_call_data	        char (48) varying;		/* call data during NCON_REQ */
+dcl  a_order	        char (*);
+dcl  a_scp	        ptr;			/* pointer to buffers chain of T */
+dcl  a_pinfop	        ptr;
+dcl  a_int_type	        fixed bin;
+dcl  a_type	        fixed bin;
+dcl  a_first_entry	        fixed bin;
+dcl  a_bytes_processed      fixed bin (21);		/* number of octets sent/read by ndt_req,send/read */
+dcl  a_offset	        fixed bin (21);
+dcl  a_protocol_id	        fixed bin;			/* identification of protocol */
+dcl  a_info	        bit (72) aligned;
+dcl  a_code	        fixed bin (35);
+
+/* VARIABLES AUTOMATIQUES */
+dcl  from_na	        char (15) varying;
+dcl  to_na	        char (15) varying;
+dcl  user_index	        fixed bin (17);
+dcl  call_data	        char (48) varying;
+dcl  bytes_processed        fixed bin (21);
+dcl  scx		        fixed bin;
+dcl  miip		        ptr;
+dcl  order	        char (32);
+dcl  scp		        ptr;			/* source_chain_pointer */
+dcl  tcp		        ptr;			/* target_chain_ptr */
+dcl  scl		        fixed bin;			/* source_chain_length */
+dcl  cscp		        ptr;			/* current_source_chain_ptr */
+dcl  length_to_copy	        fixed bin;
+dcl  sci		        fixed bin (21);		/* source_chain_index */
+dcl  (scidx, tidx)	        fixed bin;			/* index into the list of user pointers */
+dcl  (break, stop, end_chain, write_entry, read_entry)
+		        bit (1);
+dcl  buf_size	        fixed bin;
+dcl  protocol_id	        fixed bin;
+dcl  orig_buf_size	        fixed bin;
+dcl  lchar	        fixed bin;
+dcl  cur_space	        fixed bin;
+dcl  cur_chain_len	        fixed bin;
+dcl  max_space	        fixed bin;			/* maximum number of words this guy can have */
+dcl  max_chars	        fixed bin;			/* maximun number of character of output */
+dcl  max_chars_in_buf       fixed bin;			/* number of characters in maximum-size buffer */
+dcl  chars_in_buf	        fixed bin;
+dcl  (new_bufp, headp, lastp, prevp)
+		        ptr;
+dcl  new_buf	        fixed bin;
+dcl  rest		        fixed bin (21);
+dcl  twx		        fixed bin;			/* tty index  */
+dcl  code		        fixed bin (35);		/* error code */
+dcl  event	        fixed bin (71);
+dcl  cleanup	        condition;
+dcl  (i, m, n)	        fixed bin;
+dcl  devx		        fixed bin (17);
+dcl  locked	        bit (1);
+dcl  1 CON_REQ_info	        aligned like NCON_REQ_info;
+dcl  1 N_I_i	        aligned based (addr (buffer.chars)) like NCON_IND_info;
+dcl  1 net_infos	        aligned like network_infos;
+dcl  ignore_code	        fixed bin (35);
+dcl  int_type	        fixed bin;
+dcl  inchain	        fixed bin (18);
+dcl  next_offset	        fixed bin;
+dcl  last_offset	        fixed bin;
+dcl  new_headp	        ptr;
+dcl  old_tailp	        ptr;
+dcl  new_first_tally        fixed bin;
+dcl  old_last_tally	        fixed bin;
+dcl  max_tally	        fixed bin;
+dcl  filled	        bit (1);
+dcl  source_ptr	        ptr;
+dcl  target_ptr	        ptr;
+dcl  pxss_status	        fixed bin (35);
+dcl  process_id	        bit (36) aligned;
+dcl  partial	        bit (1);
+
+dcl  1 CON_IND_info	        aligned like NCON_IND_info based (pinfop);
+dcl  1 ndis_ind_reason      aligned like NDIS_IND_REASON based (pinfop);
+dcl  new_chars	        char (new_first_tally) based;
+
+
+dcl  STANDARD_SERVICE       char (16) int static init ("@");
+						/* indicates DDN/X.25 standard service */
+dcl  ever_initialized       bit (1) int static init ("0"b); /* indicates whether init_multiplexer ever called before */
+
+
+dcl  (
+     error_table_$action_not_performed,
+     error_table_$bad_arg,
+     error_table_$buffer_big,
+     error_table_$io_no_permission,
+     error_table_$invalid_state,
+     error_table_$invalid_device,
+     error_table_$invalid_write,
+     error_table_$noalloc,
+     error_table_$resource_unavailable,
+     error_table_$undefined_order_request
+     )		        ext fixed bin (35);
+
+dcl  no_write_code	        fixed bin (35) internal static;
+dcl  noalloc_code	        fixed bin (35) internal static; /* copy of code to be used at interrupt time */
+
+
+dcl  pds$processid	        ext static bit (36) aligned;
+
+dcl  tty_lock$lock_channel  entry (fixed bin, fixed bin (35));
+dcl  tty_lock$unlock_channel
+		        entry (fixed bin);
+dcl  pxss$ring_0_wakeup     entry (bit (36) aligned, fixed bin (71), fixed bin (71), fixed bin (35));
+dcl  pxss$unique_ring_0_wakeup
+		        entry (bit (36) aligned, fixed bin (71), fixed bin (71), fixed bin (35));
+dcl  tc_util$validate_processid
+		        entry (bit (36) aligned, fixed bin (35));
+dcl  syserr	        entry options (variable);
+dcl  wire_proc$wire_me      entry;
+
+dcl  DIAG_71	        fixed bin int static init (71) options (constant);
+dcl  LONGEST_POSSIBLE_STRING
+		        fixed bin init (8128) int static options (constant);
+dcl  MILLISECONDS_2	        fixed bin (21) int static init (2000000) options (constant);
+dcl  SIZE4	        fixed bin int static init (4) options (constant);
+dcl  SIZE16	        fixed bin int static init (16) options (constant);
+dcl  WAKEUP_CODE_0	        fixed bin int static init (0) options (constant);
+dcl  WAKEUP_CODE_5	        fixed bin int static init (5) options (constant);
+dcl  WAKEUP_CODE_100        fixed bin int static init (100) options (constant);
+dcl  max_chain_len	        fixed bin int static init (64) options (constant);
+						/* permitted to have NSDU of 4096 octets max with buffers of 124 characters (2 buffers/packet) */
+
+dcl  (addr, bin, ceil, clock, divide, hbound, lbound, length, min, null, ptr, rel, string, substr, unspec)
+		        builtin;
+%page;
+
+	return;
+
+start:
+     entry (a_data_base_ptr, a_code);
+
+	a_code = 0;
+	channel_ptr = a_data_base_ptr;
+	devx = channel.devx;
+	locked = "0"b;
+	channel.flags.started = "1"b;
+	if channel.state = HUNGUP
+	then call channel_manager$control (devx, "listen", null (), code);
+	a_code = code;
+	return;
+
+
+stop:
+     entry (a_data_base_ptr, a_code);
+	channel_ptr = a_data_base_ptr;
+	channel.flags.started = "0"b;
+	a_code = 0;
+	locked = "0"b;
+	return;
+
+
+shutdown:
+     entry (a_data_base_ptr, a_code);
+	channel_ptr = a_data_base_ptr;
+	locked = "0"b;
+	devx = channel.devx;
+	if channel.state > HUNGUP
+	then call channel_manager$control (devx, "hangup", null (), code);
+	a_code = code;
+	return;
+
+
+priv_control:
+     entry (a_data_base_ptr, a_order, a_pinfop, a_code);
+
+	channel_ptr = a_data_base_ptr;
+	order = a_order;
+	pinfop = a_pinfop;				/* nothing for time */
+	a_code = 0;
+	locked = "0"b;
+	return;
+
+
+hpriv_control:
+     entry (a_data_base_ptr, a_order, a_pinfop, a_code);
+	channel_ptr = a_data_base_ptr;
+	order = a_order;
+	pinfop = a_pinfop;
+	locked = "0"b;
+	devx = channel.devx;
+	if order = "load_mpx"
+	then if channel.flags.initialized & channel.state = INACTIVE
+	     then do;
+		call channel_manager$control (devx, "get_network_infos", addr (net_infos), code);
+		if code = 0
+		then do;
+		     channel.our_network_address = net_infos.network_address;
+		     channel.max_packet_size = net_infos.max_packet_size;
+		     channel.load_proc_id = pds$processid;
+		     channel.state = HUNGUP;
+		end;
+	     end;
+	     else code = error_table_$invalid_state;
+	else code = error_table_$undefined_order_request;
+	a_code = code;
+	return;
+
+%page;
+init_multiplexer:					/* do the work of an init_channel, in fact */
+     entry (twx, a_argptr, a_data_base_ptr, a_code);
+
+	devx = twx;
+	infop = addr (dn355_data$);
+	protocol_data_ptr = datanet_info.protocol_datap;
+	ttybp = addr (tty_buf$);
+	lctp = tty_buf.lct_ptr;
+	lcntp = lct.lcnt_ptr;
+	miip = a_argptr;
+	a_data_base_ptr = null;
+	a_code = 0;
+	locked = "0"b;
+
+	if ^ever_initialized
+	then do;					/* initialization of the data base */
+	     do i = 1 to protocol_data.max_channels;
+		unspec (protocol_data.channels (i)) = ""b;
+		protocol_data.channels (i).name = "";
+		protocol_data.channels (i).our_network_address = "";
+		protocol_data.channels (i).his_network_address = "";
+		protocol_data.channels (i).call_data = "";
+		protocol_data.channels (i).facilities = "";
+	     end;
+	     protocol_data.n_channels = 0;
+	     protocol_data.init_time = clock ();
+	     unspec (listeners (*)) = ""b;
+	     unspec (protocol_data.special_listeners (*)) = ""b;
+	     protocol_data.special_listeners.datas (*) = "";
+	     call set_static;
+	     ever_initialized = "1"b;
+	end;
+
+	if protocol_data.n_channels >= protocol_data.max_channels
+	then do;					/* more channels declared than you have  ? */
+	     call syserr (Log_message, "protocol_mpx$init_multiplexer : not enough channels configured on PROT PARM.");
+	     a_code = noalloc_code;
+	     return;
+	end;
+	protocol_data.n_channels = protocol_data.n_channels + 1;
+	do i = 1 to protocol_data.max_channels;
+	     channel_ptr = addr (protocol_data.channels (i));
+	     if ^channel.flags.initialized
+	     then do;
+		channel.name = lcnt (devx).names;
+		channel.devx = devx;
+		channel.state = INACTIVE;
+		channel.flags.initialized = "1"b;
+		a_data_base_ptr = channel_ptr;
+		return;
+	     end;
+	end;
+	call syserr (Log_message, "protocol_mpx$init_multiplexer : no free channel found");
+	a_code = noalloc_code;
+	return;
+
+%page;
+
+terminate_multiplexer:
+     entry (a_data_base_ptr, a_code);
+
+	a_code = 0;
+	locked = "0"b;
+	channel_ptr = a_data_base_ptr;
+	infop = addr (dn355_data$);
+	protocol_data_ptr = datanet_info.protocol_datap;
+	call mcs_timer$reset_all (channel.devx);	/* purge the event timers */
+	protocol_data.n_channels = protocol_data.n_channels - 1;
+	if protocol_data.n_channels < 0
+	then call syserr (Log_message,
+		"protocol_mpx$terminate_multiplexer : more terminate_multiplexer calls than init_multiplexer calls on ^a",
+		channel.name);
+	unspec (channel) = ""b;
+	a_data_base_ptr = null ();
+	return;
+%page;
+set_listener:
+     entry (a_protocol_id, a_event, a_code);
+	event = a_event;
+	protocol_id = a_protocol_id;
+	locked = "0"b;
+	infop = addr (dn355_data$);
+	protocol_data_ptr = datanet_info.protocol_datap;
+	if protocol_id < lbound (protocol_data.listeners, 1) | protocol_id > hbound (protocol_data.listeners, 1)
+	then do;
+	     a_code = error_table_$bad_arg;
+	     return;
+	end;					/* Not test to learn if there is already a listener : use the last one. */
+	protocol_data.listeners (protocol_id).proc_id = pds$processid;
+	protocol_data.listeners (protocol_id).event_id = event;
+	a_code = 0;
+	return;
+
+set_special_listener:
+     entry (a_call_data, a_partial, a_event, a_code);
+	call_data = a_call_data;
+	event = a_event;
+	partial = a_partial;
+	a_code = 0;
+	locked = "0"b;
+	do i = 1 to hbound (layer3_call_datas, 1) while (call_data ^= layer3_call_datas (i));
+	end;
+	if i <= hbound (layer3_call_datas, 1) | call_data = ""
+	then do;
+	     a_code = error_table_$bad_arg;
+	     return;
+	end;
+	infop = addr (dn355_data$);
+	protocol_data_ptr = datanet_info.protocol_datap;
+	n = hbound (protocol_data.special_listeners, 1);
+	do i = 1 to n while (protocol_data.special_listeners.call_datas.datas (i) ^= call_data);
+	end;
+	if i > n
+	then					/* find a slot */
+	     do i = 1 to n while (protocol_data.special_listeners.call_datas.datas (i) ^= "");
+	end;
+	if i > n
+	then do;
+	     a_code = error_table_$action_not_performed;
+	     return;
+	end;
+	protocol_data.special_listeners.call_datas.partial (i) = partial;
+	protocol_data.special_listeners.call_datas.datas (i) = call_data;
+	protocol_data.special_listeners.proc_id (i) = pds$processid;
+	protocol_data.special_listeners.event_id (i) = event;
+	return;
+
+remove_listener:
+     entry (a_protocol_id, a_code);
+	protocol_id = a_protocol_id;
+	locked = "0"b;
+	infop = addr (dn355_data$);
+	protocol_data_ptr = datanet_info.protocol_datap;
+	if protocol_id < lbound (protocol_data.listeners, 1) | protocol_id > hbound (protocol_data.listeners, 1)
+	then do;
+	     a_code = error_table_$bad_arg;
+	     return;
+	end;
+	a_code = 0;
+	if protocol_data.listeners (protocol_id).proc_id ^= pds$processid
+	then a_code = error_table_$io_no_permission;
+	else unspec (protocol_data.listeners (protocol_id)) = ""b;
+	return;
+
+remove_special_listener:
+     entry (a_call_data, a_code);
+	call_data = a_call_data;
+	locked = "0"b;
+	a_code = 0;
+	if call_data = ""
+	then do;
+	     a_code = error_table_$bad_arg;
+	     return;
+	end;
+	infop = addr (dn355_data$);
+	protocol_data_ptr = datanet_info.protocol_datap;
+	do i = 1 to hbound (protocol_data.special_listeners, 1)
+	     while (protocol_data.special_listeners.call_datas (i).datas ^= call_data);
+	end;
+	if i > hbound (protocol_data.special_listeners, 1)
+	then do;
+	     a_code = error_table_$action_not_performed;
+	     return;
+	end;
+	if protocol_data.special_listeners (i).proc_id ^= pds$processid
+	then a_code = error_table_$io_no_permission;
+	else do;
+	     protocol_data.special_listeners (i).call_datas.datas = "";
+	     protocol_data.special_listeners (i).call_datas.partial = "0"b;
+	     protocol_data.special_listeners (i).proc_id = ""b;
+	     protocol_data.special_listeners (i).event_id = 0;
+	end;
+	return;
+
+%page;
+ncon_req:						/* Request a network connection - N_CON_REQ */
+     entry (a_user_index, twx, a_event, a_from_na, a_to_na, a_call_data, a_code);
+
+	user_index = a_user_index;
+	event = a_event;
+	from_na = a_from_na;
+	to_na = a_to_na;
+	call_data = a_call_data;
+
+	ttybp = addr (tty_buf$);
+	lctp = tty_buf.lct_ptr;
+	infop = addr (dn355_data$);
+	protocol_data_ptr = datanet_info.protocol_datap;
+	call check_orphan_connections;		/* clean up abandoned connections */
+	twx = 0;
+	scx = get_channel (from_na);			/* find an available channel */
+	if scx = 0
+	then do;
+	     a_code = error_table_$resource_unavailable;
+	     return;
+	end;
+	channel_ptr = addr (protocol_data.channels (scx));
+	devx = channel.devx;
+	locked = "0"b;
+	on cleanup call cleaner;
+	call tty_lock$lock_channel (devx, code);
+	if code ^= 0
+	then goto unlock;
+	locked = "1"b;
+
+	channel.user_proc_id, channel.listener_proc_id = pds$processid;
+	channel.user_event, channel.listener_event = event;
+	channel.user_ref = user_index;
+	channel.flags.in_use = "1"b;
+	channel.his_network_address = to_na;
+	channel.space_left_in_packet = channel.max_packet_size;
+
+	CON_REQ_info.mbz = 0;
+	CON_REQ_info.to_address = to_na;
+	CON_REQ_info.facilities = STANDARD_SERVICE;
+	CON_REQ_info.data = call_data;
+	call channel_manager$control (devx, "dial_out", addr (CON_REQ_info), code);
+	if code = 0
+	then channel.state = DIALING;
+	else call reset_channel;
+	twx = devx;
+	goto unlock;				/* unlock and return */
+
+
+
+ncon_resp:					/* reponse to request for an network connection - N_CON_RESP */
+     entry (a_user_index, twx, a_event, a_code);
+	locked = "0"b;
+	on cleanup call cleaner;
+	call setup;
+	if channel.state ^= DIALING
+	then do;
+	     code = error_table_$invalid_state;
+	     goto unlock;
+	end;
+	channel.user_ref = a_user_index;
+	channel.user_event = a_event;
+	channel.user_proc_id = pds$processid;
+	call channel_manager$control (devx, "connect_response", null (), code);
+	if code = 0
+	then do;
+	     channel.state = DIALED;
+	     channel.rflag = "1"b;
+	end;
+	goto unlock;				/* unlock and return */
+
+write:
+     entry (twx, a_pinfop, a_first_entry, a_offset, a_bytes_processed, a_code);
+	pinfop = a_pinfop;
+	scidx = a_first_entry;
+	sci = a_offset;
+	a_bytes_processed = 0;
+	locked = "0"b;
+	on cleanup call cleaner;
+	call setup;
+	if channel.state ^= DIALED
+	then goto inv_state;
+	if pinfop ^= null ()
+	then if scidx < 0 | scidx > transmit_info.n_entries | sci < 0 | sci > transmit_info (scidx).size - 1
+	     then goto bad_args;
+	     else ;
+	else goto bad_args;
+	scl = 0;
+	do i = scidx to transmit_info.n_entries;
+	     scl = scl + transmit_info (i).size;
+	end;
+	scl = scl - sci;
+	if scl <= 0
+	then goto unlock;
+	write_entry = "1"b;
+	break = "1"b;
+	goto send_common;
+
+ndt_req:						/* request to send network data - N_DATA_REQ */
+     entry (twx, a_scp, a_offset, a_bytes_processed, a_code);
+
+	scp = a_scp;
+	sci = a_offset;
+	scl = 0;
+	a_bytes_processed = 0;
+	locked = "0"b;
+	on cleanup call cleaner;
+	call setup;
+	if channel.state ^= DIALED
+	then do;
+inv_state:
+	     code = error_table_$invalid_state;
+	     goto unlock;
+	end;
+
+	if scp = null ()
+	then do;
+bad_args:
+	     code = error_table_$bad_arg;
+	     goto unlock;
+	end;
+	if sci < 0 | sci >= scp -> buffer.tally
+	then goto bad_args;
+	blockp = scp;
+	call check_length (break, scl);		/* calculate the length of the user chain */
+	scl = scl - sci;
+	if scl = 0
+	then goto unlock;
+	cscp = scp;
+	write_entry = "0"b;
+send_common:
+	bytes_processed = 0;
+	if scl > channel.max_nsdu_size
+	then do;
+	     code = error_table_$buffer_big;
+	     goto unlock;
+	end;
+	cur_space = 0;				/* calculate the space which you are able to claim */
+	cur_chain_len = 0;
+	if channel.write_first ^= 0
+	then do;
+	     blockp = ptr (ttybp, channel.write_first);
+	     end_chain = "0"b;
+	     do while (^end_chain);
+		cur_space = cur_space + SIZE16 * (buffer.size_code + 1);
+		cur_chain_len = cur_chain_len + 1;
+		if buffer.next = 0
+		then end_chain = "1"b;
+		else blockp = ptr (ttybp, buffer.next);
+	     end;
+	end;
+	max_space =
+	     min (divide (tty_buf.bleft, output_bpart, 17, 0) - cur_space,
+	     (max_chain_len - cur_chain_len) * (channel.max_buf_size - 1));
+
+	max_chars_in_buf = SIZE4 * (channel.max_buf_size - 1) - channel.buffer_pad;
+
+	if max_space <= 0				/* if unfortunately, you can do nothing else... */
+	then do;
+	     if channel.send_output
+	     then call tty_space_man$needs_space (devx);
+	     else channel.flags.wflag = "1"b;
+	     goto unlock;
+	end;
+	max_chars = min (SIZE4 * max_space, LONGEST_POSSIBLE_STRING);
+	cur_chain_len = max_chain_len - cur_chain_len;	/* prepare a breakdown of the buffers */
+	length_to_copy = min (max_chars, scl);
+	if length_to_copy < scl
+	then break = "0"b;
+
+	if channel.write_last ^= 0			/* is there a chain in stock ? */
+	then do;
+	     lastp, blockp = ptr (ttybp, channel.write_last);
+	     if buffer.tally < max_chars_in_buf & ^buffer.flags.break
+		& channel.space_left_in_packet ^= channel.max_packet_size
+						/* if yes can you use the last buffer ? */
+	     then do;
+		buf_size, orig_buf_size = SIZE16 * (buffer.size_code + 1);
+		lchar = buffer.tally;
+		stop = "0"b;
+		do while (^stop);			/* should you enlarge this buffer ? */
+		     chars_in_buf = SIZE4 * (buf_size - 1) - channel.buffer_pad;
+		     if lchar + length_to_copy <= chars_in_buf | chars_in_buf = max_chars_in_buf
+			| lchar + channel.space_left_in_packet <= chars_in_buf
+		     then stop = "1"b;
+		     else buf_size = buf_size + SIZE16;
+		end;
+
+		if buf_size ^= orig_buf_size		/* find a bigger buffer */
+		then do;
+		     call tty_space_man$get_buffer (devx, buf_size, OUTPUT, new_bufp);
+		     if new_bufp ^= null ()
+		     then do;
+			call copy_chars ((lastp), 0, (lastp -> buffer.tally), new_bufp, 0);
+						/* copy the old buffer into the new one */
+			new_buf = bin (rel (new_bufp), 18);
+			new_bufp -> buffer.tally = lastp -> buffer.tally;
+			channel.write_last = new_buf; /* thread new buffer onto end of chain in place of old one */
+
+			prevp = ptr (ttybp, channel.write_first);
+						/* start at head */
+			if prevp = lastp		/* is it tail also? */
+			then channel.write_first = channel.write_last;
+						/* that's simple */
+			else do;			/* else we'll scan the chain */
+			     do prevp = prevp repeat ptr (ttybp, prevp -> buffer.next)
+				while (prevp -> buffer.next ^= bin (rel (lastp), 18) & prevp -> buffer.next ^= 0);
+			     end;
+			     prevp -> buffer.next = channel.write_last;
+						/* found the next-to-last one */
+			end;
+
+			call tty_space_man$free_buffer (devx, OUTPUT, lastp);
+			lastp = new_bufp;
+
+		     end;
+		     else chars_in_buf = SIZE4 * (orig_buf_size - 1) - channel.buffer_pad;
+		end;
+		n = min (length_to_copy, chars_in_buf - lchar, channel.space_left_in_packet);
+		if write_entry
+		then call copy_from_user_to_us (scidx, sci, n, lastp, (lastp -> buffer.tally));
+		else call copy_chars (cscp, sci, n, lastp, (lastp -> buffer.tally));
+		bytes_processed = bytes_processed + n;
+		channel.space_left_in_packet = channel.space_left_in_packet - n;
+		if channel.space_left_in_packet = 0
+		then channel.space_left_in_packet = channel.max_packet_size;
+		length_to_copy = length_to_copy - n;
+		lastp -> buffer.tally = lastp -> buffer.tally + n;
+		string (lastp -> buffer.flags) = "0"b;
+		lastp -> buffer.next = 0;
+	     end;
+
+	end;
+
+	do length_to_copy = length_to_copy repeat (length_to_copy - n) while (length_to_copy > 0);
+	     m = min (length_to_copy, channel.space_left_in_packet);
+	     if m >= max_chars_in_buf
+	     then do;
+		n = max_chars_in_buf;
+		buf_size = channel.max_buf_size;
+	     end;
+	     else do;				/* find a buffer of appropriate size */
+		stop = "0"b;
+		buf_size = SIZE16;
+		do while (^stop);
+		     chars_in_buf = SIZE4 * (buf_size - 1) - channel.buffer_pad;
+		     if m <= chars_in_buf
+		     then stop = "1"b;
+		     else buf_size = buf_size + SIZE16;
+		end;
+		n = m;
+	     end;
+	     if cur_chain_len = 0
+	     then new_bufp = null ();
+	     else call tty_space_man$get_buffer (devx, buf_size, OUTPUT, new_bufp);
+	     if new_bufp = null ()
+	     then goto try_to_send;
+	     cur_chain_len = cur_chain_len - 1;		/* update the breakdown of the buffers */
+	     if write_entry
+	     then call copy_from_user_to_us (scidx, sci, n, new_bufp, 0);
+	     else call copy_chars (cscp, sci, n, new_bufp, 0);
+	     bytes_processed = bytes_processed + n;
+	     new_bufp -> buffer.tally = n;
+	     new_buf = bin (rel (new_bufp), 18);
+	     channel.space_left_in_packet = channel.space_left_in_packet - n;
+	     if channel.space_left_in_packet = 0
+	     then channel.space_left_in_packet = channel.max_packet_size;
+	     if channel.write_last = 0
+	     then					/* chain the new buffer */
+		channel.write_first = new_buf;
+	     else lastp -> buffer.next = new_buf;
+	     channel.write_last = new_buf;
+	     lastp = new_bufp;
+	     new_bufp -> buffer.next = 0;
+	     string (new_bufp -> buffer.flags) = "0"b;
+	end;
+
+	if break & length_to_copy = 0
+	then do;
+	     lastp -> buffer.flags.break = "1"b;
+	     channel.space_left_in_packet = channel.max_packet_size;
+	     if write_entry
+	     then scidx = 0;			/* in case the caller structure should terminate with some entries with  size = 0 */
+	end;
+
+try_to_send:
+	if channel.send_output
+	then call send_next_nsdu;
+	if write_entry & scidx ^= 0 | ^write_entry & cscp ^= null ()
+	then do;					/* if all of the user chain has not been sent */
+						/* (in fact one can stop with a break (?) ) */
+	     channel.flags.wflag = "1"b;
+	     if channel.flags.send_output
+	     then call tty_space_man$needs_space (devx);	/* if send_next_nsdu has not called channel_manager$write then you ought to reclaim the space! */
+	end;
+	a_offset = sci;
+	a_bytes_processed = bytes_processed;
+	if write_entry
+	then a_first_entry = scidx;
+	else a_scp = cscp;
+	goto unlock;
+
+
+ndis_req:						/* request for a network disconnection - N_DIS_REQ */
+     entry (twx, a_pinfop, a_code);
+	locked = "0"b;
+	on cleanup call cleaner;
+	call setup;
+	if channel.state > HUNGUP
+	then do;
+	     call channel_manager$control (devx, "hangup", a_pinfop, code);
+	     channel.state = HUNGUP;
+	     call reset_channel;
+	end;
+	else code = error_table_$invalid_state;
+	goto unlock;				/* unlock and return */
+
+read:
+     entry (twx, a_pinfop, rest, a_bytes_processed, a_code);
+	read_entry = "1"b;
+	int_type = NDTIND;
+	goto g_i;
+
+get_info:						/* this entrypoint is called by the user before each wakeup */
+     entry (twx, a_int_type, a_pinfop, rest, a_bytes_processed, a_code);
+
+	int_type = a_int_type;
+	read_entry = "0"b;
+g_i:
+	pinfop = a_pinfop;
+	rest, bytes_processed, a_bytes_processed = 0;
+	locked = "0"b;
+	on cleanup call cleaner;
+	call setup;
+
+	if int_type = NCONIND			/* request for info in an N_CON_IND */
+	then do;
+	     if channel.state >= DIALING
+	     then do;
+		CON_IND_info.our_address = channel.our_network_address;
+		CON_IND_info.his_address = channel.his_network_address;
+		CON_IND_info.data = channel.call_data;
+		CON_IND_info.facilities = channel.facilities;
+		CON_IND_info.dial_info = ""b;
+		rest = channel.max_nsdu_size;
+		code = 0;
+	     end;
+	     else code = error_table_$invalid_state;
+	end;
+
+	else if int_type = NCONCONF
+	then rest = channel.max_nsdu_size;
+
+	else if int_type = NDTIND			/* recuperation of data. */
+	then do;
+	     if channel.state = DIALED
+	     then do;
+		if ^read_entry
+		then do;
+		     tcp = pinfop;
+		     if tcp = null ()
+		     then goto bad_args;
+		     n, i = 0;			/* calculate available space in the user chain */
+		     do blockp = tcp repeat (ptr (blockp, buffer.next)) while (rel (blockp) ^= "0"b);
+			i = i + 1;		/* safeguard if the user chain is munged ! */
+			if i > 512
+			then goto bad_args;
+			n = n + max_buffer_tally (buffer.size_code);
+		     end;
+		end;
+		else do;
+		     if pinfop = null ()
+		     then goto bad_args;
+		     n = 0;
+		     do i = 1 to transmit_info.n_entries;
+			n = n + transmit_info (i).size;
+			if transmit_info (i).data_ptr = null ()
+			then goto bad_args;
+		     end;
+		     tidx = 1;
+		end;
+		headp, cscp, blockp = ptr (ttybp, channel.fblock);
+		if channel.fblock ^= 0		/* you can't give what you don't have ! */
+		then do;
+		     call check_length (break, length_to_copy);
+		     if ^break
+		     then goto check_rest;		/* if there is not a complete NSDU... */
+		     if length_to_copy > n		/* if you can't go at all (pass it all ?)... */
+		     then do;
+			length_to_copy = n;
+			break = "0"b;
+		     end;
+		     sci = 0;
+		     do length_to_copy = length_to_copy repeat (length_to_copy - n) while (length_to_copy > 0);
+			if read_entry
+			then do;
+			     n = min (length_to_copy, transmit_info (tidx).size);
+			     call copy_from_us_to_user (cscp, sci, n, tidx, 0);
+			     tidx = tidx + 1;
+			end;
+			else do;
+			     n = min (length_to_copy, max_buffer_tally (tcp -> buffer.size_code));
+			     call copy_chars (cscp, sci, n, tcp, 0);
+			     string (tcp -> buffer.flags) = "0"b;
+			     tcp -> buffer.tally = n;
+			     prevp = tcp;		/* remind us of the last buffer used. */
+			     tcp = ptr (tcp, tcp -> buffer.next);
+			end;
+			bytes_processed = bytes_processed + n;
+		     end;
+		     if ^read_entry
+		     then prevp -> buffer.flags.break = break;
+		     if cscp = null			/* we've exhausted our chain */
+		     then do;
+			call tty_space_man$free_chain (devx, INPUT, headp);
+						/* if yes, then free it. */
+			channel.fblock, channel.lblock = 0;
+		     end;
+		     else do;			/* if no, detach the used part */
+			n = cscp -> buffer.tally - sci;
+						/* align the rest of the buffer where it stopped */
+			prevp = cscp;
+			call copy_chars (prevp, sci, n, prevp, 0);
+			cscp -> buffer.tally = n;	/* update the tally */
+			i = bin (rel (cscp), 18);
+			if channel.fblock ^= i	/* if we have buffers to detach */
+			then do;			/* find the last buffer seen */
+			     do blockp = headp repeat (ptr (blockp, buffer.next)) while (buffer.next ^= i);
+			     end;
+			     buffer.next = 0;	/* cut here */
+			     channel.fblock = i;	/* render to Caesar... */
+			     call tty_space_man$free_chain (devx, INPUT, headp);
+			end;
+		     end;
+		end;
+check_rest:
+		if channel.fblock ^= 0
+		then do;
+		     blockp = ptr (ttybp, channel.fblock);
+		     call check_length (break, n);	/* what is left to us ? */
+		     rest = 0;
+		     channel.flags.rflag = "0"b;
+		     if break
+		     then rest = n;
+		     else channel.flags.rflag = "1"b;
+		end;
+		else channel.flags.rflag = "1"b;	/* warn the user that ther's something new */
+		a_bytes_processed = bytes_processed;
+	     end;
+	     else code = error_table_$invalid_state;
+	end;
+
+	else code = error_table_$bad_arg;
+	goto unlock;
+%page;
+interrupt:
+     entry (a_data_base_ptr, a_type, a_info);
+
+/* "interrupt_side" of the protocol_mpx pseudo-multiplexer interfacing the MCS environment with the user                                */
+
+	channel_ptr = a_data_base_ptr;
+	int_type = a_type;
+	interrupt_info = a_info;
+	locked = "0"b;
+	devx = channel.devx;
+	ttybp = addr (tty_buf$);
+	infop = addr (dn355_data$);
+	protocol_data_ptr = datanet_info.protocol_datap;
+
+	if int_type = DIALUP
+	then do;					/* network connections - N_CON_IND */
+	     unspec (DIALUP_info) = interrupt_info;
+	     if channel.state ^= HUNGUP
+	     then goto bad_int;
+	     blockp = ptr (ttybp, DIALUP_info.info_relp); /* recover the info transmitted by x25_mpx... */
+	     NCON_IND_info = N_I_i;
+	     unspec (dialup_info) = unspec (NCON_IND_info.dial_info);
+	     channel.buffer_pad = dialup_info.buffer_pad;
+	     channel.max_buf_size = dialup_info.max_buf_size;
+	     channel.space_left_in_packet = channel.max_packet_size;
+	     channel.his_network_address = NCON_IND_info.his_address;
+	     channel.call_data = NCON_IND_info.data;
+	     channel.facilities = NCON_IND_info.facilities;
+	     call compute_max_nsdu_size;
+	     call tty_space_man$free_buffer (devx, INPUT, blockp);
+						/* return the buffer that had contained the info */
+	     process_id = ""b;
+	     event = 0;
+	     if length (channel.call_data) = 0
+	     then protocol_id = layer3_ISO;
+	     else do protocol_id = lbound (protocol_data.listeners, 1) to hbound (protocol_data.listeners, 1)
+		     while (channel.call_data ^= layer3_call_datas (protocol_id));
+	     end;
+	     ndis_ind_reason.cause = 0;
+	     ndis_ind_reason.diag = DIAG_71;
+	     if protocol_id > hbound (protocol_data.listeners, 1)
+	     then do;				/*  not a standard protocol */
+		n = hbound (protocol_data.special_listeners, 1);
+		stop = "0"b;
+		do i = 1 to n while (^stop);
+		     m = length (protocol_data.special_listeners (i).datas);
+		     if protocol_data.special_listeners (i).call_datas.partial & length (channel.call_data) >= m
+		     then if substr (channel.call_data, 1, m) = protocol_data.special_listeners (i).call_datas.datas
+			then stop = "1"b;
+		     if ^protocol_data.special_listeners (i).call_datas.partial
+			& channel.call_data = protocol_data.special_listeners (i).call_datas.datas
+		     then stop = "1"b;
+		end;
+		if stop
+		then do;
+		     i = i - 1;
+		     process_id = protocol_data.special_listeners (i).proc_id;
+		     event = protocol_data.special_listeners (i).event_id;
+		end;
+	     end;
+	     else do;
+		process_id = protocol_data.listeners (protocol_id).proc_id;
+		event = protocol_data.listeners (protocol_id).event_id;
+	     end;
+	     if process_id ^= ""b
+	     then do;
+		protocol_msg.ev_devx = devx;
+		protocol_msg.ev_type = NCONIND;
+		protocol_msg.ev_user_index = 0;
+		protocol_msg.infos = ""b;
+		call pxss$ring_0_wakeup (process_id, event, protocol_event_message, pxss_status);
+		if bad_pxss_status ()
+		then call channel_manager$control (devx, "hangup", addr (ndis_ind_reason), ignore_code);
+		else do;
+		     channel.state = DIALING;
+		     channel.flags.in_use = "1"b;
+		     channel.listener_proc_id = process_id;
+		     channel.listener_event = event;
+		end;
+	     end;
+	     else call channel_manager$control (devx, "hangup", addr (ndis_ind_reason), ignore_code);
+	end;
+	else if int_type = USER_INTERRUPT
+	then do;					/* confirm network connection - N_CON_CONF */
+	     if channel.state = DIALING
+	     then do;
+		unspec (dialup_info) = unspec (interrupt_info);
+		channel.buffer_pad = dialup_info.buffer_pad;
+		channel.max_buf_size = dialup_info.max_buf_size;
+		call compute_max_nsdu_size;
+		protocol_msg.ev_devx = devx;
+		protocol_msg.ev_type = NCONCONF;
+		protocol_msg.ev_user_index = channel.user_ref;
+		channel.state = DIALED;
+		channel.rflag = "1"b;
+		call pxss$ring_0_wakeup (channel.user_proc_id, channel.user_event, protocol_event_message,
+		     pxss_status);
+		if pxss_status = WAKEUP_CODE_0 | pxss_status = WAKEUP_CODE_5 | pxss_status = WAKEUP_CODE_100
+		then call channel_manager$control (devx, "hangup", null (), ignore_code);
+	     end;
+	     else call syserr (Log_message, "protocol_mpx: bad CON_CONF received in state ^d on devx ^d", channel.state,
+		     devx);
+	end;
+
+	else if int_type = HANGUP | int_type = CRASH | int_type = DIAL_STATUS
+						/* network disconnect - N_DIS_IND */
+	then do;
+	     if channel.state = HUNGUP
+	     then ;				/* if already HUNGUP it's an n_dis_conf */
+	     else do;
+		unspec (protocol_msg.infos) = substr (interrupt_info, 37, 18);
+		protocol_msg.ev_devx = devx;
+		protocol_msg.ev_type = NDISIND;
+		protocol_msg.ev_user_index = channel.user_ref;
+		channel.state = HUNGUP;
+		call pxss$ring_0_wakeup (channel.user_proc_id, channel.user_event, protocol_event_message,
+		     pxss_status);
+		if channel.listener_proc_id ^= ""b
+		then do;
+		     call pxss$ring_0_wakeup (channel.listener_proc_id, channel.listener_event,
+			protocol_event_message, pxss_status);
+		     if bad_pxss_status ()
+		     then ;			/* for noting in the log */
+		end;
+		call reset_channel;
+	     end;
+	     if channel.flags.started & ^channel.flags.timer_set
+						/* we're not able to recall x25_mpx directly */
+	     then do;
+		call mcs_timer$set (devx, 0, clock () + MILLISECONDS_2, ""b);
+						/* then we recall it later... */
+		channel.flags.timer_set = "1"b;
+	     end;
+	end;
+
+	else if int_type = SEND_OUTPUT & channel.state > HUNGUP
+						/* x25_mpx round robin */
+	then do;
+	     channel.flags.send_output = "1"b;
+	     if channel.write_first ^= 0		/* do we have anything left to send ? */
+	     then call send_next_nsdu;
+
+	     if channel.write_first = 0 |		/* if there's nothing left to send or if send_next_nsdu  */
+		channel.flags.send_output		/* nothing to send (no complete NSDU in stock) */
+	     then if channel.wflag			/* user is waiting to be told when output is done */
+		then do;
+		     protocol_msg.ev_devx = devx;
+		     protocol_msg.ev_type = NDTRDYIND;
+		     protocol_msg.ev_user_index = channel.user_ref;
+		     call pxss$ring_0_wakeup (channel.user_proc_id, channel.user_event, protocol_event_message,
+			pxss_status);
+		     if pxss_status = WAKEUP_CODE_0 | pxss_status = WAKEUP_CODE_5 | pxss_status = WAKEUP_CODE_100
+		     then call channel_manager$control (devx, "hangup", null (), ignore_code);
+		     channel.wflag = "0"b;
+		end;
+	end;
+
+	else if int_type = ACCEPT_INPUT		/* data indication - N_DATA_IND */
+	then do;
+	     unspec (rtx_info) = interrupt_info;
+	     inchain = bin (rtx_info.chain_head);
+	     if inchain = 0
+	     then return;
+
+	     last_offset = bin (rtx_info.chain_tail);	/* initialize end_of_chain pointer */
+	     if channel.fblock = 0
+	     then do;				/* no existing blocks */
+		channel.fblock = inchain;		/* set offset to first block */
+	     end;
+	     else do;
+		old_tailp = ptr (ttybp, channel.lblock);
+		next_offset = bin (rtx_info.chain_head);
+		if ^old_tailp -> buffer.flags.break
+		then do;
+
+		     old_last_tally = old_tailp -> buffer.tally;
+
+		     max_tally = max_buffer_tally (old_tailp -> buffer.size_code);
+						/* number of characters this buffer will hold */
+		     filled = "0"b;
+		     do while ((next_offset ^= 0) & ^filled);
+						/* put as much as possible of input into last old buffer */
+			new_headp = ptr (ttybp, next_offset);
+			new_first_tally = new_headp -> buffer.tally;
+
+			if (old_last_tally + new_first_tally <= max_tally)
+			then do;
+			     source_ptr = addr (new_headp -> buffer.chars (0));
+			     target_ptr = addr (old_tailp -> buffer.chars (old_last_tally));
+			     target_ptr -> new_chars = source_ptr -> new_chars;
+			     old_last_tally = old_last_tally + new_first_tally;
+			     old_tailp -> buffer.flags.break = new_headp -> buffer.flags.break;
+			     if new_headp -> buffer.flags.break
+			     then filled = "1"b;
+			     next_offset = new_headp -> buffer.next;
+						/* move on to next buffer */
+			     call tty_space_man$free_buffer (devx, INPUT, new_headp);
+						/* through with this one */
+			end;
+
+			else filled = "1"b;		/* no more room in last old buffer */
+		     end;
+
+		     old_tailp -> buffer.tally = old_last_tally;
+		end;
+		old_tailp -> buffer.next = next_offset;
+		if next_offset = 0
+		then last_offset = 0;		/* took care of entire new chain */
+	     end;
+
+	     if last_offset ^= 0
+	     then channel.lblock = last_offset;
+	     if rtx_info.break_char & channel.flags.rflag
+	     then do;
+		protocol_msg.ev_devx = devx;
+		protocol_msg.ev_type = NDTIND;
+		protocol_msg.ev_user_index = channel.user_ref;
+		call pxss$ring_0_wakeup (channel.user_proc_id, channel.user_event, protocol_event_message,
+		     pxss_status);			/* wakeup the user */
+		if pxss_status = WAKEUP_CODE_0 | pxss_status = WAKEUP_CODE_5 | pxss_status = WAKEUP_CODE_100
+		then call channel_manager$control (devx, "hangup", null (), ignore_code);
+		channel.rflag = "0"b;		/* we've taken care of this now */
+	     end;
+	end;
+
+	else if int_type = LINE_STATUS		/* N_RESET_IND */
+	then do;
+	     if channel.user_proc_id ^= "0"b
+	     then do;
+		protocol_msg.ev_devx = devx;
+		protocol_msg.ev_type = NRESETIND;
+		protocol_msg.ev_user_index = channel.user_ref;
+		call pxss$ring_0_wakeup (channel.user_proc_id, channel.user_event, protocol_event_message,
+		     pxss_status);
+		if pxss_status = WAKEUP_CODE_0 | pxss_status = WAKEUP_CODE_5 | pxss_status = WAKEUP_CODE_100
+		then call channel_manager$control (devx, "hangup", null (), ignore_code);
+	     end;
+
+	     return;
+
+	end;
+
+	else if int_type = TIMER
+	then do;
+	     channel.flags.timer_set = "0"b;
+	     if channel.flags.started & channel.state = HUNGUP
+	     then call channel_manager$control (devx, "listen", null (), ignore_code);
+	end;
+
+	else if int_type = SPACE_AVAILABLE		/* we were waiting for space */
+	then do;
+	     if channel.write_first ^= 0		/* we've got more output */
+	     then call send_next_nsdu;
+	     if channel.write_first = 0 | channel.send_output
+	     then do;
+		protocol_msg.ev_devx = devx;
+		protocol_msg.ev_type = NDTRDYIND;
+		protocol_msg.ev_user_index = channel.user_ref;
+		call pxss$unique_ring_0_wakeup (channel.user_proc_id, channel.user_event, protocol_event_message,
+		     pxss_status);
+		if pxss_status = WAKEUP_CODE_0 | pxss_status = WAKEUP_CODE_5 | pxss_status = WAKEUP_CODE_100
+		then call channel_manager$control (devx, "hangup", null (), ignore_code);
+	     end;
+	end;
+
+	else
+bad_int:
+	     call syserr (Log_message, "protocol_mpx: unexpected interrupt type (^d) for devx ^d in state ^d", int_type,
+		devx, channel.state);
+
+	return;
+%page;
+setup:
+     proc;
+
+	devx = twx;				/* pull devx from user */
+	ttybp = addr (tty_buf$);
+	lctp = tty_buf.lct_ptr;
+	lcntp = lct.lcnt_ptr;
+	infop = addr (dn355_data$);
+	protocol_data_ptr = datanet_info.protocol_datap;
+	if devx < 1 | devx > lct.max_no_lctes
+	then do;
+	     code = error_table_$invalid_device;
+	     goto unlock;				/* return error */
+	end;
+
+	call tty_lock$lock_channel (devx, code);	/* lock the channel */
+	if code ^= 0
+	then goto unlock;
+	locked = "1"b;
+
+	lctep = addr (lct.lcte_array (devx));
+	if lcte.channel_type ^= PROTOCOL_MPX		/* not our cup of tea */
+	then goto illdet;
+
+	channel_ptr = lcte.data_base_ptr;		/* pointer to perm info */
+	if channel.user_proc_id ^= ""b & channel.listener_proc_id ^= pds$processid
+	     & channel.user_proc_id ^= pds$processid
+	then goto illdet;
+	return;
+     end setup;
+
+illdet:						/* illegal messing with channel */
+	code = error_table_$io_no_permission;
+unlock:
+	a_code = code;
+	call cleaner;
+	return;
+%page;
+get_channel:
+     proc (addr) returns (fixed bin);
+
+dcl  addr		        char (15) varying,
+     i		        fixed bin;
+
+	do i = protocol_data.max_channels to 1 by -1
+	     while (protocol_data.channels (i).flags.in_use | ^protocol_data.channels (i).flags.started
+	     | (protocol_data.channels (i).our_network_address ^= addr & addr ^= ""));
+	end;
+	return (i);
+     end get_channel;
+
+
+check_length:
+     proc (break_flag, length);
+
+/* resend the length of the chain pointed to by blockp just at next
+   break or just at the end of the chain if there is no break */
+
+dcl  break_flag	        bit (1);
+dcl  length	        fixed bin;
+dcl  stop		        bit (1);
+
+	length = 0;
+	stop, break_flag = "0"b;
+	do blockp = blockp repeat (ptr (blockp, buffer.next)) while (^stop);
+	     if buffer.break
+	     then break_flag = "1"b;
+	     if buffer.next = 0 | break_flag
+	     then stop = "1"b;
+	     length = length + buffer.tally;
+	end;
+     end check_length;
+
+
+copy_chars:
+     proc (source_ptr, source_offset, n_chars_to_copy, target_ptr, a_target_offset);
+
+/*
+   Procedure  copying  n_chars_to_copy characters from the chain pointed to
+   by source_ptr to the offset  source_offset in the buffer pointed to by
+   target_ptr to the offset  target_offset. No overflow test is made. On
+   return, source_ptr and source_offset indicate the next character in the
+   chain or  source_ptr  =  null () if  the chain is exhausted.
+   target_offset is unchanged.
+*/
+
+dcl  (source_ptr, target_ptr)
+		        ptr;
+dcl  (a_target_offset, n_chars_to_copy)
+		        fixed bin;
+dcl  source_offset	        fixed bin (21);
+dcl  (n, nctc, target_offset)
+		        fixed bin;
+dcl  n_chars_in_source_buffer
+		        fixed bin;
+dcl  source_chars	        char (n) based (addr (source_ptr -> buffer.chars (source_offset)));
+dcl  target_chars	        char (n) based (addr (target_ptr -> buffer.chars (target_offset)));
+
+	target_offset = a_target_offset;
+
+	do nctc = n_chars_to_copy repeat (nctc - n) while (nctc > 0);
+	     n_chars_in_source_buffer = source_ptr -> buffer.tally - source_offset;
+	     if n_chars_in_source_buffer > nctc
+	     then do;
+		n = nctc;
+		target_chars = source_chars;
+		source_offset = source_offset + n;
+	     end;
+	     else if n_chars_in_source_buffer < nctc
+	     then do;
+		n = n_chars_in_source_buffer;
+		target_chars = source_chars;
+		if source_ptr -> buffer.next = 0
+		then source_ptr = null;
+		else source_ptr = ptr (source_ptr, source_ptr -> buffer.next);
+		source_offset = 0;
+	     end;
+	     else do;
+		n = nctc;
+		target_chars = source_chars;
+		if source_ptr -> buffer.next = 0
+		then source_ptr = null;
+		else source_ptr = ptr (source_ptr, source_ptr -> buffer.next);
+		source_offset = 0;
+	     end;
+	     target_offset = target_offset + n;
+	end;
+     end copy_chars;
+
+
+
+reset_channel:
+     proc;
+
+
+	if channel.fblock ^= 0			/* free read chain */
+	then call tty_space_man$free_chain (devx, INPUT, ptr (ttybp, channel.fblock));
+
+	if channel.write_first ^= 0			/* free send chain */
+	then call tty_space_man$free_chain (devx, OUTPUT, ptr (ttybp, channel.write_first));
+
+	channel.flags.in_use, channel.flags.send_output, channel.flags.wflag, channel.flags.rflag = "0"b;
+
+	channel.fblock, channel.lblock = 0;
+	channel.write_first, channel.write_last = 0;
+	channel.space_left_in_packet = channel.max_packet_size;
+	channel.listener_event = 0;
+	channel.listener_proc_id = ""b;
+	channel.user_event = 0;
+	channel.user_proc_id = ""b;
+	channel.user_ref = 0;
+	channel.his_network_address = "";
+	channel.call_data = "";
+	channel.facilities = "";
+	channel.max_buf_size = 0;
+	channel.buffer_pad = 0;
+	channel.max_nsdu_size = 0;
+
+     end reset_channel;
+
+%page;
+
+send_next_nsdu:
+     proc;
+
+dcl  headp	        ptr;
+dcl  next_head	        fixed bin;
+
+	if channel.flags.send_output
+	then do;
+	     headp, blockp = ptr (ttybp, channel.write_first);
+
+	     do while (buffer.next ^= 0 & ^buffer.flags.break);
+						/* find the end of the chain or limit of NSDU */
+		blockp = ptr (ttybp, buffer.next);
+	     end;
+	     if ^buffer.flags.break
+	     then return;				/* if no complete NSDU then return  */
+	     next_head = buffer.next;
+	     buffer.next = 0;			/* break chain here */
+	     call channel_manager$write (devx, headp, code);
+	     if code = noalloc_code
+	     then do;
+		call tty_space_man$needs_space (devx);
+		code = 0;				/* don't treat like other error codes */
+	     end;
+
+
+	     if headp ^= null			/* didn't take it all */
+	     then do;
+		if code = 0
+		then do;
+		     blockp = headp;
+		     do while (buffer.next ^= 0);
+			blockp = ptr (ttybp, buffer.next);
+		     end;
+
+		     buffer.next = next_head;		/* found the end of the returned chain, reconnect it */
+		     if next_head = 0		/* if we weren't hanging on to one */
+		     then channel.write_last = bin (rel (blockp));
+						/* this is the end */
+		     next_head = bin (rel (headp));	/* this is now head of the chain */
+		end;
+
+		else do;
+		     call tty_space_man$free_chain (devx, OUTPUT, headp);
+						/* all output to be discarded */
+		     protocol_msg.ev_devx = devx;
+		     protocol_msg.ev_type = NRESETIND;	/* treat this like an n_reset_ind */
+		     call pxss$unique_ring_0_wakeup (channel.user_proc_id, channel.user_event, protocol_event_message,
+			(0));
+		end;
+	     end;
+
+	     channel.write_first = next_head;
+	     if channel.write_first = 0
+	     then channel.write_last = 0;		/* this must be true */
+	     else if code ^= 0			/* in this case we'll throw away all output anyway */
+	     then do;
+		call tty_space_man$free_chain (devx, OUTPUT, ptr (ttybp, channel.write_first));
+		channel.write_first, channel.write_last = 0;
+	     end;
+	     channel.flags.send_output = "0"b;
+	end;
+
+	return;
+     end send_next_nsdu;
+
+set_static:
+     proc;
+
+/* entry called once per bootload to copy error codes into internal static */
+
+	noalloc_code = error_table_$noalloc;
+	no_write_code = error_table_$invalid_write;
+	call wire_proc$wire_me;
+     end set_static;
+
+
+cleaner:
+     proc;
+
+	if locked
+	then do;
+	     call tty_lock$unlock_channel (devx);
+	     locked = "0"b;
+	end;
+
+     end cleaner;
+
+
+bad_pxss_status:
+     proc returns (bit (1));
+
+	if pxss_status = WAKEUP_CODE_0 | pxss_status = WAKEUP_CODE_5 | pxss_status = WAKEUP_CODE_100
+	then do;
+	     call syserr (Log_message,
+		"protocol_mpx: Error ^d waking up listening process for channel ^a, it has probably crashed!",
+		pxss_status, channel.name);
+	     return ("1"b);
+	end;
+	else return ("0"b);
+     end bad_pxss_status;
+
+
+/**** procedure to examine the state of current connections:
+      if the user process of a connection has departed this
+      one receives hangup */
+
+check_orphan_connections:
+     proc;
+
+	do i = 1 to protocol_data.max_channels;
+	     channel_ptr = addr (protocol_data.channels (i));
+	     if channel.state > DIALING
+	     then do;
+		call tc_util$validate_processid (channel.user_proc_id, code);
+		if code ^= 0
+		then do;
+		     call syserr (Log_message, "protocol_mpx: orphan channel found, ^a. Hanging it up...",
+			channel.name);
+		     ndis_ind_reason.cause = 0;
+		     ndis_ind_reason.diag = DIAG_71;
+		     call tty_lock$lock_channel (channel.devx, code);
+		     if code = 0
+		     then do;
+			call channel_manager$control (channel.devx, "hangup", addr (ndis_ind_reason), code);
+			call tty_lock$unlock_channel (channel.devx);
+		     end;
+		end;
+	     end;
+	end;
+     end check_orphan_connections;
+
+
+copy_from_user_to_us:
+     proc (source_index, source_offset, n_chars_to_copy, target_ptr, a_target_offset);
+
+/*
+   Procedure copies n_chars_to_copy  characters from the chain
+   pointed to by source_index to the offset source_offset in the buffer (MCS
+   type) pointed to by target_ptr to the offset target_offset. No overflow test
+   is made. On return, source_index and source_offset indicate the next
+   character in the source chain or source_index = 0 if the chain is exhausted.
+   target_offset is unchanged.
+*/
+
+dcl  (target_ptr, source_chars_p)
+		        ptr;
+dcl  source_offset	        fixed bin (21);
+dcl  (source_index, a_target_offset, n_chars_to_copy)
+		        fixed bin;
+dcl  (n, nctc, target_offset)
+		        fixed bin;
+dcl  n_chars_in_source_buffer
+		        fixed bin (21);
+dcl  total_string	        char (transmit_info (source_index).size) based (transmit_info (source_index).data_ptr);
+dcl  source_chars	        char (n) based (source_chars_p);
+dcl  target_chars	        char (n) based (addr (target_ptr -> buffer.chars (target_offset)));
+
+	target_offset = a_target_offset;
+
+	do nctc = n_chars_to_copy repeat (nctc - n) while (nctc > 0);
+	     source_chars_p = addr (substr (total_string, source_offset + 1, 1));
+	     n_chars_in_source_buffer = transmit_info (source_index).size - source_offset;
+	     if n_chars_in_source_buffer > nctc
+	     then do;
+		n = nctc;
+		target_chars = source_chars;
+		source_offset = source_offset + n;
+	     end;
+	     else if n_chars_in_source_buffer < nctc
+	     then do;
+		n = n_chars_in_source_buffer;
+		target_chars = source_chars;
+		if source_index = transmit_info.n_entries
+		then source_index = 0;
+		else source_index = source_index + 1;
+		source_offset = 0;
+	     end;
+	     else do;
+		n = nctc;
+		target_chars = source_chars;
+		if source_index = transmit_info.n_entries
+		then source_index = 0;
+		else source_index = source_index + 1;
+		source_offset = 0;
+	     end;
+	     target_offset = target_offset + n;
+	end;
+     end copy_from_user_to_us;
+
+
+copy_from_us_to_user:
+     proc (source_ptr, source_offset, n_chars_to_copy, target_index, a_target_offset);
+
+/*
+   Procedure copies n_chars_to_copy  characters from the chain (MCS type)
+   pointed to by source_ptr to the offset  source_offset in the buffer pointed to
+   by target_index to the offset target_offset. No overflow test is made. On
+   return source_ptr and source_offset indicate the next character in the source
+   chain or source_ptr = null () if the chain is exhausted. target_offset is
+   unchanged.
+
+*/
+
+dcl  (source_ptr, user_chars_p)
+		        ptr;
+dcl  (source_offset, a_target_offset, target_offset)
+		        fixed bin (21);
+dcl  (target_index, n_chars_to_copy)
+		        fixed bin;
+dcl  (n, nctc)	        fixed bin;
+dcl  n_chars_in_source_buffer
+		        fixed bin;
+dcl  source_chars	        char (n) based (addr (source_ptr -> buffer.chars (source_offset)));
+dcl  total_string	        char (transmit_info (target_index).size) based (transmit_info (target_index).data_ptr);
+dcl  target_chars	        char (n) based (user_chars_p);
+
+	target_offset = a_target_offset;
+
+	do nctc = n_chars_to_copy repeat (nctc - n) while (nctc > 0);
+	     user_chars_p = addr (substr (total_string, target_offset + 1, 1));
+	     n_chars_in_source_buffer = source_ptr -> buffer.tally - source_offset;
+	     if n_chars_in_source_buffer > nctc
+	     then do;
+		n = nctc;
+		target_chars = source_chars;
+		source_offset = source_offset + n;
+	     end;
+	     else if n_chars_in_source_buffer < nctc
+	     then do;
+		n = n_chars_in_source_buffer;
+		target_chars = source_chars;
+		if source_ptr -> buffer.next = 0
+		then source_ptr = null ();
+		else source_ptr = ptr (source_ptr, source_ptr -> buffer.next);
+		source_offset = 0;
+	     end;
+	     else do;
+		n = nctc;
+		target_chars = source_chars;
+		if source_ptr -> buffer.next = 0
+		then source_ptr = null ();
+		else source_ptr = ptr (source_ptr, source_ptr -> buffer.next);
+		source_offset = 0;
+	     end;
+	     target_offset = target_offset + n;
+	end;
+     end copy_from_us_to_user;
+
+compute_max_nsdu_size:
+     proc;
+
+dcl  i		        fixed bin;
+
+	max_chars_in_buf = SIZE4 * (channel.max_buf_size - 1) - channel.buffer_pad;
+	i = ceil (channel.max_packet_size / max_chars_in_buf);
+						/* number of buffers/x25 packet */
+	channel.max_nsdu_size = min (LONGEST_POSSIBLE_STRING, (max_chain_len / i) * channel.max_packet_size);
+     end compute_max_nsdu_size;
+
+%page;
+%include protocol_data;
+%page;
+%include protocol_infos;
+%page;
+%include protocols;
+%page;
+%include multiplexer_types;
+%page;
+%include tty_buf;
+%page;
+%include tty_buffer_block;
+%page;
+%include tty_space_man_dcls;
+%page;
+%include lct;
+%page;
+%include channel_manager_dcls;
+%page;
+%include mcs_interrupt_info;
+%page;
+%include line_types;
+%page;
+%include syserr_codes;
+%page;
+%include response_transitions;
+%page;
+%include mcs_timer_dcls;
+%page;
+%include dn355_data;
+
+     end protocol_mpx;

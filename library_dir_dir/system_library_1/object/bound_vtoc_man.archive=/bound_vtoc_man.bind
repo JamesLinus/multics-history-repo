@@ -1,0 +1,39 @@
+/*  Bindfile for bound_vtoc_man ... . . ... Created 04/29/75 by Bernard Greenberg, for NSS */
+/* Modified  April 1981 by J. Bongiovanni for vtoc_man$crawlout */
+/* Modified  March 1982 by J. Bongiovanni for vtoce_stock_man */
+/* Modified  July 1982 by J. Bongiovanni for vtoc_search, free_vtoce_for_scavenge,
+          read_ahead_vtoce. */
+/* Modified 10/82 BIM to move get_pvtx to bound_disk_util */
+
+Objectname:	bound_vtoc_man;
+
+Global:		retain;
+
+Order:		vtoc_man, vtoc_search, vtoce_stock_man, 
+		update_vtoce, truncate_vtoce, create_vtoce, delete_vtoce,
+		priv_delete_vtoce;
+
+objectname:	vtoc_man;
+ retain:		free_vtoce, get_vtoce, put_vtoce, stabilize, await_vtoce,
+		crawlout, free_vtoce_for_scavenge, read_ahead_vtoce;
+
+objectname:	create_vtoce;
+ retain:		create_vtoce, createv_for_segmove;
+
+objectname:	update_vtoce;
+ retain:		update_vtoce, deact;
+
+objectname:	truncate_vtoce;
+ retain:		truncate_vtoce, hold;
+
+objectname:	delete_vtoce;
+ retain:		delete_vtoce;
+
+objectname:	priv_delete_vtoce;
+ retain:		priv_delete_vtoce,
+		clear;
+
+objectname:	vtoce_stock_man;
+ retain:		drain_stock_range, force_unlock;
+
+objectname:	vtoc_search;

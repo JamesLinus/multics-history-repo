@@ -1,0 +1,20 @@
+/* Bindfile for bound_library_3_
+
+	Last Modified
+	84-12-10 by EJ Sharpe - initial bindfile
+*/
+
+Objectname:	bound_library_3_;
+Global:		delete;
+
+Perprocess_Static;
+
+Order:		access_audit_r1_;
+
+objectname:	access_audit_r1_;
+ global:		retain;
+
+/* end */
+
+
+

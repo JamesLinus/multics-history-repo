@@ -1,0 +1,17 @@
+/* Bindfile for bound_bce_exec_com_, the bce version of exec_com.
+Keith Loepere, 1/84. */
+
+Objectname:	bound_bce_exec_com_;
+
+Global:		delete;
+
+Order:		bce_exec_com_,
+		bce_exec_com_input;
+
+objectname:	bce_exec_com_;
+   retain:	bce_exec_com_;
+
+objectname:	bce_exec_com_input;
+   retain:	bce_exec_com_input;
+
+/* end */

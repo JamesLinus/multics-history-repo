@@ -1,0 +1,79 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Bull Inc., 1987                *
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1984 *
+   *                                                         *
+   *********************************************************** */
+
+
+/* HISTORY COMMENTS:
+  1) change(84-09-20,Swenson), approve(), audit(), install():
+     Created
+  2) change(87-07-24,GDixon), approve(87-07-24,MCR7741),
+     audit(87-07-24,Martinson), install(87-08-04,MR12.1-1055):
+      A) Added run_test_as and test_system_control commands.
+                                                   END HISTORY COMMENTS */
+
+
+/* *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+/*							       */
+/* Bind file for bound_test_as_:				       */
+/* 1) test_system_control establishes a basic test environment for all of    */
+/*    system control, user control, etc.  It is the recommended tools for    */
+/*    testing the Initializer in a user process.			       */
+/* 2) run_test_as provides a short-cut way of testing the answering service  */
+/*    user control functions without having to setup a full Initializer      */
+/*    environment.						       */
+/* 3) test_pnt_manager_ is used in both these testing environments to access */
+/*    the PNT.						       */
+/*							       */
+/* *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+
+Objectname:	bound_as_test_;
+Global:	          delete;
+
+Addname:		run_test_as,
+		test_pnt_manager_,
+		test_system_control;
+
+Order:		run_test_as,
+		test_pnt_manager_,
+		test_system_control;
+
+objectname:	run_test_as;
+  retain:		run_test_as;
+
+objectname:	test_pnt_manager_;
+  retain:		add_acl_entries,
+		add_entry,
+		admin_get_entry,
+		chname_file, 
+		copy, 
+		create, 
+		delete, 
+		delete_acl_entries, 
+		get_abs_entry, 
+		get_entry, 
+		get_network_password, 
+		list_acl, 
+		login_get_entry, 
+		network_get_entry, 
+		priv_get_abs_entry, 
+		priv_get_entry, 
+		remove_entry, 
+		replace_acl, 
+		table_data, 
+		test, 
+		test_pnt_manager_, 
+		update_entry, 
+		validate, 
+		validate_entry;
+
+objectname:	test_system_control;
+  retain:		test_system_control;
+
+/* end; */
+
+
+

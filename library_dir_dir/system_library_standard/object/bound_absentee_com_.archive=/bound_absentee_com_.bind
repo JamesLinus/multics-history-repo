@@ -1,0 +1,124 @@
+/* Bindfile for bound_absentee_com_ */
+
+
+/* HISTORY COMMENTS:
+  1) change(73-04-19,Casey), approve(), audit(), install():
+     Modified 19 Apr 1973
+     Modified May 1978 by T. Casey to add request_id_
+     Modified May 1978 by J. Whitmore to add mdr amd mar entries to car
+     Modified Sep  1978 by P. Smee to add cobol_abs and ca entries to pl1_abs
+     Modified Jan  1982 by G. Dixon to add (cancel list move)_output_requests
+     Modified Oct 1982 by M. Weaver to add algol68_abs and a68a entries to pl1_abs
+     Modified Mar 12 1984 by S. Herbst to add pascal_abs and psa entries to pl1_abs
+  2) change(86-05-01,Cox), approve(86-05-01,MCR7390), audit(86-05-12,Newcomb),
+     install(86-05-27,MR12.0-1063):
+     Add enter_abs_request_
+  3) change(88-04-20,Parisek), approve(88-06-13,MCR7913),
+     audit(88-08-16,Farley), install(88-08-22,MR12.2-1089):
+     Added request_info, rqi.
+  4) change(88-09-14,Beattie), approve(88-08-01,MCR7948),
+     audit(88-10-14,Farley), install(88-10-14,MR12.2-1165):
+     Retained test_rqi to allow testing when object is bound.
+                                                   END HISTORY COMMENTS */
+
+
+
+
+Objectname:	bound_absentee_com_;
+
+Addname:		algol68_abs, a68a,
+		alm_abs, aa,
+		cancel_abs_request, car,
+		cancel_daemon_request, cdr,
+		cancel_output_request, cor, 
+		cancel_retrieval_request, crr,
+		cobol_abs, cba,
+		enter_abs_request, ear,
+		enter_abs_request_, 
+		fortran_abs, fa,
+		list_abs_requests, lar,
+		list_daemon_requests, ldr,
+		list_output_requests, lor, 
+		list_retrieval_requests, lrr,
+		match_request_id_,
+		move_abs_request, mar,
+		move_daemon_request, mdr,
+		move_output_request, mor, 
+		pascal_abs, psa,
+		pl1_abs, pa,
+		request_info, rqi,	
+		runoff_abs, rfa;
+
+Order:		match_request_id_,
+		enter_abs_request,
+		cancel_abs_request,
+		list_abs_requests,
+		lar_util_,
+		enter_abs_request_, 
+		pl1_abs,
+		request_info,
+		runoff_abs;
+
+Global:		delete;
+
+objectname:	cancel_abs_request;
+ synonym:		car,
+		cancel_daemon_request, cdr,
+		cancel_output_request, cor, 
+		cancel_retrieval_request, crr,
+		move_abs_request, mar,
+		move_daemon_request, mdr,
+		move_output_request, mor;
+ retain:		cancel_abs_request, car, test_car, as_abs,
+		cancel_daemon_request, cdr, test_cdr,
+		cancel_output_request, cor, 
+		cancel_retrieval_request, crr, test_crr,
+		move_abs_request, mar, test_mar, 
+		move_daemon_request, mdr, test_mdr,
+		move_output_request, mor;
+
+objectname:	enter_abs_request;
+ synonym:		ear;
+ retain:		enter_abs_request,
+		ear,
+		test_ear;
+
+objectname:	list_abs_requests;
+ synonym:		lar, 
+		list_daemon_requests, ldr,
+		list_output_requests, lor, 
+		list_retrieval_requests, lrr;
+ retain:		list_abs_requests, lar, test_lar, abs_list,
+		list_daemon_requests, ldr, test_ldr,
+		list_output_requests, lor, 
+		list_retrieval_requests, lrr, test_lrr;
+
+objectname:	enter_abs_request_;
+  retain:		enter_abs_request_;
+
+objectname:	pl1_abs;
+ synonym:		pa,
+		cobol_abs, cba,
+		fortran_abs, fa,
+		alm_abs, aa,
+		algol68_abs, a68a,
+		pascal_abs, psa;
+ retain:		pl1_abs, pa,
+		cobol_abs, cba,
+		fortran_abs, fa,
+		alm_abs, aa,
+		algol68_abs, a68a,
+		pascal_abs, psa;
+
+objectname:	runoff_abs;
+ synonym:		rfa;
+ retain:		runoff_abs, rfa;
+
+objectname:	match_request_id_;
+ retain:		match_request_id_;
+
+objectname:	request_info;
+ synonym:		rqi;
+ retain:		request_info, rqi, test_rqi;
+
+/* end of bound_absentee_com_.bind */

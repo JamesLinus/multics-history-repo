@@ -1,0 +1,87 @@
+/* Bindfile for bound_bce_wired, the collection 1 portion */
+/* of the command environment. This segment includes all */
+/* programs used in the wired environment.
+/* it is a wired supervisor segment. */
+
+/* Written, BIM, 10/82 */
+/* Modified November 1983 by Keith Loepere to add
+   wired bce routines and utilities. */
+/* Modified 1985-01-21, BIM: added blast command (bce_blast) */
+/* Moved some things into paged bce, Keith Loepere, January 1985. */
+/* Added bootload_disk_io (which has really been around all the time),
+   February 1985, Keith Loepere. */
+/* Moved bootload_fs_ into bound_library_1_, March 1985, Keith Loepere. */
+
+
+/* HISTORY COMMENTS:
+  1) change(86-01-10,Farley), approve(86-07-18,MCR7439),
+     audit(86-09-26,Fawcett), install(86-10-20,MR12.0-1189):
+     Added bce_ioi_post.
+                                                   END HISTORY COMMENTS */
+
+
+/* name:		bound_bce_wired; */
+/*  add_segnames;		       */
+/*  wired:	yes;             */
+
+Objectname:	bound_bce_wired;
+
+Global:		retain;
+Order:		bce_alm_die,
+		bce_check_abort,
+		bce_console_io,
+		bce_continue,
+		bce_data,
+		bce_die,
+		bce_error,
+		bce_esd,
+		bce_execute_command_,
+		bce_fwload,
+		bce_get_to_command_level,
+		bce_ioi_post,
+		bce_list_requests_,
+		bce_listen_,
+		bce_map_over_requests_,
+		bce_query,
+		bce_request_table_,
+		bootload_disk_io,
+		init_bce;
+
+objectname:	bce_check_abort;
+
+objectname:	bce_console_io;
+
+objectname:	bce_continue;
+ synonym:		bce_bos;
+
+objectname:	bce_data;
+
+objectname:	bce_die;
+
+objectname:	bce_esd;
+
+objectname:	bce_error;
+
+objectname:	bce_execute_command_;
+
+objectname:	bce_fwload;
+
+objectname:	bce_get_to_command_level;
+
+objectname:	bce_ioi_post;
+
+objectname:	bce_list_requests_;
+   synonym:	bce_lr_request;
+
+objectname:	bce_listen_;
+
+objectname:	bce_map_over_requests_;
+
+objectname:	bce_query;
+
+objectname:	bce_request_table_;
+
+objectname:	bootload_disk_io;
+
+objectname:	init_bce;
+/* end */

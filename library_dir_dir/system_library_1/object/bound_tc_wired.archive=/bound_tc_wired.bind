@@ -1,0 +1,24 @@
+/* Modified 10/72 for follow-on ring system */
+/* Modified August 1982, J. Bongiovanni, to remove delete_segs */
+/* Modified 81111 to add tc_util... -E. A. Ranzenbach */
+/* Modified 831213, E. N. Kittlitz, polly take it out again. */
+/* Modified March 1985, Keith Loepere to rearrange to reduce memory. */
+
+Objectname:	bound_tc_wired;
+Global:		delete;
+
+Order:		set_alarm_timer,
+		proc_int_handler,
+		ring_alarm;
+
+
+objectname:	set_alarm_timer;
+ synonym: 	set_alarm;			/* ref from clock_handler */
+ retain:		set_alarm, set_alarm_timer, get_alarm_timer;
+
+objectname:	proc_int_handler;
+ retain:		proc_int_handler;
+
+objectname:	ring_alarm;
+ retain:		fault, poll, set, reset;
+

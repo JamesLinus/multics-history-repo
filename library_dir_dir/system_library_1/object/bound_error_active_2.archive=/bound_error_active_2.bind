@@ -1,0 +1,32 @@
+/* *	85-01-22, Keith Loepere, formed from split of bound_error_active.
+	85-02-19, Keith Loepere, delete lock_try entrypoint which I didn't need after all.
+	85-03-04, EJ Sharpe: added enty verify_sequence
+   */   
+
+
+Objectname:	bound_error_active_2;
+Global:		delete;
+
+Order:		syserr_copy,
+		syserr_seg_manager;
+
+objectname:	syserr_copy;
+  retain: 	wired_log,
+		swap_logs,
+		lock,
+		unlock;
+
+objectname:	syserr_seg_manager;
+  retain: 	segment_info,
+		swap_logs,
+		reuse_empty_log,
+		initialize_log_names,
+		start_copying,
+		set_recovery_flag,
+		verify_sequence,
+		verify_lock;
+
+/* End */
+
+
+

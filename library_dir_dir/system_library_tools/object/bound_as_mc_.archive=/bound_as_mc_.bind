@@ -1,0 +1,131 @@
+/* Bindfile for Operator Consoles/System Control -- Operator Communication
+   Jan 4, 1973
+   Modified 750320 by PG to add convert_dial_message_
+   Modified 750324 by PG to add dial_manager_
+   Modified may 75 to put some system_control_ into boc
+   Modified 750415 by PG to delete message_coordr_
+   Modified 770226 by D. M. Wells to add new entry points to dial_manager_
+   Modified September 1979 by Larry Johnson to add dial_manager_call
+   Modified April 1981 by Robert Coren to add new entry points to dial_manager_
+   Modified November 1981 by E. N. Kittlitz to add (implicitly) dial_manager_$release_dial_id
+   Modified August 1982 by E. N. Kittlitz to turn appropriate retain lists into global: retain.
+   Modified October 1982 by E. N. Kittlitz to remove dial_manager_, convert_dial_message_, add set_mc_message_limits to mc_wakeups, add dump_mc_anstbl, mc_quiesce_.
+   Modified 1984-10-30 BIM to remove non-MC stuff and rename to bound_as_mc_
+   Modified 1985-01-28, BIM: added access checkers.
+*/
+
+/* HISTORY COMMENTS:
+  1) change(86-06-02,GDixon), approve(86-10-21,MCR7499),
+     audit(86-10-20,Beattie), install(86-10-21,MR12.0-1183):
+     Add name mc_con_rec_ and retain queue_log_message so syserr_log_man_ can
+     call this entrypoint. (phx19683).
+                                                   END HISTORY COMMENTS */
+
+Objectname:	bound_as_mc_;
+Global:		delete;
+
+Order:		mc_util_,
+		mc_wakeups_,
+		mc_commands_,
+		mc_con_rec_,
+		turn_on_mc_,
+		mc_tty_,
+		restart_mc_ttys_,
+		mrdim_,
+		mrd_util_,
+		mrd_,
+		dump_mrt,
+		dump_vct,
+		dump_syscon_mseg,
+		dump_devq,
+		display_mc_anstbl,
+		mc_list,
+		mc_quiesce_,
+		mc_check_access_,
+		suffix_mcacs_,
+	          mc_check_acs_;
+
+Addname:
+		dump_devq,
+		display_mc_anstbl,
+		dump_mrt,
+		dump_msg,
+		dump_syscon_mseg,
+		dump_vct,
+		mc_commands_,
+		mc_list,
+		mc_check_access_,
+		mc_check_acs_,
+		mc_con_rec_,
+		mc_quiesce_,
+		mc_tty_,
+		mc_util_,
+		mc_wakeups_,
+		mrd_,
+		mrdim_,
+		restart_mc_ttys_,
+		set_mc_message_limits,
+		suffix_mcacs_,
+		turn_on_mc_;
+
+objectname:	dump_devq;
+ retain:		dump_devq;
+
+objectname:	display_mc_anstbl;
+ retain:		display_mc_anstbl;
+
+objectname:	dump_mrt;
+ retain:		dump_mrt;
+
+objectname:	dump_syscon_mseg;
+ retain:		dump_syscon_mseg, dump_msg;
+
+objectname:	dump_vct;
+ retain:		dump_vct;
+
+objectname:	mc_commands_;
+ global:		retain;
+
+objectname:	mc_check_access_;
+ global:		retain;
+
+objectname:	mc_check_acs_;
+ global:		retain;
+
+objectname:	mc_con_rec_;
+  retain:		queue_log_message;
+
+objectname:	mc_list;
+ retain:		mc_list;
+
+objectname:	mc_tty_;
+ global:		retain;
+
+objectname:	mc_util_;
+ retain:		init;
+
+objectname:	mc_wakeups_;
+ synonym:		set_mc_message_limits;
+ global:		retain;
+
+objectname:	mrd_;
+ retain:		mrd_module;
+
+objectname:	mrd_util_;
+
+objectname:	mrdim_;
+ retain:		test_mrd;
+
+objectname:	restart_mc_ttys_;
+ retain:		restart_mc_ttys_;
+
+objectname:	turn_on_mc_;
+ retain:		turn_on_mc_;
+
+objectname:	mc_quiesce_;
+ retain:		mc_quiesce_;
+
+objectname:	suffix_mcacs_;
+ global:		retain;
+
+/* end of bound_as_mc_.bind */

@@ -1,0 +1,89 @@
+/* ********************************************
+   *                                          *
+   * Copyright, (C) Honeywell Bull Inc., 1988 *
+   *                                          *
+   ******************************************** */
+
+
+
+/* HISTORY COMMENTS:
+  1) change(88-06-20,Berno), approve(88-07-13,MCR7928),
+     audit(88-06-20,Parisek), install(88-07-19,MR12.2-1061):
+     Add lock_lcte entry for UNCP multiplexer (DSA) implementation.
+                                                   END HISTORY COMMENTS */
+
+
+/* Modified 10/3/78 by J. Stern to add fnp_multiplexer, channel_manager, cmtv, tty_interrupt */
+/* Modified April 1981 by Robert Coren to add get_perm_space and switch_chain entries to tty_space_man */
+/* Modified 6 Apr 82, W. Olin Sibert, to add mcs_timer */
+/* Modified 84-12-14 by Benson Margulies to move fnp_util from bound_355_wired */
+
+/* Added lock_lcte in tty_lock for the DN7100 10/9/85. */
+
+Objectname:	bound_355_wired;
+Global:		delete;
+
+Order:		dn355,
+		dn355_util,
+		dn355_messages,
+		dn355_boot_interrupt,
+		fnp_multiplexer,
+		channel_manager,
+		cmtv,
+		tty_interrupt,
+		tty_space_man,
+		tty_lock,
+		mcs_timer,
+		mcs_trace,
+		fnp_util;
+
+objectname:	dn355;
+ retain:		interrupt;
+
+objectname:	dn355_util;
+ retain:		compute_parity;
+
+objectname:	dn355_messages;
+
+objectname:	dn355_boot_interrupt;
+
+objectname:	fnp_multiplexer;
+ retain:		fnp_lock, fnp_unlock, assign, unassign;
+
+
+objectname:	fnp_util;
+ retain:		wire, load, info, unwire, configure, deconfigure, fdump,
+		dump_interrupt, fnp_tandd_setup, fnp_tandd_release_handler,
+		fnp_tandd_detach, fnp_tandd_mask, fnp_tandd_send_int, 
+		fnp_tandd_get_ints, fnp_tandd_read, fnp_tandd_write;
+
+objectname:	channel_manager;
+ retain:		read, write, control, interrupt, interrupt_later,
+		set_modes, check_modes, get_modes;
+
+objectname:	cmtv;
+ retain:		cmtv;
+
+objectname:	tty_interrupt;
+ retain:		set_static;
+
+objectname:	tty_space_man;
+ retain:		get_buffer, get_chain, get_space, get_perm_space,
+		free_buffer, free_chain, free_space, switch_chain, needs_space;
+
+objectname:	tty_lock;
+ retain:		lock_channel, unlock_channel,
+		verify, cleanup_locks, flush_queue, lock_lcte;
+
+objectname:	mcs_timer;
+ retain:		set, change, reset, reset_all,
+		verify_lock, poll;
+
+objectname:	mcs_trace;
+ retain:		mcs_trace,
+		buffer_chain;
+
+/* End */
+
+
+

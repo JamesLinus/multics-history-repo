@@ -1,0 +1,187 @@
+/* **************************************************************
+   *                                                            *
+   * Copyright, (C) Honeywell Information Systems Inc., 1983    *
+   *                                                            *
+   * Copyright, (C) Massachusetts Institute of Technology, 1983 *
+   *                                                            *
+   ************************************************************** */
+
+
+
+/* HISTORY COMMENTS:
+  1) change(88-06-01,TLNguyen), approve(88-06-01,MCR7839),
+     audit(88-06-03,Lippard), install(88-07-05,MR12.2-1054):
+     Add directory_commands_ and working_dir (wd).  See the MTB 775 in the
+     >udd>m>mtbs directory for more detail as the result of satisfying the
+     SCP6361.
+                                                   END HISTORY COMMENTS */
+
+
+/* Bindfile for bound_fscom1_.
+
+   Written 14 March 1971 by Dan Bricklin.
+   modified 1 March 73 by A. Kobziar for ss and msl.
+   modified 17 November 75 by T. Casey to eliminate list_names and list_totals.
+   copy_switch_on and copy_switch_off added 05/16/79 S. Herbst
+   Modified 31 December 1980 by M. N. Davidoff to add terminate_file_.
+   Modified 04/08/81, W. Olin Sibert, to add list_sub_tree
+   Modified 1 May 1981 by M. N. Davidoff to delete the addname new_list and to
+          add initiate_file_ and pathname_.
+   Added change_default_wdir_ 07/14/81 S. Herbst
+   Deleted pathname_, December 1982, J. Bongiovanni
+   Modified: 18 January 1983 by G. Palter to retain initiate_file_$create entrypoint
+   Added process_switch_(on off) 07/15/83 S. Herbst
+   Added l_delete (ldl) 6/9/83 Jay Pattin
+*/
+
+Objectname:         bound_fscom1_;
+
+Global:             delete;
+
+Order:              delete,
+                    delete_,
+                    dl_handler_,
+                    chase_link_,
+                    print,
+                    list,
+                    list_sub_tree,
+                    check_star_,
+                    directory_commands_,
+                    copy_switch_on,
+                    safety_sw_on,
+                    set_max_length,
+                    switch_on,
+                    process_switch_on,
+                    initiate_file_,
+                    terminate_file_;
+
+Addname:            print, pr,
+                    delete, dl,
+                    delete_force, deleteforce, df,
+                    delete_dir, dd,
+                    l_delete, ldl,
+                    unlink, ul,
+                    delete_,
+                    dl_handler_,
+                    chase_link_,
+                    list, ls,
+                    list_sub_tree, lst,
+                    check_star_,
+                    change_wdir, cwd,
+                    change_wdir_,
+                    change_default_wdir_,
+                    get_wdir_,
+                    working_dir, wd, print_wdir, pwd,
+                    change_default_wdir, cdwd,
+                    print_default_wdir, pdwd,
+                    get_default_wdir_,
+                    set_max_length, sml,
+                    switch_on, swn,
+                    switch_off, swf,
+                    process_switch_on, pswn,
+                    process_switch_off, pswf,
+                    safety_sw_on, ssn,
+                    safety_sw_off, ssf,
+                    damaged_sw_on, dsn,
+                    damaged_sw_off, dsf,
+                    copy_switch_on, csn, setcopysw,
+                    copy_switch_off, csf, resetcopysw,
+                    initiate_file_,
+                    terminate_file_;
+
+objectname:         print;
+ synonym:           pr;
+ retain:            print, pr;
+
+objectname:         delete;
+ synonym:           dl,
+                    l_delete, ldl,
+                    deleteforce, delete_force, df,
+                    delete_dir, dd,
+                    unlink, ul;
+ retain:            delete, dl,
+                    l_delete, ldl,
+                    deleteforce, delete_force, df,
+                    delete_dir, dd,
+                    unlink, ul;
+
+objectname:         delete_;
+ retain:            path, ptr;
+
+objectname:         dl_handler_;
+ retain:            dl_handler_, noquestion, dblstar, dirdelete, switches;
+
+objectname:         chase_link_;
+ retain:            chase_link_;
+
+objectname:         list;
+ synonym:           ls;
+ retain:            list, ls;
+
+objectname:         list_sub_tree;
+ synonym:           lst;
+ retain:            list_sub_tree, lst;
+
+objectname:         check_star_;
+ retain:            check_star_, check_entry_name;
+
+objectname:         directory_commands_;
+ synonym:           change_wdir, cwd,
+                    change_wdir_,
+                    working_dir, wd, print_wdir, pwd,
+                    get_wdir_,
+                    change_default_wdir, cdwd,
+                    change_default_wdir_,
+                    print_default_wdir, pdwd,
+                    get_default_wdir_;
+ retain:            change_wdir, cwd,
+                    change_wdir_,
+                    working_dir, wd, print_wdir, pwd,
+                    get_wdir_,
+                    change_default_wdir, cdwd,
+                    change_default_wdir_,
+                    print_default_wdir, pdwd,
+                    get_default_wdir_;
+
+objectname:         copy_switch_on;
+ synonym:           csn, setcopysw,
+                    copy_switch_off, csf, resetcopysw;
+ retain:            copy_switch_on, csn, setcopysw,
+                    copy_switch_off, csf, resetcopysw;
+
+objectname:         safety_sw_on;
+ synonym:           ssn,
+                    safety_sw_off, ssf,
+                    damaged_sw_on, dsn,
+                    damaged_sw_off, dsf;
+ retain:            safety_sw_on, ssn,
+                    safety_sw_off, ssf,
+                    damaged_sw_on, dsn,
+                    damaged_sw_off, dsf;
+
+objectname:         set_max_length;
+ synonym:           sml;
+ retain:            set_max_length, sml;
+
+objectname:         switch_on;
+ synonym:           swn,
+                    switch_off, swf;
+ retain:            switch_on, swn,
+                    switch_off, swf;
+
+objectname:         process_switch_on;
+ synonym:           pswn,
+                    process_switch_off, pswf;
+ retain:            process_switch_on, pswn,
+                    process_switch_off, pswf;
+
+objectname:         initiate_file_;
+ retain:            initiate_file_, create, component;
+
+objectname:         terminate_file_;
+ retain:            terminate_file_;
+
+/* End */
+
+
+

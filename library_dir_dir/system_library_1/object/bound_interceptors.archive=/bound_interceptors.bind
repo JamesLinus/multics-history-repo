@@ -1,0 +1,35 @@
+/* Modified 11/27/83 by E. N. Kittlitz for fim_util vcpu ext entries */
+/* Modified 05/17/83 by E. N. Kittlitz for drl_entry */
+/* Last modified 09/18/80 by J. A. Bush for the DPS8/70M cpu */
+/* Modified 08/06/79 by J. A. Bush */
+/* modified 3/1/76 by Noel I. Morris */
+
+Objectname:	bound_interceptors;
+Global:		delete;
+
+Order:		fim,
+		wired_fim,
+		iom_interrupt,
+		fim_util,
+		sys_trouble;
+
+objectname:	fim;
+ retain:		scu, prs, sig_scu, sig_prs, lp,
+		primary_fault_entry, signal_entry,
+		access_violation_entry, parity_entry,
+		onc_start_shut_entry, drl_entry;
+
+objectname:	wired_fim;
+ retain:		xec_fault, unexp_fault, connect_handler, timer_runout, ignore,
+		pre_empt_return, my_linkage_ptr,
+		scuinfo, prs, trouble_scuinfo, trouble_prs,
+		ignore_scuinfo, int_scuinfo, ignore_pl;
+
+objectname:	iom_interrupt;
+ retain:		interrupt_entry, prds_scu, prds_prs, iilink;
+
+objectname:	fim_util;
+ retain:		fim_v_time_calc_ext, fim_v_time_init_ext;
+
+objectname:	sys_trouble;
+ retain:		sys_trouble;

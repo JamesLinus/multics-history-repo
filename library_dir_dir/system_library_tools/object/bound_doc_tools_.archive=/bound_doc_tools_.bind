@@ -1,0 +1,19 @@
+/* Bind file for online documentation tools */
+
+/* Created by J. Siwila  10/04/83 */
+
+Objectname:	bound_doc_tools_;
+
+Global:		delete;
+
+Order:		load_doc_db_dbf,
+		load_doc_db_ent;
+
+Addname:		load_doc_db_dbf,
+		load_doc_db_ent;
+
+objectname:	load_doc_db_dbf;
+  retain:		load_doc_db_dbf;
+
+objectname:	load_doc_db_ent;
+  retain:		load_doc_db_ent;

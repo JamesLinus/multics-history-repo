@@ -1,0 +1,148 @@
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+	/*									*/
+	/*  bound_iodd_ -- the I/O daemon driver along with the standard printer and punch drivers*/
+	/*									*/
+	/* Status:								*/
+	/* 1) Created:  December 1973 by Robert S. Coren					*/
+	/* 2) Modified: July 1974 by T. VanVleck					*/
+	/* 3) Modified: April 1975 by J. C. Whitmore to restructure the driver process		*/
+	/* 4) Modified: August 1977 by J. C. Whitmore to add page restart and other enhancements	*/
+	/*	      (iodd_get_cmd_ and iodd_msg_)					*/
+	/* 5) Modified: May 1978 by J. C. Whitmore to delete g115_driver_			*/
+	/* 6) Modified: September 1978 by J. C. Whitmore to add iodd_misc_cmds		*/
+	/* 7) Modified: November 1981 by G. C. Dixon to add total_output_requests		*/
+	/* 8) Modified: December 1981 by G. Palter to add iod_command			*/
+	/* 9) Modified: 9 May 1982 by G. Palter to retain iodd_quit_handler_ for use by drivers	*/
+	/*	      which implement the auto_receive keyword				*/
+	/* 10) Modified: 27 May 1982 by G. Dixon to remove total_output requests		*/
+	/*									*/
+	/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * */
+
+
+/* HISTORY COMMENTS:
+  1) change(88-09-12,Brunelle), approve(88-09-12,MCR7911),
+     audit(88-10-18,Wallman), install(88-10-28,MR12.2-1199):
+     Replaced parse_command_ with iodd_parse_ with entrypoints of args &
+     command.
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:	bound_iodd_;
+
+Addname:		cv_prt_rqti,
+		display_prt_rqti,
+		do_prt_request_,
+		form_,
+		io_daemon_account_,
+		iod_command,
+		iod_driver_message,
+		iod_val,
+		iodd_,
+		iodd_command_processor_,
+		iodd_get_cmd_,
+		iodd_hangup_,
+		iodd_listen_,
+		iodd_msg_,
+		iodd_parse_,
+		iodd_quit_handler_,
+		output_request_,
+		printer_driver_,
+		punch_driver_,
+		set_iod_val,
+		write_control_form_,
+		write_sample_form_,
+		write_sample_prt_banner_;
+
+Order:		iodd_listen_,
+		iodd_get_cmd_,
+		iodd_command_processor_,
+		iodd_parse_,
+		iodd_msg_,
+		do_prt_request_,
+		io_daemon_account_,
+		printer_driver_,
+		output_request_,
+		punch_driver_,
+		write_control_form_,
+		form_,
+		form_dim_,
+		iodd_quit_handler_,
+		iodd_signal_handler_,
+		iodd_hangup_,
+		iodd_,
+		cv_prt_rqti,
+		display_prt_rqti,
+		iodd_misc_cmds,
+		iod_command;
+
+Global:		delete;
+
+objectname:	cv_prt_rqti;
+  retain:		cv_prt_rqti;
+
+objectname:	display_prt_rqti;
+  retain:		display_prt_rqti;
+
+objectname:	do_prt_request_;
+ retain:		do_prt_request_, error_during_request, single_copy;
+
+objectname:	form_;
+ retain:		form_module;
+
+objectname:	form_dim_;
+
+objectname:	io_daemon_account_;
+ retain:		io_daemon_account_;
+
+objectname:	iod_command;
+ retain:		iod_command;
+
+objectname:	iodd_;
+ retain:		iodd_, iodd_init;
+
+objectname:	iodd_command_processor_;
+ retain:		iodd_command_processor_, init;
+
+objectname:	iodd_get_cmd_;
+ retain:		iodd_get_cmd_;
+
+objectname:	iodd_hangup_;
+ retain:		iodd_hangup_;
+
+objectname:	iodd_listen_;
+ retain:		iodd_listen_;
+
+objectname:	iodd_misc_cmds;
+  retain:		iod_driver_message, iod_val, set_iod_val;
+  synonym:	iod_driver_message, iod_val, set_iod_val;
+
+objectname:	iodd_msg_;
+ retain:		iodd_msg_;
+
+objectname:	iodd_parse_;
+ retain:		iodd_parse_, args, command;
+
+objectname:	iodd_quit_handler_;
+ retain:		iodd_quit_handler_, command_level;
+
+objectname:	iodd_signal_handler_;
+
+objectname:	output_request_;
+ retain:		output_request_, error_during_request, set_single_copy;
+
+objectname:	printer_driver_;
+ retain:		init, request, command, default_handler;
+
+objectname:	punch_driver_;
+ retain:		init, request, command, default_handler, print_banner;
+
+objectname:	write_control_form_;
+synonym:		write_sample_form_, write_sample_prt_banner_;
+ retain:		write_control_form_,
+		write_sample_form_,
+		write_sample_prt_banner_;
+
+/* end */
+
+
+

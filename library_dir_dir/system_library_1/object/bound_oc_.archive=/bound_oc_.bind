@@ -1,0 +1,23 @@
+/*	Last modified Sept 30, 1973  by Bill Silver  */
+/* Modified March 1983 KPL to move oc_trans_input_ to bound_library_1_ */
+/* Modified 830701 for ocd_ entries... -E. A. Ranzenbach */
+/* Modified 850102 to remove obsolete oc_ transfer vector... -E. A. Ranzenbach */
+
+Objectname:	bound_oc_;
+Global:		delete;
+
+Order:		ocd_;
+
+objectname:	ocd_;
+ retain:		ocd_attach,
+		ocd_close,
+		ocd_control,
+		ocd_detach,
+		ocd_get_chars,
+		ocd_get_line,
+		ocd_modes,
+		ocd_open,
+		ocd_put_chars;
+
+
+/* End */

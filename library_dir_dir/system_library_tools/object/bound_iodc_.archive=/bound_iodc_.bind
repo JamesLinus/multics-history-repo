@@ -1,0 +1,89 @@
+/* Bindfile for bound_iodc_ (I/O Daemon Coordinator) */
+/* Written December 1973 by Robert S. Coren */
+/* Modified by J. Stern 4/16/75 */
+/* Modified by Benson I. Margulies 1980*12*31 for test_io_daemon */
+
+
+/* HISTORY COMMENTS:
+  1) change(85-02-13,Homan), approve(87-04-06,MCR7656),
+     audit(87-07-24,Martinson), install(87-08-04,MR12.1-1055):
+     Add the iod_set_line command.
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:	bound_iodc_;
+
+Addname:		 create_daemon_queues,
+		 cdq,
+		 iodc_overseer_,
+		 iod_overseer_,
+		 iodc_,
+		 iod_set_line,
+		 iod_tables_compiler,
+		 iodtc,		 
+		 print_devices,
+		 print_iod_tables,
+		 print_line_ids,
+		 test_io_daemon;
+
+Order:		create_daemon_queues,
+		iod_tables_compiler,
+		print_iod_tables,
+		print_devices,
+		print_line_ids,
+		iod_set_line,
+		iod_overseer_,
+		iodc_,
+		iodc_message_,
+		find_next_request_,
+		save_request_,
+		unthread_descriptor_,
+		free_oldest_request_,
+		test_io_daemon;
+
+Global:		delete;
+
+objectname:	create_daemon_queues;
+ synonym:		cdq;
+ retain:		create_daemon_queues, cdq;
+
+objectname:	iod_tables_compiler;
+ synonym:		iodtc;
+ retain:		iod_tables_compiler, iodtc;
+
+objectname:	print_iod_tables;
+ retain:		print_iod_tables;
+
+objectname:	print_devices;
+ retain:		print_devices;
+
+objectname:	print_line_ids;
+ retain:		print_line_ids;
+
+objectname:	iod_set_line;
+ retain:		iod_set_line;
+
+objectname:	iod_overseer_;
+ synonym:		iodc_overseer_;
+ retain:		iodc_overseer_,
+		iod_overseer_,
+		test, test_path;
+
+objectname:	iodc_;
+ retain:		command_level;
+
+objectname:	iodc_message_;
+
+objectname:	find_next_request_;
+
+objectname:	save_request_;
+
+objectname:	unthread_descriptor_;
+
+objectname:	free_oldest_request_;
+
+objectname:	test_io_daemon;
+  retain:		test_io_daemon;
+
+/* End */
+

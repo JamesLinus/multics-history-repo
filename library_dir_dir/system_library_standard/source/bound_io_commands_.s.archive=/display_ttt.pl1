@@ -1,0 +1,1592 @@
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) Honeywell Bull Inc., 1987                *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+/* format: style4 */
+
+/* this command displays the contents of the TTT on user_output (or writes it
+   into a file) in the form of a TTF that will retranslate back into the same
+   TTT.
+
+   Usage:  display_ttt {-pn path} {-nhe | -no_header} {-type type_name}
+   {-output_file | -of path}
+*/
+
+/****^  HISTORY COMMENTS:
+  1) change(77-05-27,RCoren), approve(), audit(), install():
+     Written Modified 4/25/78 by Robert S. Coren to add framing_chars Modified
+     05/03/78 by Robert Coren & Dave Vinograd to increase length of
+        conversion/translation tables to 256 characters Modified 05/29/81 by
+     Suzanne Krupp to add function key information
+        and also to make display_ttt reject noncurrent version of ttt.
+     Modified: 9 June 1981 by G. Palter to convert from X/Y to LINE/COLUMN
+  2) change(86-07-10,Parisek), approve(86-08-27,MCR7522),
+     audit(86-09-02,GDixon), install(86-09-03,MR12.0-1145):
+     Enabled the addition of a ".ttf" suffix to a user created ttf via the
+     "-of" ctl argument.  Also corrected the use of the "-pn" ctl argument to
+     assume a ".ttt" suffix on the input ttf pathname if user doesn't supply
+     it.
+  3) change(87-03-10,LJAdams), approve(87-04-03,MCR7646),
+     audit(87-05-05,Gilcrease), install(87-05-14,MR12.1-1030):
+     Add code to display the protocol field if present.
+  4) change(87-06-15,LJAdams), approve(87-06-15,MCR7646),
+     audit(87-07-23,Gilcrease), install(87-08-04,MR12.1-1055):
+     Changed name of include file from terminal_type_protocols.incl.pl1 which
+     was to long to term_type_protocols.incl.pl1.
+  5) change(87-06-25,LJAdams), approve(87-06-25,MCR7646),
+     audit(87-07-23,Gilcrease), install(87-08-04,MR12.1-1055):
+     Add display of DSA extended table.
+  6) change(88-01-15,Brunelle), approve(88-01-15,MCR7804),
+     audit(88-02-09,Lippard), install(88-02-16,MR12.2-1023):
+     Allow expansion of LIKE terminal types.  Accept starname in NAME field of
+     -terminal_type (-ttp) or -table (-tb) options. Allow
+     printer_terminal_types to accept starname for terminal type and make
+     terminal_type  default argument with -pathname (-pn) used to define which
+     TTT to use.
+  7) change(88-01-22,Brunelle), approve(88-01-22,MCR7813),
+     audit(88-10-13,Blair), install(88-10-17,MR12.2-1171):
+     Allow processing of version 4 TTT which has 15 char special_chars
+     sequences.  Also changed the format of the unexpanded initial_string to
+     have fixed bin (18) unsigned delimiters instead of fixed bin (9) unsigned.
+  8) change(88-10-20,Brunelle), approve(88-10-20,PBF7813),
+     audit(88-10-20,Farley), install(88-10-20,MR12.2-1175):
+     Correct "ptr referenced but never set" error.
+                                                   END HISTORY COMMENTS */
+
+
+display_ttt: proc;
+
+/* ENTRIES */
+
+dcl  absolute_pathname_$add_suffix entry (char (*), char (*), char (*), fixed bin (35));
+dcl  check_star_name_ entry (char (*), bit (36), fixed bin (2), fixed bin (35));
+dcl  clock_ entry returns (fixed bin (71));
+dcl  com_err_ entry () options (variable);
+dcl  cu_$arg_count entry (fixed bin);
+dcl  cu_$arg_ptr entry (fixed bin, ptr, fixed bin, fixed bin (35));
+dcl  date_time_ entry (fixed bin (71), char (*));
+dcl  expand_pathname_$add_suffix entry (char (*), char (*), char (*), char (*), fixed bin (35));
+dcl  hcs_$initiate entry (char (*), char (*), char (*), fixed bin (1), fixed bin (2), ptr, fixed bin (35));
+dcl  hcs_$terminate_noname entry (ptr, fixed bin (35));
+dcl  ioa_ entry () options (variable);
+dcl  ioa_$ioa_switch entry () options (variable);
+dcl  ioa_$ioa_switch_nnl entry options (variable);
+dcl  ioa_$rsnnl entry () options (variable);
+dcl  iox_$attach_name entry (char (*), ptr, char (*), ptr, fixed bin (35));
+dcl  iox_$close entry (ptr, fixed bin (35));
+dcl  iox_$detach_iocb entry (ptr, fixed bin (35));
+dcl  iox_$open entry (ptr, fixed bin, bit (*), fixed bin (35));
+dcl  match_star_name_ entry (char (*), char (*), fixed bin (35));
+dcl  requote_string_ entry (char (*)) returns (char (*));
+dcl  ttt_info_$ttt_path entry (char (*), char (*));
+
+/* EXT STATIC */
+
+dcl  iox_$user_output ext static ptr;
+dcl  (error_table_$noarg,
+     error_table_$badopt,
+     error_table_$nomatch,
+     error_table_$unimplemented_version,
+     error_table_$wrong_no_of_args) ext static fixed bin (35);
+
+
+/* INT STATIC */
+
+dcl  SHOW_ALL fixed bin init (2) int static options (constant);
+dcl  SHOW_MATCH fixed bin init (1) int static options (constant);
+dcl  SHOW_NONE fixed bin init (0) int static options (constant);
+dcl  prog_name char (11) int static options (constant) init ("display_ttt");
+dcl  com_name char (20) int static options (constant) init ("print_terminal_types");
+dcl  SYS_DIR char (17) int static options (constant) init (">system_control_1");
+dcl  all_caps char (26) int static options (constant) init
+	("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+dcl  all_lowercase char (26) int static options (constant) init
+	("abcdefghijklmnopqrstuvwxyz");
+dcl  NUL char (1) int static options (constant) init (""); /* \000 */
+dcl  table_name (6) char (18) int static options (constant) init (
+	"input_translation",
+	"output_translation",
+	"input_conversion",
+	"output_conversion",
+	"special",
+	"function_keys");
+
+dcl  spec_field (11) char (15) int static options (constant) init (
+	"new_line",
+	"carriage_return",
+	"backspace",
+	"tab",
+	"vertical_tab",
+	"form_feed",
+	"printer_on",
+	"printer_off",
+	"red_shift",
+	"black_shift",
+	"end_of_page");
+
+dcl  delay_name (6) char (9) int static options (constant) init (
+	"vert_nl",
+	"horz_nl",
+	"const_tab",
+	"var_tab",
+	"backspace",
+	"vt_ff");
+
+dcl  video_seq_names (14) char (20) int static options (constant) init (
+	"abs_pos",
+	"clear_screen",
+	"clear_to_eos",
+	"home",
+	"clear_to_eol",
+	"cursor_up",
+	"cursor_right",
+	"cursor_down",
+	"cursor_left",
+	"insert_chars",
+	"end_insert_chars",
+	"delete_chars",
+	"insert_lines",
+	"delete_lines");
+
+dcl  fkey_seq_names (5) char (5) int static options (constant) init (
+	"home",
+	"left",
+	"right",
+	"up",
+	"down");
+
+/* AUTOMATIC */
+
+dcl  nargs fixed bin;
+dcl  iarg fixed bin;
+dcl  argp ptr;
+dcl  argl fixed bin;
+dcl  arg char (argl) based (argp);
+
+dcl  ttt_dir char (168);
+dcl  ttt_ent char (32);
+dcl  only_type char (32);
+dcl  only_table char (32);
+dcl  (type_starname_type, table_starname_type) fixed bin (2);
+dcl  (show_types, show_tables) fixed bin;		/* 0 = none, 1 = specified one, 2 = all */
+dcl  dft_header bit (1);
+dcl  header_spec bit (1);				/* on if -he or -nhe specified */
+dcl  header bit (1);
+dcl  general_tables bit (1);
+dcl  output_file char (168);
+dcl  found bit (1);
+dcl  found_one bit (1);
+dcl  (attached, opened) bit (1);
+dcl  iocbp ptr;
+dcl  debug_sw bit (1);
+dcl  using_default_ttt_path bit (1);
+dcl  expand_like bit (1);
+dcl  display_all_tables bit (1);
+dcl  keep_looping bit (1);
+
+dcl  code fixed bin (35);
+dcl  date_str char (24);
+dcl  ttx fixed bin;
+dcl  (i, j) fixed bin;
+dcl  temp_ttep ptr;
+dcl  delayx fixed bin;
+dcl  special_tablep ptr;
+dcl  specialp ptr;
+dcl  copy_offset_ptr ptr;
+dcl  offset_array_ptr ptr;
+dcl  p ptr;
+dcl  n fixed bin;
+dcl  charx fixed bin;
+dcl  ans_spec char (1);
+dcl  file_err bit (1);
+dcl  key char (12);
+dcl  table_len fixed bin;
+dcl  c_chars_length fixed bin;
+
+dcl  1 copy_of_tte like tte;
+
+dcl  print_extended_table (3) entry (fixed bin (18)) variable init (
+	print_video_table, print_function_key_table, print_dsa_table);
+dcl  fkey_seqs_ptr (5) ptr;
+dcl  sourcep ptr;
+
+/* BASED */
+
+dcl  based_bit9 bit (9) based unal;
+dcl  based_bit18 bit (18) based unal;
+dcl  based_fb8 fixed bin (8) based unal;
+dcl  based_fb17 fixed bin (17) based unal;
+dcl  based_seq (n) fixed bin (8) unal based;
+dcl  table_array (8) bit (9) unal based;
+dcl  table_offset (6) fixed bin (18) based (offset_array_ptr); /* overlay for table offsets in tte */
+
+dcl  1 float_delays aligned based (delay_tablep),
+       2 x fixed bin,				/* holds n_bauds */
+       2 array (n refer (float_delays.x)),
+         3 stuff (3) fixed bin,			/* header */
+         3 delays (6) float bin;			/* delay values as floating-point numbers */
+
+dcl  1 seq (11) based aligned,
+       2 count fixed bin (8) unal,
+       2 entries (c_chars_length) fixed bin (8) unal; /* like c_chars, but for numeric printing */
+
+dcl  cleanup condition;
+
+dcl  (addr, addrel, byte, divide, hbound, index, lbound, length, low, null, ptr, rank, rel, rtrim, string,
+     substr, translate, unspec, char, currentsize, ltrim, min, mod) builtin;
+
+	only_table,
+	     only_type = "";
+	type_starname_type,
+	     table_starname_type = 0;
+	dft_header = "1"b;
+	general_tables = "1"b;
+	header_spec = "0"b;
+	output_file = "";
+	debug_sw = "0"b;
+	expand_like = "0"b;
+	display_all_tables = "0"b;
+
+	call ttt_info_$ttt_path (ttt_dir, ttt_ent);	/* default if no pathname specified */
+
+	call cu_$arg_count (nargs);
+
+	if nargs > 0				/* process arguments if any */
+	then do iarg = 1 to nargs;
+	     call cu_$arg_ptr (iarg, argp, argl, code);
+	     if arg = "-pn" | arg = "-pathname"		/* not installed ttt */
+	     then do;
+		call get_next_arg;			/* updates iarg */
+		if code ^= 0 then return;		/* get_next_arg prints error message */
+		call expand_pathname_$add_suffix (arg, "ttt", ttt_dir, ttt_ent, code);
+						/* append suffix if missing */
+		if code ^= 0 then go to argerr;
+	     end;
+
+	     else
+		if arg = "-type" | arg = "-tp" | arg = "-ttp" | arg = "-terminal_type" /* one type entry only */
+	     then do;
+		call get_next_arg;
+		if code ^= 0 then return;
+
+		only_type = translate (arg, all_caps, all_lowercase);
+		call check_star_name_ (only_type, CHECK_STAR_IGNORE_ALL, type_starname_type, code);
+		if code ^= 0 then go to argerr;
+		general_tables,
+		     dft_header = "0"b;
+	     end;
+
+	     else
+		if arg = "-tb" | arg = "-table"	/* specific table wanted */
+	     then do;
+		call get_next_arg;
+		if code ^= 0 then return;
+
+		only_table = arg;
+		call check_star_name_ (only_table, CHECK_STAR_IGNORE_ALL, table_starname_type, code);
+		if code ^= 0 then go to argerr;
+		general_tables,
+		     dft_header = "0"b;
+	     end;
+
+	     else
+		if arg = "-of" | arg = "-output_file"
+	     then do;
+		call get_next_arg;
+		if code ^= 0 then return;
+		call absolute_pathname_$add_suffix (arg, "ttf", output_file, code);
+		if code ^= 0 then go to argerr;
+	     end;
+
+	     else
+		if arg = "-nhe" | arg = "-no_header"
+	     then do;
+		header_spec = "1"b;
+		header = "0"b;
+	     end;
+
+	     else
+		if arg = "-he" | arg = "-header"
+	     then do;
+		header_spec = "1"b;
+		header = "1"b;
+	     end;
+	     else if arg = "-debug" | arg = "-db" then debug_sw = "1"b;
+	     else if arg = "-expand" | arg = "-exp" then expand_like = "1"b;
+
+	     else do;
+		code = error_table_$badopt;
+argerr:		call com_err_ (code, prog_name, arg);
+		return;
+	     end;
+	end;
+
+	if expand_like & output_file ^= "" then do;
+	     call com_err_ (0, prog_name, "-output_file and -expand are incompatible options.");
+	     return;
+	end;
+
+	if ^header_spec then header = dft_header;
+	if only_type = ""
+	then if only_table = ""
+	     then show_tables, show_types = SHOW_ALL;	/* nothing specified, show them all */
+	     else do;
+		show_types = SHOW_NONE;		/* no type entries */
+		show_tables = SHOW_MATCH;		/* specified table */
+	     end;
+
+	else if only_table = ""			/* type specified, table not */
+	then do;
+	     show_types = SHOW_MATCH;
+	     show_tables = SHOW_NONE;
+	end;
+	else show_types, show_tables = SHOW_MATCH;	/* show one of each */
+
+	tttp = null;
+	attached, opened = "0"b;
+	on cleanup call clean_up;
+
+	if output_file = ""				/* default to user_output */
+	then iocbp = iox_$user_output;
+
+	else do;
+	     call iox_$attach_name ("ttt_output", iocbp, "vfile_ " || output_file, null, code);
+	     if code ^= 0
+	     then do;
+		call com_err_ (code, prog_name, "Could not attach to ^a", output_file);
+		return;
+	     end;
+
+	     attached = "1"b;
+	     call iox_$open (iocbp, 2, ""b, code);
+	     if code ^= 0
+	     then do;
+		call com_err_ (code, prog_name, "Could not open file ^a", output_file);
+		call iox_$detach_iocb (iocbp, code);
+		return;
+	     end;
+	     opened = "1"b;
+	end;
+
+	call hcs_$initiate (ttt_dir, ttt_ent, "", 0, 1, tttp, code);
+	if tttp = null
+	then do;
+	     call com_err_ (code, prog_name, "Could not initiate ^a>^a", ttt_dir, ttt_ent);
+	     call clean_up;
+	     return;
+	end;
+
+	if ttt.version ^= TTT_version_4
+	then do;
+	     call com_err_ (error_table_$unimplemented_version, prog_name, "^/^a>^a is version ^d; the current version is ^d.^/Please recompile your ttf.^/", ttt_dir, ttt_ent, ttt.version, TTT_version_4);
+	     return;
+	end;
+
+/* now start printing stuff */
+
+	if header
+	then do;
+	     call date_time_ (clock_ (), date_str);
+	     call ioa_$ioa_switch (iocbp, "^-/* terminal type file derived from ^a>^a at ^a
+^-^3xTTT version ^d, created by ^a^/	*/",
+		ttt_dir, ttt_ent, date_str, ttt.version, ttt.author.proc_group_id);
+	end;
+
+	if show_types ^= SHOW_NONE
+	then do;
+	     keep_looping = "1"b;
+	     found_one = "0"b;
+	     do ttx = 1 to ttt.n_tt_entries while (keep_looping);
+		ttep = addr (ttt.tt_entries (ttx));
+		if show_types = SHOW_MATCH then do;
+		     found = check_for_match_name (tte.name, only_type, type_starname_type);
+		     if ^found then goto end_of_tte;
+		     if found & type_starname_type = STAR_TYPE_USE_PL1_COMPARE then
+			keep_looping = "0"b;
+		     found_one = "1"b;
+		end;
+
+		if debug_sw then call ioa_ ("^a at ^p", tte.name, ttep);
+		if tte.like_type = 0		/* no like to refer back to */
+		     | (tte.like_type ^= 0 & expand_like) /* or there is a like but expansion wanted */
+		then do;				/* so print all fields that don't have default values */
+		     if tte.like_type ^= 0 then do;
+			call ioa_$ioa_switch_nnl (iocbp, "/* ");
+			call trace_like_tte_chain (ttep); /* recurse to see who is liked together */
+			call ioa_$ioa_switch_nnl (iocbp, " */");
+		     end;
+		     call ioa_$ioa_switch (iocbp, "^/^/^-terminal_type:  ^a;", tte.name);
+		     call print_modes;
+		     call print_protocol ("0"b);
+		     call print_str ("initial_string", tte.initial_string, "0"b);
+		     call print_str ("additional_info", tte.additional_info, "0"b);
+		     call print_all_delays;
+
+		     offset_array_ptr = addr (tte.input_translation_rp);
+		     do i = 1 to 6;
+			call print_table (i, "0"b);
+		     end;
+
+		     call print_line_types ("0"b);
+		     call print_erase ("0"b);
+		     call print_kill ("0"b);
+		     call print_frame ("0"b);
+		     call print_ifc ("0"b);
+		     call print_ofc ("0"b);
+		     call print_line_delimiter ("0"b);
+		     call print_all_flags;
+		     call print_old_type ("0"b);
+		     call print_extended_tables ("0"b);
+		end;
+		else do;				/* like, get copy of original */
+		     temp_ttep = addr (ttt.tt_entries (tte.like_type));
+		     copy_of_tte = temp_ttep -> tte;
+
+		     call ioa_$ioa_switch (iocbp, "^/^/^-terminal_type:  ^a like ^a;", tte.name, copy_of_tte.name);
+
+		     copy_of_tte.name = tte.name;	/* so we can compare */
+		     copy_of_tte.like_type = tte.like_type;
+		     if unspec (copy_of_tte) ^= unspec (tte) /* see if anything overridden */
+		     then do;			/* if so, find out what */
+			if tte.modes ^= copy_of_tte.modes
+			then call print_modes;
+
+			if tte.protocol ^= copy_of_tte.protocol
+			then call print_protocol ("1"b);
+
+			if tte.initial_string.offset ^= copy_of_tte.initial_string.offset
+			then call print_str ("initial_string", tte.initial_string, "1"b);
+
+			if tte.additional_info.offset ^= copy_of_tte.additional_info.offset
+			then call print_str ("additional_info", tte.additional_info, "1"b);
+
+			if tte.bauds_overridden	/* entirely fresh delay table */
+			then call print_all_delays;
+			else do;
+			     delay_tablep = ptr (tttp, tte.delay_rp);
+			     do delayx = 1 to 6;
+				if tte.delay_overridden (delayx)
+				then call print_delay (delayx);
+			     end;
+			end;
+
+			copy_offset_ptr = addr (copy_of_tte.input_translation_rp);
+			offset_array_ptr = addr (tte.input_translation_rp);
+			do i = 1 to 6;
+			     if table_offset (i) ^= copy_offset_ptr -> table_offset (i)
+			     then call print_table (i, "1"b);
+			end;
+
+			if tte.line_types ^= copy_of_tte.line_types
+			then call print_line_types ("1"b);
+
+			if tte.erase ^= copy_of_tte.erase
+			then call print_erase ("1"b);
+
+			if tte.kill ^= copy_of_tte.kill
+			then call print_kill ("1"b);
+
+			if string (tte.framing_chars) ^= string (copy_of_tte.framing_chars)
+			then call print_frame ("1"b);
+
+			if tte.input_suspend ^= copy_of_tte.input_suspend |
+			     tte.input_resume ^= copy_of_tte.input_resume |
+			     tte.input_timeout ^= copy_of_tte.input_timeout
+			then call print_ifc ("1"b);
+
+			if tte.output_suspend_etb ^= copy_of_tte.output_suspend_etb |
+			     tte.output_resume_ack ^= copy_of_tte.output_resume_ack |
+			     tte.output_buffer_size ^= copy_of_tte.output_buffer_size |
+			     tte.output_block_acknowledge ^= copy_of_tte.output_block_acknowledge
+			then call print_ofc ("1"b);
+
+			if tte.line_delimiter ^= copy_of_tte.line_delimiter
+			then call print_line_delimiter ("1"b);
+			if tte.keyboard_addressing ^= copy_of_tte.keyboard_addressing
+			then call print_kybd_addr;
+
+			if tte.print_preaccess_message ^= copy_of_tte.print_preaccess_message
+			then call print_ppm;
+
+			if tte.conditional_printer_off ^= copy_of_tte.conditional_printer_off
+			then call print_cpo;
+			if tte.old_type ^= copy_of_tte.old_type
+			then call print_old_type ("1"b);
+			call print_extended_tables ("1"b);
+		     end;
+		end;
+
+end_of_tte:
+	     end;
+	end;
+
+	if show_types = SHOW_MATCH & ^found_one		/* we were looking for a specific one and didn't find it */
+	then call com_err_ (0, prog_name, "No entry found for type ^a", only_type);
+
+	if show_tables ^= SHOW_NONE			/* not just asking for single type entry, print tables */
+	then do;
+	     keep_looping = "1"b;
+	     found_one = "0"b;
+						/* conversion & translation tables */
+	     do i = 1 to ttt.n_tables while (keep_looping);
+		tablep = addr (ttt.tables (i));
+
+		if show_tables = SHOW_MATCH then do;
+		     found = check_for_match_name (table_entry.name, only_table, table_starname_type);
+		     if ^found then goto next_ct_table;
+		     if found & table_starname_type = STAR_TYPE_USE_PL1_COMPARE then
+			keep_looping = "0"b;
+		     found_one = "1"b;
+		end;
+
+		call ioa_$ioa_switch (iocbp, "^/^-^a_table:  ^a;",
+		     table_types (table_entry.type), table_entry.name);
+		table_len = CV_TRANS_SIZE (table_entry.version);
+		do j = 0 to table_len by 8;
+		     call ioa_$ioa_switch (iocbp, "^-^8(^x^3.3b^)^[;^;^]",
+			addr (table_entry.value (j)) -> table_array, j = table_len - 7);
+		end;
+next_ct_table:
+	     end;
+
+	     special_tablep = addr (ttt.rest_of_ttt);	/* special_chars tables now */
+	     keep_looping = "1"b;
+	     do i = 1 to ttt.n_special_tables while (keep_looping);
+		specialp = addr (special_tablep -> special_table.special_chars);
+
+		if show_tables = SHOW_MATCH then do;
+		     found = check_for_match_name (special_tablep -> special_table.name, only_table, table_starname_type);
+		     if ^found then goto next_special;
+		     if found & table_starname_type = STAR_TYPE_USE_PL1_COMPARE then
+			keep_looping = "0"b;
+		     found_one = "1"b;
+		end;
+
+		call ioa_$ioa_switch (iocbp, "^/^-special_table:  ^a;", special_tablep -> special_table.name);
+
+		c_chars_length = hbound (specialp -> c_chars.chars, 1);
+		do j = 1 to 11;			/* do the standard sequences */
+		     call ioa_$ioa_switch (iocbp, "^-^x^a:^[^-^;^2-^]^v(^x^3o^);",
+			spec_field (j), j ^= 4, specialp -> seq (j).count,
+			specialp -> seq (j).entries (*));
+		end;
+
+		sc_escape_len = specialp -> special_chars.escape_length;
+		if sc_escape_len > 0
+		then do;
+		     call ioa_$ioa_switch (iocbp, "^-^xoutput_escapes:");
+		     p = addr (specialp -> special_chars.not_edited_escapes);
+
+		     do j = 1 to sc_escape_len;
+			n = p -> seq (j).count;
+			if n = 0
+			then call ioa_$ioa_switch (iocbp, "^-^2x^o^[,^;;^]", j + 16, j < sc_escape_len);
+			else call ioa_$ioa_switch (iocbp, "^-^2x^o^v(^x^3o^)^[,^;;^]", j + 16, n,
+				addr (p -> seq (j).entries (1)) -> based_seq, j < sc_escape_len);
+		     end;
+
+		     call ioa_$ioa_switch (iocbp, "^-^xedited_output_escapes:");
+		     p = addr (specialp -> special_chars.edited_escapes);
+
+		     do j = 1 to sc_escape_len;
+			n = p -> seq (j).count;
+			if n = 0
+			then call ioa_$ioa_switch (iocbp, "^-^2x^o^[,^;;^]", j + 16, j < sc_escape_len);
+			else call ioa_$ioa_switch (iocbp, "^-^2x^o^v(^x^3o^)^[,^;;^]", j + 16, n,
+				addr (p -> seq (j).entries (1)) -> based_seq, j < sc_escape_len);
+		     end;
+
+		end;
+
+		sc_input_escape_len = specialp -> special_chars.input_escapes.len;
+
+		if sc_input_escape_len > 0
+		then do;
+		     call ioa_$ioa_switch (iocbp, "^-^xinput_escapes:");
+
+		     do j = 1 to sc_input_escape_len;
+			call ioa_$ioa_switch (iocbp, "^-^2x^3o^x^3o^[,^;;^]",
+			     addr (substr (specialp -> special_chars.input_escapes.str, j, 1)) -> based_fb8,
+			     addr (substr (specialp -> special_chars.input_results.str, j, 1)) -> based_fb8,
+			     j < sc_input_escape_len);
+		     end;
+		end;
+
+next_special:
+		special_tablep = addrel (specialp, divide (length (unspec (specialp -> special_chars)) + 35,
+		     36, 18, 0));
+	     end;
+
+/* now function key tables */
+
+	     fkey_tablep = ptr (tttp, ttt.fkey_offset);
+	     function_key_data_ptr = addr (fkey_table.fkey_data);
+	     sourcep = ptr (tttp, fkey_table.seq_offset); /* ptr to sequences */
+
+	     do i = 1 to ttt.n_fkey_tables;
+
+		if show_tables = SHOW_MATCH then do;
+		     found = check_for_match_name (fkey_table.name, only_table, table_starname_type);
+		     if ^found then go to next_fkey;
+		     if found & table_starname_type = STAR_TYPE_USE_PL1_COMPARE then
+			keep_looping = "0"b;
+		     found_one = "1"b;
+		end;
+
+		call ioa_$ioa_switch (iocbp, "^/^-function_key_table:  ^a;", fkey_table.name);
+		fkey_seqs_ptr (1) = addr (function_key_data.home (0));
+		fkey_seqs_ptr (2) = addr (function_key_data.left (0));
+		fkey_seqs_ptr (3) = addr (function_key_data.right (0));
+		fkey_seqs_ptr (4) = addr (function_key_data.up (0));
+		fkey_seqs_ptr (5) = addr (function_key_data.down (0));
+
+		do j = 1 to 5;			/* go thru home, left, ... */
+		     call print_fkey_seqs (sourcep -> function_key_seqs, fkey_seq_names (j), fkey_seqs_ptr (j));
+		end;
+
+		do j = 0 to function_key_data.highest;
+		     call print_fkey_seqs (sourcep -> function_key_seqs, "key (" || ltrim (char (j)) || ")", addr (function_key_data.function_keys (j, 0)));
+		end;
+
+next_fkey:
+		fkey_tablep = addrel (fkey_tablep, currentsize (fkey_table) + currentsize (sourcep -> function_key_seqs));
+		function_key_data_ptr = addr (fkey_table.fkey_data);
+		sourcep = ptr (tttp, fkey_table.seq_offset);
+	     end;
+
+	     if show_tables = SHOW_MATCH & ^found_one
+	     then call com_err_ (0, prog_name, "table ^a not found.", only_table);
+	end;
+
+	if general_tables
+	then do;
+
+/* now default_types table */
+
+	     if ttt.default_type_offset ^= 0
+	     then do;
+		dfttp = ptr (tttp, ttt.default_type_offset);
+
+		if dftt.dft_count > 0
+		then do;
+		     call ioa_$ioa_switch (iocbp, "^/^/^-default_types:");
+		     do i = 1 to dftt.dft_count;
+			call ioa_$ioa_switch (iocbp, "^-^x^[any^s^;^d^] ^[any^s^;^a^] ^a^[,^;;^]",
+			     dftt.dftte (i).baud = 0, dftt.dftte (i).baud,
+			     dftt.dftte (i).line_type = 0, line_types (dftt.dftte (i).line_type),
+			     addr (ttt.tt_entries (dftt.dftte (i).term_type_index)) -> tte.name,
+			     i < dftt.dft_count);
+		     end;
+		end;
+	     end;
+
+/* now answerback table */
+
+	     answerback_entry_ptr = ptr (tttp, ttt.answerback_offset);
+
+	     do while (rel (answerback_entry_ptr));
+		call ioa_$ioa_switch_nnl (iocbp, "^/^-answerback:^3x");
+		charx = 1;
+
+		do while (charx <= answerback_entry.def_string.length);
+		     if charx > 1
+		     then call ioa_$ioa_switch_nnl (iocbp, ", ");
+
+		     ans_spec = answerback_entry.chars (charx);
+		     n = addr (answerback_entry.chars (charx + 1)) -> based_fb8;
+		     if ans_spec = "m" | ans_spec = "s"
+		     then if n < 0
+			then do;
+			     call ioa_$ioa_switch_nnl (iocbp, "^[match^;^search^] ^[letter^;digit^]",
+				ans_spec = "m", -n);
+			     charx = charx + 2;
+			end;
+
+			else do;
+			     call ioa_$ioa_switch_nnl (iocbp, "^[match^;search^] ^a",
+				ans_spec = "m",
+				requote_string_ (substr (answerback_entry.chars (1), charx + 2, n)));
+			     charx = charx + n + 2;
+			end;
+
+		     else do;
+			n = addr (answerback_entry.chars (charx + 1)) -> based_fb8;
+			if ans_spec = "k"
+			then call ioa_$ioa_switch_nnl (iocbp, "skip ^d", n);
+
+			else
+			     if ans_spec = "i"
+			then call ioa_$ioa_switch_nnl (iocbp, "id ^[rest^;^d^]", n = 0, n);
+
+			else call com_err_ (0, prog_name, "Unrecognized answerback specification ^a", ans_spec);
+
+			charx = charx + 2;
+		     end;
+		end;
+
+		if answerback_entry.term_type_index ^= 0
+		then call ioa_$ioa_switch (iocbp, ";^/^-^xtype:  ^a;",
+			addr (ttt.tt_entries (answerback_entry.term_type_index)) -> tte.name);
+
+		else call ioa_$ioa_switch (iocbp, ";");
+
+		answerback_entry_ptr = ptr (tttp, answerback_entry.next);
+	     end;
+
+	     call print_preaccess_type ("MAP", ttt.type_map);
+	     call print_preaccess_type ("963", ttt.type_963);
+	     call print_preaccess_type ("029", ttt.type_029);
+
+	     call ioa_$ioa_switch (iocbp, "^/^/^-end;");
+	end;
+
+	call clean_up;
+	return;
+%page;
+check_for_match_name: proc (name_to_check, name_to_match, type_match) returns (bit (1));
+
+/* see if this entry matches the name desired by the user */
+
+dcl  name_to_check char (*);				/* name to check for match */
+dcl  name_to_match char (*);				/* possible starname to match for */
+dcl  type_match fixed bin (2);			/* type of equal match to be made */
+
+dcl  my_code fixed bin (35);
+
+	if type_match = STAR_TYPE_MATCHES_EVERYTHING then
+	     my_code = 0;
+	else if type_match = STAR_TYPE_USE_MATCH_PROCEDURE then
+	     call match_star_name_ (name_to_check, name_to_match, my_code);
+	else if type_match = STAR_TYPE_USE_PL1_COMPARE then do;
+	     if name_to_check = name_to_match then
+		my_code = 0;
+	     else my_code = error_table_$nomatch;
+	end;
+
+	if my_code = 0 then
+	     return ("1"b);
+	else return ("0"b);
+
+     end check_for_match_name;
+%page;
+trace_like_tte_chain: proc (my_ttep);
+
+/* recurse down through all LIKE table entries so we can name who is in the chain */
+
+dcl  my_ttep ptr;
+
+	call ioa_$ioa_switch_nnl (iocbp, "^a", my_ttep -> tte.name);
+
+/* recurse to the next level if this isn't the last one */
+	if my_ttep -> tte.like_type ^= 0 then do;
+	     call ioa_$ioa_switch_nnl (iocbp, " -> ");
+	     call trace_like_tte_chain (addr (ttt.tt_entries (my_ttep -> tte.like_type)));
+	end;
+
+     end trace_like_tte_chain;
+
+get_next_arg: proc;
+
+/* gets value of a keyword-value option */
+
+	iarg = iarg + 1;
+	key = substr (arg, 2);
+	call cu_$arg_ptr (iarg, argp, argl, code);
+	if code ^= 0 then
+complain:	     call com_err_ (code, prog_name, key);
+	else if substr (arg, 1, 1) = "-" then do;
+	     code = error_table_$noarg;
+	     goto complain;
+	end;
+	return;
+
+     end /* get_next_arg */;
+
+clean_up: proc;
+
+/* clenup handler and final wrapup */
+
+	file_err = "0"b;
+	if opened
+	then do;
+	     call iox_$close (iocbp, code);
+	     if code ^= 0
+	     then do;
+		call com_err_ (code, prog_name, "Could not close file ^a", output_file);
+		file_err = "1"b;
+	     end;
+
+	     opened = "0"b;
+	end;
+	if attached
+	then do;
+	     call iox_$detach_iocb (iocbp, code);
+	     if code ^= 0
+	     then if ^file_err
+		then call com_err_ (code, prog_name, "Could not detach file ^a", output_file);
+	     attached = "0"b;
+	end;
+
+	if tttp ^= null
+	then call hcs_$terminate_noname (tttp, code);
+	return;
+
+     end /* clean_up */;
+
+print_terminal_types: ptt: entry;
+
+/* user command to print names of all terminal types defined in TTT */
+
+dcl  match_name char (32);
+dcl  pn_given bit (1);
+dcl  ttp_given bit (1);
+
+	ttp_given, pn_given = "0"b;
+	using_default_ttt_path = "0"b;
+	call cu_$arg_count (nargs);
+	do iarg = 1 to nargs;
+	     call cu_$arg_ptr (iarg, argp, argl, code);
+	     if arg = "-pn" | arg = "-pathname" then do;
+		if pn_given then do;
+		     call com_err_ (error_table_$wrong_no_of_args, com_name, "Only one ttt pathname allowed");
+		     return;
+		end;
+		call expand_pathname_$add_suffix (arg, "ttt", ttt_dir, ttt_ent, code);
+		if code ^= 0 then do;
+		     call com_err_ (code, com_name, arg);
+		     return;
+		end;
+		pn_given = "1"b;
+	     end;
+	     else if arg = "-ttp" | arg = "-terminal_type" then do;
+		if ttp_given then do;
+		     call com_err_ (error_table_$wrong_no_of_args, com_name, "Only one -match name allowed");
+		     return;
+		end;
+		call get_next_arg;
+		if code ^= 0 then return;
+		match_name = translate (arg, all_caps, all_lowercase);
+		ttp_given = "1"b;
+	     end;
+	     else do;
+		if ttp_given then do;
+		     call com_err_ (error_table_$wrong_no_of_args, com_name, "Only one -match name allowed");
+		     return;
+		end;
+		match_name = translate (arg, all_caps, all_lowercase);
+		ttp_given = "1"b;
+	     end;
+	end;
+
+	if ^pn_given then do;
+	     using_default_ttt_path = "1"b;
+	     call ttt_info_$ttt_path (ttt_dir, ttt_ent);
+	end;
+
+	call hcs_$initiate (ttt_dir, ttt_ent, "", 0, 1, tttp, code);
+	if tttp = null then do;
+	     call com_err_ (code, com_name, "Could not initiate ^a>^a", ttt_dir, ttt_ent);
+	     return;
+	end;
+
+	if using_default_ttt_path then
+	     if ttt_dir ^= SYS_DIR | ttt_ent ^= "ttt" then
+		call ioa_ ("Using ^a>^a", ttt_dir, ttt_ent);
+
+	do i = 1 to ttt.n_tt_entries;
+	     if ^ttp_given then
+		code = 0;
+	     else call match_star_name_ (ttt.tt_entries (i).name, match_name, code);
+	     if code = 0 then
+		call ioa_ ("^-^a", ttt.tt_entries (i).name);
+	end;
+
+	return;
+
+/* various internal procedures for outputting parts of a terminal type entry
+   *
+   *  many of these take a bit(1) argument indicating whether or not the entry being processed
+   *  is "like" another entry. If this bit is on, the field is always printed out;
+   *  otherwise, it is only printed if it has a non-default value
+*/
+
+
+print_modes: proc;
+
+	if tte.modes ^= "" then
+	     call ioa_$ioa_switch (iocbp, "^-^xmodes:  ^a;", tte.modes);
+	return;
+     end /* print_modes */;
+
+
+print_str: proc (title, source, like);
+
+dcl  title char (*);
+dcl  1 source aligned,
+       2 offset fixed bin (18),
+       2 len fixed bin;
+
+dcl  like bit (1);
+
+dcl  code_len fixed bin;
+dcl  stringp ptr;
+dcl  stringl fixed bin;
+dcl  cur fixed bin;
+dcl  lb bit (1);
+dcl  (i, j) fixed bin;
+dcl  work char (2500) var;
+dcl  temp char (16) var;
+dcl  str char (stringl) based (stringp);
+
+/* there is no string defined or it is LIKEd to another string */
+	if source.offset = 0 then
+	     if like then
+		call ioa_$ioa_switch (iocbp, "^-^x^a:  ;", title);
+	     else ;
+
+/* string is defined */
+	else do;
+	     stringp = ptr (tttp, source.offset);
+	     stringl = source.len;
+	     code_len = addr (substr (str, source.len + 1, 2)) -> based_fb17;
+
+/* all chars in string are printable chars */
+	     if code_len = 0 then
+		call ioa_$ioa_switch (iocbp, "^-^x^a:  ^a;", title, requote_string_ (str));
+
+/* some of chars in string are no printable but there are no replication factors */
+	     else if code_len = -1 then do;
+		work = "";
+		do i = 1 to source.len;
+		     call count_text;		/* scan for printable chars */
+		     if j > 1 then do;		/* if any, print them as they are */
+			work = work || requote_string_ (substr (str, i, j));
+			i = i + j - 1;
+		     end;
+
+/* else convert to printable value */
+		     else work = work || tchar (substr (str, i, 1));
+		     work = work || " ";
+		end;
+		call ioa_$ioa_switch (iocbp, "^-^x^a:  ^a;", title, work);
+	     end;
+
+/* there are replication factors defined in the encoded string */
+	     else do;
+		work = "";
+		stringp = addr (substr (str, source.len + 2));
+
+		lb = "0"b;
+		do i = 1 to code_len;
+		     cur = rank (substr (str, i, 1));
+		     if cur > 255 then do;		/* coded value */
+			cur = addr (substr (str, i, 1)) -> based_fb17;
+/*			cur = cur - 512;		/* use negative for coded values */
+			i=i+1;
+		     end;
+		     if cur >= 0 then do;		/* real octal char value */
+			if ^lb then
+			     work = work || " ";
+			call count_text;
+			if j > 1 then do;
+			     work = work || requote_string_ (substr (str, i, j));
+			     i = i + j - 1;
+			end;
+			else work = work || tchar (byte (cur));
+		     end;
+
+		     else if cur = -1 then
+			work = work || ">";
+
+		     else do;
+			if ^lb then
+			     work = work || " ";
+			call ioa_$rsnnl ("(^d) <", temp, (0), -cur);
+			work = work || temp;
+		     end;
+
+		     lb = (cur < -1);
+		end;
+
+		call ioa_$ioa_switch (iocbp, "^-^x^a:  ^a;", title, work);
+	     end;
+	end;
+
+	return;
+
+count_text: proc;
+
+	     do j = i to source.len
+		while (rank (substr (str, j, 1)) >= 32 & rank (substr (str, j, 1)) <= 126);
+	     end;
+	     j = j - i;
+	     return;
+
+	end count_text;
+
+     end /* print_str */;
+
+
+print_all_delays: proc;
+
+	if tte.delay_rp = 0
+	then return;
+
+	delay_tablep = ptr (tttp, tte.delay_rp);
+
+	call ioa_$ioa_switch_nnl (iocbp, "^-^xbauds:^2-");
+	do i = 1 to delay_table.n_bauds;
+	     call ioa_$ioa_switch_nnl (iocbp, "^[ other^;^6d^]", delay_table.baud_rate (i) = 0,
+		delay_table.baud_rate (i));
+	end;
+	call ioa_$ioa_switch (iocbp, ";");
+
+	do delayx = 1 to 6;
+	     call print_delay (delayx);
+	end;
+
+	return;
+     end /* print_all_delays */;
+
+
+print_delay: proc (delayx);
+
+dcl  delayx fixed bin;
+
+	n = delay_table.n_bauds;
+	if delayx = 2 | delayx = 4			/* floating-point type */
+	then call ioa_$ioa_switch (iocbp, "^-^x^a_delays:^-^v(^6.3f^);", delay_name (delayx), n,
+		float_delays.array (*).delays (delayx));
+
+	else call ioa_$ioa_switch (iocbp, "^-^x^a_delays:^-^v(^6d^);", delay_name (delayx), n,
+		delay_table.delay_array (*).delays (delayx));
+
+	return;
+     end /* print_delay */;
+
+
+print_table: proc (tablex, like);
+
+dcl  tablex fixed bin;
+dcl  like bit (1);
+
+	if table_offset (tablex) = 0
+	then if like
+	     then call ioa_$ioa_switch (iocbp, "^-^x^a:  ;", table_name (tablex));
+	     else ;
+
+	else call ioa_$ioa_switch (iocbp, "^-^x^a:  ^a;", table_name (tablex),
+		ptr (tttp, table_offset (tablex)) -> table_entry.name);
+	return;
+     end /* print_table */;
+
+
+print_line_types: proc (like);
+
+dcl  like bit (1);
+dcl  line_type_str char (168);
+
+	if tte.line_types = (72)"1"b & ^like
+	then return;
+
+	line_type_str = "";
+	do i = 1 to max_line_type;
+	     if substr (tte.line_types, i, 1)
+	     then call ioa_$rsnnl ("^a, ^a", line_type_str, n, line_type_str, line_types (i));
+	end;
+
+	substr (line_type_str, 1, 1) = " ";		/* get rid of first comma */
+	call ioa_$ioa_switch (iocbp, "^-^xline_types:  ^a;", line_type_str);
+	return;
+     end /* print_line_type */;
+
+
+print_protocol: proc (like);
+
+dcl  like bit (1);
+
+	if tte.protocol = NO_PROTOCOL & ^like
+	then return;
+
+	call ioa_$ioa_switch (iocbp, "^-^xprotocol:  ^a;", protocol_names (tte.protocol));
+	return;
+
+     end /* print_protocol */;
+
+print_erase: proc (like);
+
+dcl  like bit (1);
+
+	if tte.erase = "#" & ^like
+	then return;
+
+	call ioa_$ioa_switch (iocbp, "^-^xerase: ^a;", tchar (tte.erase));
+	return;
+     end /* print_erase */;
+
+
+print_kill: proc (like);
+
+dcl  like bit (1);
+
+	if tte.kill = "@" & ^like
+	then return;
+
+	call ioa_$ioa_switch (iocbp, "^-^xkill: ^a;", tchar (tte.kill));
+	return;
+     end /* print_kill */;
+
+
+print_frame: proc (like);
+
+dcl  like bit (1);
+
+	if addr (tte.framing_chars) -> based_bit18 = "0"b & ^like /* default */
+	then return;
+
+	call ioa_$ioa_switch (iocbp, "^-^xframing_chars: ^a ^a;",
+	     tchar (tte.frame_begin), tchar (tte.frame_end));
+	return;
+     end /* print_frame */;
+
+print_ifc:
+     proc (like);
+
+dcl  like bit (1);
+
+	if tte.input_suspend ^= NUL | like
+	then call ioa_$ioa_switch (iocbp, "^-^xinput_suspend: ^3.3b;",
+		addr (tte.input_suspend) -> based_bit9);
+
+	if tte.input_resume ^= NUL | like
+	then call ioa_$ioa_switch (iocbp, "^-^xinput_resume: ^3.3b^[, timeout^;^];",
+		addr (tte.input_resume) -> based_bit9, tte.input_timeout);
+
+	return;
+     end /* print_ifc */;
+
+
+print_ofc:
+     proc (like);
+
+dcl  like bit (1);
+
+	if addr (tte.output_suspend_etb) -> based_bit18 = "0"b & ^like
+	then return;
+
+	call ioa_$ioa_switch (iocbp, "^-^xoutput_^[end_of_block^;suspend^]: ^3.3b;",
+	     tte.output_block_acknowledge, addr (tte.output_suspend_etb) -> based_bit9);
+
+	call ioa_$ioa_switch (iocbp, "^-^xoutput_^[acknowledge^;resume^]: ^3.3b;",
+	     tte.output_block_acknowledge, addr (tte.output_resume_ack) -> based_bit9);
+
+	if tte.output_buffer_size > 0 & tte.output_block_acknowledge
+	then call ioa_$ioa_switch (iocbp, "^-^xbuffer_size: ^d;",
+		tte.output_buffer_size);
+
+     end /* print_ofc */;
+
+
+print_line_delimiter:
+     proc (like);
+
+dcl  like bit (1);
+
+	if tte.line_delimiter = low (1) & ^like then return;
+	call ioa_$ioa_switch (iocbp, "^-^xline_delimiter: ^3.3b;",
+	     addr (tte.line_delimiter) -> based_bit9);
+     end;
+
+print_all_flags: proc;
+
+	if tte.keyboard_addressing
+	then call ioa_$ioa_switch (iocbp, "^-^xkeyboard_addressing: yes;");
+
+	if tte.print_preaccess_message
+	then call ioa_$ioa_switch (iocbp, "^-^xprint_preaccess_message: yes;");
+
+	if tte.conditional_printer_off
+	then call ioa_$ioa_switch (iocbp, "^-^xconditional_printer_off: yes;");
+
+	return;
+     end /* print_all_flags */;
+
+
+print_old_type: proc (like);
+
+dcl  like bit (1);
+
+	if tte.old_type <= 0 & ^like
+	then return;
+
+	call ioa_$ioa_switch (iocbp, "^-^xold_type: ^d;", tte.old_type);
+	return;
+     end /* print_old_type */;
+
+
+print_kybd_addr: proc;
+
+	call ioa_$ioa_switch (iocbp, "^-^xkeyboard_addressing: ^[yes^;no^];", tte.keyboard_addressing);
+	return;
+     end /* print_kybd_addr */;
+
+
+print_ppm: proc;
+
+	call ioa_$ioa_switch (iocbp, "^-^xprint_preaccess_message: ^[yes^;no^];", tte.print_preaccess_message);
+	return;
+     end /* print_ppm */;
+
+
+print_cpo: proc;
+
+	call ioa_$ioa_switch (iocbp, "^-^xconditional_printer_off: ^[yes^;no^];", tte.conditional_printer_off);
+	return;
+     end /* print_cpo */;
+
+
+print_preaccess_type: proc (name, idx);
+
+dcl  name char (*);
+dcl  idx fixed bin;
+
+	if idx > 0 then do;
+	     ttep = addr (ttt.tt_entries (idx));
+	     call ioa_$ioa_switch (iocbp, "^/^-preaccess_command: ^a;^/^-^xtype: ^a;",
+		name, tte.name);
+	end;
+
+	return;
+
+     end /* print_preaccess_type */;
+
+/* procedures for printing various extended tables */
+
+print_extended_tables: proc (like);
+
+dcl  like bit (1);
+dcl  like_extended_tablesp ptr;
+dcl  ntables fixed bin;
+dcl  i fixed bin;
+
+	ntables = min (hbound (print_extended_table, 1), extended_tables_ntables);
+	if tte.extended_tables_rp = 0 then extended_tablesp = null ();
+	else extended_tablesp = ptr (tttp, tte.extended_tables_rp);
+
+	if like then
+	     if copy_of_tte.extended_tables_rp = 0 then like_extended_tablesp = null ();
+	     else like_extended_tablesp = ptr (tttp, copy_of_tte.extended_tables_rp);
+	else like_extended_tablesp = null ();
+
+	if extended_tablesp = null () then do;		/* this type has no extended tables */
+	     if like_extended_tablesp = null () then return;
+	     do i = 1 to min (ntables, like_extended_tablesp -> extended_tables.ntables);
+		if like_extended_tablesp -> extended_tables.tables_rp (i) ^= 0 then
+		     call print_extended_table (i) (0);
+	     end;
+	     return;
+	end;
+
+	if like_extended_tablesp = null then do;	/* not like a terminal type with tables */
+	     do i = 1 to min (ntables, extended_tables.ntables);
+		if extended_tables.tables_rp (i) ^= 0 then
+		     call print_extended_table (i) (extended_tables.tables_rp (i));
+	     end;
+	     return;
+	end;
+
+/* both this type and the like type have tables.  Print only differences */
+
+	do i = 1 to min (ntables, extended_tables.ntables);
+	     if extended_tables.tables_rp (i) ^= like_extended_tablesp -> extended_tables.tables_rp (i) then
+		call print_extended_table (i) (extended_tables.tables_rp (i));
+	end;
+	return;
+
+     end print_extended_tables;
+
+print_dsa_table: proc (dsa_rp);
+
+dcl  dsa_rp fixed bin (18);
+dcl  i fixed bin;
+dcl  j fixed bin;
+
+	call ioa_$ioa_switch (iocbp, "^-^xdsatm_device:^[ ;^]", (dsa_rp = 0));
+	if dsa_rp = 0 then return;
+	dsatmdevp = ptr (tttp, dsa_rp);
+
+	do i = lbound (dsatm_device.dpp, 1) to hbound (dsatm_device.dpp, 1);
+	     if dsatm_device.dpp (i) > 0 then
+		call ioa_$ioa_switch (iocbp, "^13tdata_presentation: ^a;", DPP_NAME (dsatm_device.dpp (i)));
+	end;
+
+	do i = lbound (dsatm_device.sdp_dpp.sdp_class, 1) to
+	     hbound (dsatm_device.sdp_dpp.sdp_class, 1);
+	     if dsatm_device.sdp_dpp.sdp_class (i) > 0 then
+		call ioa_$ioa_switch (iocbp, "^13tsdp_class: ^a;", SC_NAME (dsatm_device.sdp_dpp.sdp_class (i)));
+	end;
+
+	do i = lbound (dsatm_device.real_dpp.real_class, 1) to
+	     hbound (dsatm_device.real_dpp.real_class, 1);
+	     if dsatm_device.real_dpp.real_class (i) > 0 then
+		call ioa_$ioa_switch (iocbp, "^13treal_class: ^a;", RC_NAME (dsatm_device.real_dpp.real_class (i)));
+	end;
+
+	if dsatm_device.dev_id > 0 then
+	     call ioa_$ioa_switch (iocbp, "^13tdevice_id: ^d;", dsatm_device.dev_id);
+
+	if dsatm_device.dev_type > 0 then
+	     call ioa_$ioa_switch (iocbp, "^13tdevice_type: ^a;", DT_NAME (dsatm_device.dev_type));
+
+	if dsatm_device.shareability > 0 then
+	     call ioa_$ioa_switch (iocbp, "^13tshareability: ^a;", SH_NAME (dsatm_device.shareability));
+
+	j = 0;
+	do i = 0 to 9 while (j = 0);
+	     if substr (string (dsatm_device.alloc_unit), i) = "1"b then
+		j = i;
+	end;
+	if j > 0 then
+	     call ioa_$ioa_switch (iocbp, "^13tallocation_unit: ^a;", AU_NAME (j));
+
+	if dsatm_device.line_overflow > 0 then
+	     call ioa_$ioa_switch (iocbp, "^13tline_overflow: ^a;", LO_NAME (dsatm_device.line_overflow));
+
+	if dsatm_device.page_overflow > 0 then
+	     call ioa_$ioa_switch (iocbp, "^13tpage_overflow: ^a;", PO_NAME (dsatm_device.page_overflow));
+
+	do i = lbound (dsatm_device.char_encoding, 1) to
+	     hbound (dsatm_device.char_encoding, 1);
+	     if dsatm_device.char_encoding (i) > 0 then
+		call ioa_$ioa_switch (iocbp, "^13tcharacter_encoding: ^a;", CE_NAME (dsatm_device.char_encoding (i)));
+	end;
+
+	do i = lbound (dsatm_device.char_set, 1) to
+	     hbound (dsatm_device.char_set, 1);
+	     if dsatm_device.char_set (i) > 0 then
+		call ioa_$ioa_switch (iocbp, "^13tcharacter_set: ^a;", CS_NAME (dsatm_device.char_set (i)));
+	end;
+
+	do i = lbound (dsatm_device.char_subset, 1) to
+	     hbound (dsatm_device.char_subset, 1);
+	     if dsatm_device.char_subset (i) > 0 then
+		call ioa_$ioa_switch (iocbp, "^13tcharacter_subset: ^a;", CSS_NAME (dsatm_device.char_subset (i)));
+	end;
+
+	do i = lbound (dsatm_device.nat_lang, 1) to
+	     hbound (dsatm_device.nat_lang, 1);
+	     if dsatm_device.nat_lang (i) > 0 then
+		call ioa_$ioa_switch (iocbp, "^13tnational_language: ^a;", NL_NAME (dsatm_device.nat_lang (i)));
+	end;
+
+	do i = lbound (dsatm_device.compression, 1) to
+	     hbound (dsatm_device.compression, 1);
+	     if dsatm_device.compression (i) > 0 then
+		call ioa_$ioa_switch (iocbp, "^13tcompression_algorithm: ^a;", CA_NAME (dsatm_device.compression (i)));
+	end;
+
+	do i = lbound (dsatm_device.char_font, 1) to
+	     hbound (dsatm_device.char_font, 1);
+	     if dsatm_device.char_font (i) > 0 then
+		call ioa_$ioa_switch (iocbp, "^13tcharacter_font: ^a;", CF_NAME (dsatm_device.char_font (i)));
+	end;
+
+	if dsatm_device.max_rec_size > 0 then
+	     call ioa_$ioa_switch (iocbp, "^13tmax_record_size: ^d;", dsatm_device.max_rec_size);
+
+
+	i = 1;					/* get attention keys			*/
+	do while (i <= 2);
+	     if dsatm_device.attentions.attn (i).invocation.break then
+		call ioa_$ioa_switch (iocbp, "^13t^[attd;att1^]: BREAK;", (i = 1));
+	     if dsatm_device.attentions.attn (i).invocation.sec_dialog then
+		call ioa_$ioa_switch (iocbp, "^13t^[attd;att1^]: SEC_DIALOG;", (i = 1));
+	     if dsatm_device.attentions.attn (i).invocation.string then
+		call ioa_$ioa_switch (iocbp, "^13t^[attd;att1^]: ^a;", dsatm_device.attentions.attn (i).string_value (1));
+	     i = i + 1;
+	end;
+
+	if dsatm_device.stc_available then
+	     call ioa_$ioa_switch (iocbp, "^13tstc_available: YES;");
+
+	return;
+
+     end print_dsa_table;
+
+print_video_table: proc (video_rp);
+
+dcl  video_rp fixed bin (18);
+dcl  i fixed bin;
+
+	call ioa_$ioa_switch (iocbp, "^-^xvideo_info:^[ ;^]", (video_rp = 0));
+	if video_rp = 0 then return;
+	ttyvtblp = ptr (tttp, video_rp);
+	video_chars_ptr = addr (tty_video_table.video_chars);
+
+	if tty_video_table.screen_height ^= 0 then
+	     call ioa_$ioa_switch (iocbp, "^13tscreen_height: ^d;", tty_video_table.screen_height);
+	if tty_video_table.screen_line_length ^= 0 then
+	     call ioa_$ioa_switch (iocbp, "^13tscreen_line_length: ^d;", tty_video_table.screen_line_length);
+	if tty_video_table.scroll_count ^= 0 then
+	     call ioa_$ioa_switch (iocbp, "^13tscroll_count: ^d;", tty_video_table.scroll_count);
+
+	do i = 1 to min (hbound (video_seq_names, 1), tty_video_table.nseq);
+	     call print_seq (i);
+	end;
+
+	return;
+
+     end print_video_table;
+
+print_seq: proc (seqx);
+
+dcl  seqx fixed bin;
+
+dcl  i fixed bin;
+dcl  p ptr;
+dcl  cpad_to_print fixed bin (35);
+dcl  cpad_units char (3);
+dcl  1 test_numeric_encoding like tty_numeric_encoding automatic;
+
+	ttyvseqp = addr (tty_video_table.sequences (seqx));
+	if ^tty_video_seq.present then return;
+	call ioa_$ioa_switch_nnl (iocbp, "^13t^a:^29t", video_seq_names (seqx));
+	p = addr (test_numeric_encoding);
+	do i = tty_video_seq.seq_index to tty_video_seq.seq_index + tty_video_seq.len - 1;
+	     unspec (test_numeric_encoding) = unspec (substr (video_chars, i, min (2, length (video_chars) - i + 1)));
+	     if p -> tty_numeric_encoding.must_be_on then do;
+		call ioa_$ioa_switch_nnl (iocbp, " (^[decimal ^]^[octal ^]^[^d ^;^s^]^[LINE^;COLUMN^;N^]",
+		     p -> tty_numeric_encoding.express_in_decimal,
+		     p -> tty_numeric_encoding.express_in_octal,
+		     (p -> tty_numeric_encoding.num_digits ^= 0),
+		     p -> tty_numeric_encoding.num_digits,
+		     p -> tty_numeric_encoding.l_c_or_n + 1);
+		if ^p -> tty_numeric_encoding.offset_is_0 then
+		     if p -> tty_numeric_encoding.offset < 0 then
+			call ioa_$ioa_switch_nnl (iocbp, " - ^a", tchar (byte (-p -> tty_numeric_encoding.offset)));
+		     else call ioa_$ioa_switch_nnl (iocbp, " + ^a", tchar (byte (+p -> tty_numeric_encoding.offset)));
+		call ioa_$ioa_switch_nnl (iocbp, ")");
+		if ^p -> tty_numeric_encoding.offset_is_0 then
+		     i = i + 1;
+	     end;
+	     else call ioa_$ioa_switch_nnl (iocbp, " ^a", tchar (substr (video_chars, i, 1)));
+	end;
+	if tty_video_seq.cpad_present then do;
+	     if tty_video_seq.cpad_in_chars then do;
+		cpad_to_print = tty_video_seq.cpad;
+		cpad_units = "";
+	     end;
+	     else if mod (tty_video_seq.cpad, 10) = 0 then do;
+		cpad_to_print = divide (tty_video_seq.cpad, 10, 17, 0);
+		cpad_units = " ms";
+	     end;
+	     else do;
+		cpad_to_print = tty_video_seq.cpad * 100;
+		cpad_units = " us";
+	     end;
+	     call ioa_$ioa_switch_nnl (iocbp, ", pad ^d^a", cpad_to_print, cpad_units);
+	end;
+
+	call ioa_$ioa_switch (iocbp, ";");
+	return;
+
+     end print_seq;
+
+print_function_key_table: proc (function_key_rp);
+
+dcl  function_key_rp fixed bin (18);
+
+	return;
+
+     end print_function_key_table;
+
+print_fkey_seqs: proc (seqs, seqs_name, temp_key_infop);
+
+dcl  seqs char (*);
+dcl  seqs_name char (*);
+dcl  (i, j, highest) fixed bin;
+
+dcl  temp_key_index fixed bin;
+dcl  temp_key_infop ptr;
+dcl  1 temp_key_info (0:3) aligned based (temp_key_infop) like key_info;
+
+	highest = highest_defined ();
+	if highest < 0 then return;			/* no seqs defined for this fcn key */
+	call ioa_$ioa_switch_nnl (iocbp, "^2-^a:  ", seqs_name);
+	do temp_key_index = 0 to highest;
+
+	     do i = 0 to temp_key_info (temp_key_index).sequence_length - 1;
+		j = temp_key_info (temp_key_index).sequence_index + i;
+		call ioa_$ioa_switch_nnl (iocbp, "^[ ^]^a", i ^= 0, tchar (substr (seqs, j, 1)));
+	     end;
+
+	     if temp_key_index < highest
+	     then call ioa_$ioa_switch_nnl (iocbp, ", ");
+
+	end;
+
+	call ioa_$ioa_switch (iocbp, ";");
+	return;
+
+highest_defined: proc returns (fixed bin);
+
+	     do temp_key_index = 3 to 0 by -1;
+		if temp_key_info (temp_key_index).sequence_length > 0
+		then return (temp_key_index);
+	     end;
+	     return (-1);
+
+	end highest_defined;
+
+     end print_fkey_seqs;
+
+/* return prettyest representation of a character */
+
+tchar: proc (c) returns (char (4) var);
+
+dcl  c char (1);
+dcl  i fixed bin;
+dcl  temp char (4);
+
+dcl  asc_value (0:32) char (3) static options (constant) init
+	("NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
+	"BS ", "TAB", "LF ", "VT ", "FF ", "CR ", "SO ", "SI ",
+	"DLE", "DC1", "DC2", "DC3", "DC4", "NAK", "SYN", "ETB",
+	"CAN", "EM ", "SUB", "ESC", "FS ", "GS ", "RS ", "US ", "SP ");
+
+	i = rank (c);
+	if i <= hbound (asc_value, 1) then return (rtrim (asc_value (i)));
+	if i > 126 then do;
+	     call ioa_$rsnnl ("^o", temp, (0), i);
+	     return (temp);
+	end;
+	if index ("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", c) > 0 then return (c);
+	if c = """" then return ("""""""""");
+	else return ("""" || c || """");
+
+     end tchar;
+
+%include ttt;
+
+%include term_type_protocols;
+
+%include author_dcl;
+
+%include line_types;
+
+%include tty_video_tables;
+
+%include function_key_data;
+%page;
+%include dsatm_negotiate_info;
+%include dsatm_attn_fcn_info;
+%include check_star_name;
+
+     end /* display_ttt */;

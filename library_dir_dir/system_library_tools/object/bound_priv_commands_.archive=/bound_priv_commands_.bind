@@ -1,0 +1,34 @@
+Objectname:	bound_priv_commands_;
+Addname:		change_kst_attributes,
+		deactivate_seg,
+		send_ips, send_wakeup,
+		set_system_search_rules,
+		set_x25_packet_threshold,
+		unwire_pages,
+		wire_pages;
+Order:		change_kst_attributes,
+		deactivate_seg,
+		set_system_search_rules,
+		set_x25_packet_threshold,
+		wire_pages,
+		send_ips;
+Global:		retain;
+
+objectname:	change_kst_attributes;
+
+objectname:	deactivate_seg;
+
+objectname:	set_system_search_rules;
+
+objectname:	set_x25_packet_threshold;
+
+objectname:	wire_pages;
+   synonym:	unwire_pages;
+
+objectname:	send_ips;
+   synonym:	send_wakeup;
+
+/* end; */
+
+
+

@@ -1,0 +1,124 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+   *                                                         *
+   *********************************************************** */
+
+
+/* HISTORY COMMENTS:
+  1) change(86-02-11,Herbst), approve(87-07-24,MCR7697),
+     audit(87-07-24,Martinson), install(87-08-04,MR12.1-1055):
+     Added send_system_message_.
+  2) change(87-04-26,GDixon), approve(87-07-24,MCR7741),
+     audit(87-07-24,Martinson), install(87-08-04,MR12.1-1055):
+     Add user_table_mgr_.
+                                                   END HISTORY COMMENTS */
+
+
+/* Created 82-03-07  E. N. Kittlitz.  a shadow of its former bound_user_control_ self */
+/* 82-08-11 E. N. Kittlitz.  moved create_homedir_ to bound_as_install_ctl_ */
+/* Modified: 1 September 1983 by G. Palter to delete ms_table_mgr_ */
+/* Modified 1984-09-26 by E. Swenson to remove pnt_manager_. */
+/* Modified 1985-10-21 by Steve Herbst, added network_accounting_update_ */
+
+
+Objectname:	bound_user_ctl_;
+
+Addname:		act_ctl_,
+		as_data_,
+		as_meter_,
+		astty_,
+		asu_,
+		cpg_,
+		device_acct_,
+		dialup_,
+		dpg_,
+		lg_ctl_,
+		load_ctl_,
+		login_parse_,
+		parse_answerback_,
+		parse_login_line_,
+		pdir_volume_manager_,
+		scramble_,
+		send_system_message_,
+		user_table_mgr_;
+
+Order:		act_ctl_,
+		as_meter_,
+		astty_,
+		as_data_,
+		dialup_,
+		asu_,
+		user_table_mgr_, 
+		login_parse_,
+		parse_login_line_,
+		lg_ctl_,
+		load_ctl_,
+		device_acct_,
+		cpg_,
+		pdir_volume_manager_,
+		dpg_,
+		scramble_,
+		send_system_message_,
+		parse_answerback_;
+		
+Global:		delete;
+
+objectname:	act_ctl_;
+    global:	retain;
+
+objectname:	as_data_;
+    global:	no_link;
+
+objectname:	as_meter_;
+    global:	retain;
+
+objectname:	astty_;
+    global:	retain;
+
+objectname:	asu_;
+    global:	retain;
+
+objectname:	cpg_;
+    global:	retain;
+
+objectname:	device_acct_;
+    global:	retain;
+
+objectname:	dialup_;
+    global:	retain;
+
+objectname:	dpg_;
+    global:	retain;
+
+objectname:	lg_ctl_;
+    global:	retain;
+
+objectname:	load_ctl_;
+    global:	retain;
+
+objectname:	login_parse_;
+    retain:	login_parse_,
+    		password;
+
+objectname:	parse_answerback_;
+    retain:	parse_answerback_;
+
+objectname:	parse_login_line_;
+    retain:	parse_login_line_;
+
+objectname:	pdir_volume_manager_;
+    global:	retain;
+
+objectname:	send_system_message_;
+    global:	retain;
+
+objectname:	scramble_;
+    retain:	scramble_;
+
+objectname:	user_table_mgr_;
+  retain:		allocate,
+		free, reset, 
+		utep_from_handle;
+
+/* end */

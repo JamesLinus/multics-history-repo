@@ -1,0 +1,456 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1983 *
+   *                                                         *
+   *********************************************************** */
+
+
+/* format: style3,idind30,ll122,ifthenstmt */
+
+abs_io_put_chars:
+     procedure (P_iocb_ptr, P_buffer_ptr, P_buffer_len, P_status);
+
+/* Initial coding: 25 June 1979 by J. Spencer Love as specified in MCR 3958					*/
+/* Changed to always set absout bc unless "ear -no_set_bit_count" 07/29/81 S. Herbst */
+/* Fixed bug setting bit count one line early 03/19/82 S. Herbst */
+/* Recompiled for changed abs_data structure 04/12/83 S. Herbst */
+/* Changed to turn on absout safety switch while running 05/16/83 S. Herbst */
+/* Changed to create absouts through links 11/14/84 Steve Herbst */
+
+
+/* Parameters											*/
+
+declare	P_iocb_ptr		ptr parameter,
+	P_buffer_ptr		ptr parameter,
+	P_buffer_len		fixed bin (21) parameter,
+	P_attach_data_ptr		ptr parameter,
+	P_dir_name		char (*) parameter,
+	P_entry_name		char (*) parameter,
+	P_truncate		bit (1) aligned parameter,
+	P_MSF			bit (1) aligned parameter,
+	P_status			fixed bin (35) parameter;
+
+/* Builtins											*/
+
+declare	(addr, binary, divide, length, max, min, mod, null, rtrim, substr)
+				builtin;
+
+declare	any_other			condition;
+
+/* Automatic											*/
+
+declare	buffer_len		fixed bin (21),
+	buffer_ptr		ptr,
+	create_dir_name		char (168),
+	create_entry_name		char (32),
+	iocb_ptr			ptr,
+	mask			bit (36),
+	pad_len			fixed bin (21),
+	rest_of_buffer_len		fixed bin (21),
+	safety_switch		bit (1) aligned,
+	seg_max_len		fixed bin (19),
+	status			fixed bin (35);
+
+declare	1 branch			aligned like status_branch;
+
+/* Based												*/
+
+declare	buffer			char (buffer_len) based (buffer_ptr),
+	output_seg		char (output_file.max_len) based (output_file.seg_ptr);
+
+/* Static												*/
+
+declare	max_buffer_size		fixed bin (21) static;
+
+declare	1 file_is_full		aligned static,
+	  2 version		fixed bin initial (0),
+	  2 status_code		fixed bin (35);
+
+declare	1 unable_to_do_io		aligned static like file_is_full;
+%page;
+/* Constants											*/
+
+declare	NULL			char (1) aligned static options (constant) initial ("");
+
+/* External Constants										*/
+
+declare	error_table_$buffer_big	fixed bin (35) external,
+	error_table_$dirseg		fixed bin (35) external,
+	error_table_$file_is_full	fixed bin (35) external,
+	error_table_$moderr		fixed bin (35) external,
+	error_table_$no_s_permission	fixed bin (35) external,
+	error_table_$unable_to_do_io	fixed bin (35) external,
+	sys_info$max_seg_size	fixed bin (35) external;
+
+/* Entries											*/
+
+declare	continue_to_signal_		entry (fixed bin (35)),
+	hcs_$fs_get_path_name	entry (ptr, char (*), fixed bin, char (*), fixed bin (35)),
+	hcs_$get_link_target	entry (char (*), char (*), char (*), char (*), fixed bin (35)),
+	hcs_$get_max_length_seg	entry (ptr, fixed bin (19), fixed bin (35)),
+	hcs_$get_safety_sw_seg	entry (ptr, bit (1) aligned, fixed bin (35)),
+	hcs_$make_seg		entry (char (*), char (*), char (*), fixed bin (5), ptr, fixed bin (35)),
+	hcs_$reset_ips_mask		entry (bit (36), bit (36)),
+	hcs_$set_bc_seg		entry (ptr, fixed bin (24), fixed bin (35)),
+	hcs_$set_ips_mask		entry (bit (36), bit (36)),
+	hcs_$set_safety_sw_seg	entry (ptr, bit (1) aligned, fixed bin (35)),
+	hcs_$status_long		entry (char (*), char (*), fixed bin (1), ptr, ptr, fixed bin (35)),
+	hcs_$terminate_noname	entry (ptr, fixed bin (35)),
+	hcs_$truncate_seg		entry (ptr, fixed bin, fixed bin (35)),
+	msf_manager_$open		entry (char (*), char (*), ptr, fixed bin (35)),
+	msf_manager_$get_ptr	entry (pointer, fixed bin, bit (1) aligned, pointer, fixed bin (24),
+				fixed bin (35)),
+	msf_manager_$adjust		entry (ptr, fixed bin, fixed bin (24), bit (3), fixed bin (35)),
+	msf_manager_$close		entry (pointer),
+	terminate_process_		entry (char (*), ptr);
+%page;
+/* abs_io_put_chars: procedure (P_iocb_ptr, P_buffer_ptr, P_buffer_len, P_status);				*/
+
+	iocb_ptr = P_iocb_ptr -> iocb.actual_iocb_ptr;	/* get our IOCB, so we can get attach data block.		*/
+	abs_data_ptr = iocb_ptr -> iocb.attach_data_ptr;
+
+	buffer_ptr = P_buffer_ptr;			/* copy parameters so we can play with them		*/
+	buffer_len = P_buffer_len;
+
+	if buffer_len < 0 | buffer_len > max_buffer_size
+	then do;					/* Punt if given invalid buffer size.			*/
+		P_status = error_table_$buffer_big;
+		return;
+	     end;
+
+	mask = ""b;				/* zero mask if we need to switch output segments		*/
+
+/* The following block ensures that no more data will ever get written into a component than will fit.  The block will
+   not be executed if the output segment is exactly filled, or if P_buffer_len is zero.  It will only be executed if
+   another output component is required.  Note that the max_length of the output segment(s) is picked up at open time;
+   if it is decreased we will take a fault before this code will be executed, and if it is increased, we will never
+   take advantage of the additional space.								*/
+
+	do while (buffer_len + output_file.current_len > output_file.max_len);
+	     pad_len = output_file.max_len - output_file.current_len;
+	     rest_of_buffer_len = buffer_len - pad_len;	/* PL/I compiler doesn't notice common subexpression	*/
+	     buffer_len = pad_len;
+	     call write ();				/* write as much as will fit in current component		*/
+	     buffer_ptr = addr (substr (buffer, buffer_len + 1));
+	     buffer_len = rest_of_buffer_len;
+	     call get_next_MSF_component ();		/* get next MSF component if possible			*/
+	end;
+
+	call write ();
+
+	P_status = 0;
+
+	return;
+%page;
+/* This entrypoint is called by abs_io_open if the opening mode is stream_input_output.  It opens the specified output
+   file.  It is called with the IPS mask set to zero to prevent interruption.  An any_other handler in abs_io_open will
+   terminate the process if anything goes wrong.  If the file is already an MSF, it is opened using msf_manager_,
+   otherwise it is opened with a call to hcs_$make_seg, which creates it if it does not exist.  The first call is to
+   hcs_$status_long because the current length and effective mode are needed, otherwise it would have to make an
+   additional call.  In the MSF case, this call is not necessary and will have to be repeated on an MSF component, but
+   it isn't known that hcs_$status_minf would suffice until too late.						*/
+
+open:
+     entry (P_attach_data_ptr, P_dir_name, P_entry_name, P_truncate, P_MSF, P_status);
+
+	abs_data_ptr = P_attach_data_ptr;
+
+	output_file.seg_ptr, output_file.fcb_ptr = null ();
+	output_file.may_be_MSF = P_MSF;
+
+	call hcs_$status_long (P_dir_name, P_entry_name, 1, addr (branch), null (), status);
+
+	if branch.type = Link & (status = 0 | status = error_table_$no_s_permission) then do;
+						/* chase link with nonexistent target */
+	     call hcs_$get_link_target (P_dir_name, P_entry_name, create_dir_name, create_entry_name, status);
+	     if create_dir_name = "" then do;
+		P_status = status;
+		return;
+	     end;
+	end;
+	else do;
+	     create_dir_name = P_dir_name;
+	     create_entry_name = P_entry_name;
+	end;
+
+	if (status ^= 0 & status ^= error_table_$no_s_permission) | (branch.type ^= Segment & branch.type ^= Directory)
+	then do;					/* File does not exist.  We will try to create it.	*/
+		branch.type = Segment;
+		branch.mode = "01010"b;		/* rw access for check later				*/
+		branch.bit_count, branch.current_length = 0;
+	     end;
+	else if branch.type = Directory & branch.bit_count = 0
+	then do;					/* File is a directory.  Punt.			*/
+		P_status = error_table_$dirseg;
+		return;
+	     end;
+
+	if branch.type = Segment
+	then call open_segment ();
+	else call open_MSF ();
+
+	file_is_full.status_code = error_table_$file_is_full;
+	unable_to_do_io.status_code = error_table_$unable_to_do_io;
+
+	P_status = 0;
+
+	return;
+
+PUNT:						/* Target for non-local goto's			*/
+	P_status = status;				/* Error occured during open or close.			*/
+	return;
+%page;
+/* The following entrypoint is called by abs_io_close when output_file.seg_ptr ^= null ().  It is called with the IPS
+   mask set to zero; an any_other handler in abs_io_close will terminate the process if anything goes wrong.		*/
+
+close:
+     entry (P_attach_data_ptr, P_status);
+
+	abs_data_ptr = P_attach_data_ptr;
+
+	if output_file.turn_off_ssw then call hcs_$set_safety_sw_seg (output_file.seg_ptr, "0"b, (0));
+
+	pad_len = mod (-output_file.current_len, 4096);
+	if pad_len ^= 0
+	then do;
+		call hcs_$set_bc_seg (output_file.seg_ptr, 9 * output_file.current_len, status);
+		if status ^= 0 then go to PUNT;	/* Something very badly wrong. Punt immediately.		*/
+	     end;
+
+	if output_file.fcb_ptr = null ()
+	then do;					/* File was SSF.					*/
+		call hcs_$terminate_noname (output_file.seg_ptr, (0));
+		output_file.seg_ptr = null ();	/* TEMP: can go away when terminate_noname is fixed	*/
+	     end;
+	else do;					/* File was opened as MSF.				*/
+		output_file.seg_ptr = null ();	/* msf_manager_ will terminate this.			*/
+		call msf_manager_$close (output_file.fcb_ptr);
+	     end;
+
+	P_status = 0;
+	return;
+%page;
+/* The following procedure is used by abs_io_put_chars to actually transfer data into the current output segment.  If a
+   new page is touched, the bit count of the segment is set to the end of the page.  Thus, data is never present beyond
+   the end of file indicated by the bit count.  The call to set the bit count MUST precede the code which does the
+   actual transfer of output, so that data will never be lost.  It is the reponsibility of the caller to determine that
+   the data in buffer will fit in the output segment.							*/
+
+write:
+     procedure ();
+
+	substr (output_seg, output_file.current_len + 1, buffer_len) = buffer;
+	output_file.current_len = output_file.current_len + buffer_len;
+
+	if ^abs_data.open_data.no_set_bc then do;
+	     call hcs_$set_bc_seg (output_file.seg_ptr, 9 * output_file.current_len, status);
+	     if status ^= 0 then go to PUNT;
+	end;
+
+	return;
+     end write;
+%page;
+/* The following procedure is called when the segment which abs_io_put_chars is currently using is filled.  If the file
+   was opened as a single segment file, it is terminated and reopened as a multi-segment file.  If -single_segment_file
+   (-ssf) was specified at attach time, the process is terminated instead with error_table_$file_is_full as the reason.
+   If anything goes wrong while we are switching output segments, there is nowhere for output to go from error
+   handlers, so we terminate the process with the reason error_table_$unable_to_do_io.  The output file may have been
+   opened as an MSF and then truncated.  In this case, it is still open as an MSF and msf_manager_ will automatically
+   convert it back to an MSF.  This is done because we can't depend on the MSF becoming an SSF when truncated since it
+   might be upgraded.  The whole operation is done with an IPS mask of zero so nothing can interrupt us.		*/
+
+get_next_MSF_component:
+     procedure ();
+
+declare	dir_name			char (168),
+	entry_name		char (32);
+
+	on any_other
+	     begin;
+		if substr (mask, 36, 1)
+		then call terminate_process_ ("fatal_error", addr (unable_to_do_io));
+		else call continue_to_signal_ ((0));
+	     end;
+
+	call hcs_$set_ips_mask (mask, mask);
+
+	if output_file.fcb_ptr = null ()
+	then do;					/* Convert from SSF to MSF				*/
+		if ^output_file.may_be_MSF then call terminate_process_ ("fatal_error", addr (file_is_full));
+		call hcs_$fs_get_path_name (output_file.seg_ptr, dir_name, (0), entry_name, status);
+		if status ^= 0 then go to PUNT_MASKED;
+
+		if output_file.turn_off_ssw then do;
+		     call hcs_$set_safety_sw_seg (output_file.seg_ptr, "0"b, (0));
+		     output_file.turn_off_ssw = "0"b;
+		end;
+
+		call hcs_$terminate_noname (output_file.seg_ptr, (0));
+		call msf_manager_$open (dir_name, entry_name, output_file.fcb_ptr, status);
+		if status ^= 0 then go to PUNT_MASKED;
+		output_file.MSF_seg_idx = 1;
+	     end;
+	else output_file.MSF_seg_idx = output_file.MSF_seg_idx + 1;
+
+	call msf_manager_$get_ptr (output_file.fcb_ptr, output_file.MSF_seg_idx, "1"b, output_file.seg_ptr, (0), status)
+	     ;
+	if status ^= 0 then go to PUNT_MASKED;
+
+	output_file.current_len = 0;			/* start over at base of new component			*/
+
+	call hcs_$reset_ips_mask (mask, mask);
+	return;
+
+PUNT_MASKED:
+	call terminate_process_ ("fatal_error", addr (unable_to_do_io));
+
+     end get_next_MSF_component;
+%page;
+/* This entrypoint is called by abs_io_put_chars$open to open an output file which is a segment, which includes the
+   case where the output file does not exist.  It checks that rw access is available, makes it known, gets the max
+   length and adjusts the length as specified.  The other entrypoint, open_MSF, is described below.  The two
+   entrypoints are merged to reduce the number of non-quick internal procedure calls, and are declared options
+   (non-quick) to keep the stack frame small for calls to abs_io_put_chars					*/
+
+open_segment:
+     procedure () options (non_quick);
+
+	if (branch.mode & "01010"b) ^= "01010"b
+	then do;					/* We must have rw access on the file			*/
+		status = error_table_$moderr;
+		go to PUNT;
+	     end;
+
+	call hcs_$make_seg (create_dir_name, create_entry_name, "", 1010b, output_file.seg_ptr, status);
+	if output_file.seg_ptr = null () then go to PUNT; /* We couldn't create the file.  Punt.			*/
+
+	call get_max_len ();			/* Needed by abs_io_put_chars and adjust_length		*/
+
+	if P_truncate
+	then do;
+		if branch.current_length ^= 0
+		then do;
+			call hcs_$truncate_seg (output_file.seg_ptr, 0, status);
+			if status ^= 0 then go to PUNT;
+		     end;
+		if branch.bit_count ^= 0
+		then do;
+			call hcs_$set_bc_seg (output_file.seg_ptr, 0, status);
+			if status ^= 0 then go to PUNT;
+		     end;
+	     end;
+	else call adjust_length ();
+
+	call hcs_$get_safety_sw_seg (output_file.seg_ptr, safety_switch, status);
+	if status = 0 & ^safety_switch then do;
+	     output_file.turn_off_ssw = "1"b;
+	     call hcs_$set_safety_sw_seg (output_file.seg_ptr, "1"b, status);
+	end;
+
+	return;
+%page;
+/* The following entrypoint is called by abs_io_put_chars$open to open an MSF for output.  There are two separate
+   tracks which are followed depending on whether truncation is required.  In the non-truncation case, the length of
+   the last component is adjusted by the same procedure used for SSF's.  This necessitates another call to
+   hcs_$status_long to acertain the effective mode and the current length of the component.  The index of the last
+   component is one less than the bit count of the MSF directory.  In the truncation case, the length of the file is
+   adjusted by a call to msf_manager_$adjust; it is assumed that rw access is present on the MSF if this call succeeds.
+   The current length and last component index are known to be zero.						*/
+
+open_MSF:
+     entry ();
+
+declare	dir_name			char (168),
+	entry_name		char (32);
+
+	call msf_manager_$open (P_dir_name, P_entry_name, output_file.fcb_ptr, status);
+	if status ^= 0 then go to PUNT;
+
+	if P_truncate
+	then do;
+		call msf_manager_$adjust (output_file.fcb_ptr, 0, 0, "110"b, status);
+		if status ^= 0 then go to PUNT;
+		call msf_manager_$get_ptr (output_file.fcb_ptr, 0, "1"b, output_file.seg_ptr, (0), status);
+		if status ^= 0 then go to PUNT;
+		call get_max_len ();
+		output_file.MSF_seg_idx, output_file.current_len = 0;
+	     end;
+	else do;
+		output_file.MSF_seg_idx = branch.bit_count - 1;
+		call msf_manager_$get_ptr (output_file.fcb_ptr, output_file.MSF_seg_idx, "1"b, output_file.seg_ptr,
+		     (0), status);
+		if status ^= 0 then go to PUNT;
+		call hcs_$fs_get_path_name (output_file.seg_ptr, dir_name, (0), entry_name, (0));
+		call hcs_$status_long (dir_name, entry_name, 1, addr (branch), null (), (0));
+		if (branch.mode & "01010"b) ^= "01010"b
+		then do;
+			status = error_table_$moderr;
+			go to PUNT;
+		     end;
+		call get_max_len ();
+		call adjust_length ();
+	     end;
+
+	return;
+     end open_segment;
+%page;
+/* This procedure is called by open_segment and open_MSF to initialize output_file.max_len, which is needed by
+   abs_io_put_chars and adjust_len, and max_buffer_size, which is needed by abs_io_put_chars.  If the maximum length of
+   the output component is zero, the file cannot be opened.							*/
+
+get_max_len:
+     procedure ();
+
+	call hcs_$get_max_length_seg (output_file.seg_ptr, seg_max_len, status);
+	if status ^= 0 then go to PUNT;
+	if seg_max_len <= 0
+	then do;
+		status = error_table_$file_is_full;
+		go to PUNT;
+	     end;
+	output_file.max_len = 4 * seg_max_len;
+	max_buffer_size = 4 * sys_info$max_seg_size;
+
+	return;
+
+     end get_max_len;
+
+/* The following procedure is called by abs_io_put_chars$open to position the logical length of the file just beyond
+   the end of valid data.  All entrypoints in this external block cooperate to ensure that data can never be lost.
+   get_max_len must be called before this procedure is called.						*/
+
+adjust_length:
+     procedure ();
+
+declare	bc			fixed bin (24);
+
+	output_file.current_len = length (rtrim (substr (output_seg, 1, 4096 * binary (branch.current_length)), NULL));
+	pad_len = min (output_file.max_len, divide (max (0, branch.bit_count), 9, 21, 0));
+
+	if mod (output_file.current_len, 4096) = 0
+	then output_file.current_len = max (output_file.current_len, pad_len);
+	else output_file.current_len = max (output_file.current_len, pad_len - 4095);
+
+	bc = 9 * (output_file.current_len + pad_len);
+	if bc ^= branch.bit_count
+	then do;
+		call hcs_$set_bc_seg (output_file.seg_ptr, bc, status);
+		if status ^= 0 then go to PUNT;
+	     end;
+
+	return;
+
+     end adjust_length;
+%page;
+%include abs_io_data;
+%page;
+%include iocb;
+%page;
+%include status_structures;
+
+
+
+     end abs_io_put_chars;
+
+
+

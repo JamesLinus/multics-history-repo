@@ -1,0 +1,22 @@
+/* Updated for new reconfiguration 2/18/76 */
+/* init_rlv_parasites deleted, July 1982, J. Bongiovanni */
+
+Objectname:	bound_init_2;
+Global:		retain;			/* Init-segs */
+
+Order:		make_branches,
+		init_branches,
+		load_system;
+
+
+objectname:	make_branches;
+
+objectname:	init_branches;
+
+objectname:	load_system;
+
+
+/*		END		*/
+
+
+

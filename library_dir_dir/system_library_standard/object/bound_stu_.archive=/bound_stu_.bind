@@ -1,0 +1,34 @@
+Objectname:	bound_stu_;
+
+Addname:		stu_;
+
+Global:		delete;
+
+Order:		stu_,
+		attempt_thunk,
+		block_dcld_in,
+		decode_runtime_value,
+		find_block,
+		find_containing_block,
+		find_header,
+		find_runtime_symbol,
+		get_block,
+		get_display_steps,
+		get_implicit_qualifier,
+		get_line_no,
+		get_location,
+		get_map_index,
+		get_runtime_address,
+		get_runtime_line_no,
+		get_runtime_location,
+		get_statement_map,
+		offset_to_pointer,
+		pointer_to_offset,
+		remote_format;
+
+objectname:	stu_;
+  global:		retain;
+  delete:		symbol_table;
+
+/*		END		*/
+

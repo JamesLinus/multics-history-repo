@@ -1,0 +1,26 @@
+Global:		delete;
+
+Objectname:	bound_compare_object_;
+
+Addname:		compare_object, cob, compare_object_, display_text_;
+
+Order:		compare_object, compare_text_, display_text_, 
+		cob_xfer_vector,
+		compare_link_, compare_defs_;
+
+objectname:	compare_object;
+synonym:		cob, compare_object_;
+retain:		compare_object, cob, compare_object_, ptr;
+
+objectname:	display_text_;
+retain:		display_text_;
+
+objectname:	cob_xfer_vector;
+global:		retain;	/* must be retain, FATAL IF NOT!!! */
+synonym:		binoct, bindec;
+
+objectname:	compare_link_;
+synonym:		compare_static_;
+
+
+

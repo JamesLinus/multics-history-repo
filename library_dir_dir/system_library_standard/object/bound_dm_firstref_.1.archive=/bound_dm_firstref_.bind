@@ -1,0 +1,365 @@
+/* DESCRIPTION:
+
+          Programs are placed in bound_dm_firstref_ if they reference data
+     which is initialized by a first reference trap.  Also, a program is
+     placed in bound_dm_firstref_ if it is only called by programs which are
+     in bound_dm_firstref_.
+
+*/
+
+/* HISTORY:
+
+Written by Lindsey Spratt, 07/28/83.
+Modified:
+08/02/83 by Lindsey Spratt: Added the file_manager_ (fm_inner_ring_tv_).
+08/05/83 by Lindsey Spratt: Removed lm_fast_lock_list_ and lm_data_ to
+	  bound_dm_outer_, because they are referenced in the
+	  lm_per_system_init_ path.  Added dm_data_ here because it has a
+	  first reference trap and is referenced by the programs in this
+	  bound segment.
+09/15/83 by Lee A. Newcomb: added "_" to bjm and tm per-process init procs.,
+	  added bjm_per_system_init_2_, and moved tm_handle_conditions
+	  to bound_dm_outer_ (it is supposed to be called from the user's
+	  current ring of execution).
+12/02/83 by Lee A. Newcomb:  add Order statement to catch objects in the
+	  archive that do not have objectname statements.
+12/07/83 by Lee A. Newcomb:  add bjm_data_, replacing bjm_static_.
+02/15/84 by Matthew Pierret:  Added tm_get_state_description.
+02/21/84 by Lee A. Newcomb:  added tm_user_shutdown.
+03/22/84 by Lee A. Newcomb:  removed tm_user_shutdown as it must not
+	  set off the fref traps, and tm_get_state_(info description)
+	  which have no need set off the fref trap.
+05/14/84 by Lee A. Newcomb:  added (bjm fm lm)_user_shutdown and
+	  tm_user_shutdown_(adjust free).
+05/24/84 by Lee A. Newcomb:  changed ","'s to ";"'s in two necessary places.
+06/15/84 by Lee A. Newcomb:  added fm_stream_ and removed fm_(read fetch)_.
+08/14/84 by Lee A. Newcomb:  Added tm_send_ips.
+08/23/84 by Matthew Pierret: Removed fm_open_ object and addname. Added:
+            fm_create_open_, fm_delete_close_, fm_error_util_,
+            fm_get_last_ci_num, fm_per_process_init_, fm_prepare_to_copy_,
+            fm_sys_pn_tbl_delete, fm_sys_pn_tbl_insert.
+08/27/84 by Matthew Pierret: Corrected two typos introduced in previous
+            modification.
+08/27/84 by Matthew Pierret: Added fm_per_process_init_ as an add-name.
+10/05/84 by Lindsey Spratt: Added fm_status and bj_error_util_.
+10/30/84 by Lee A. Newcomb:  Added dm_inner_ring_tv_ and shutdown support
+	  modules dm_(admin_sched_shutdown compare_shutdown_info
+	  process_shutdown_spec set_shutdown_info).
+11/26/84 by Lindsey Spratt:  Renamed bound segment to bound_dm_firstref_ from
+	  bound_dm_is_inner_.
+11/28/84 by Matthew Pierret:  Removed fm_attribute_ (it's now in bound_dm_).
+            Added fm_attribute_fref_, fm_do_, fm_open_by_uid, 
+            fm_sys_pn_tbl_get_path, fm_sys_pn_tbl_rename, fm_sys_pn_tbl_util_.
+12/03/84 by Lindsey Spratt: Removed the "global: retain;" statements. Replaced
+	  by a selective retain on fm_data_. Removed dm_common_init_.
+	  Removed the *_per_process_init_ addnames. Renamed *_inner_ring_tv_
+	  to be =_firstref_tv_.
+12/06/84 by Lindsey Spratt: Added dm_get_daemon_info_.
+12/08/84 by Lindsey Spratt: Removed bj_(save restore)_undo_info.
+12/09/84 by Lindsey Spratt: Moved dm_log_ here from bound_dm_ because it
+	  references dm_system_data_$log_lock, a firstref item.
+12/10/84 by Lindsey Spratt: Changed to global retain on dm_request_action_.
+12/11/84 by Lindsey Spratt: Moved dm_request_action_ back to bound_dm_, to
+	  allow references in situations where the firstref trap must not be
+	  fired. 
+12/12/84 by Lindsey Spratt: Added tm_bump_all.  Removed fm_std_error_handler_ 
+	  (which, oddly, was only mentioned in the Order statement).
+01/15/85 by Lindsey Spratt: Added fm_sys_pn_tbl_opens.
+02/13/85 by Lindsey Spratt: Changed lm_signal_deadlock_ to lm_signal_.
+03/19/85 by Lindsey Spratt:  Removed dm_log_ from bound_dm_firstref_, as it no
+	  longer needs the firstref trap.
+03/22/85 by Lee A. Newcomb:  Added the new modules bjm_attribute_fref_ and
+            bj_max_txn_storage_limit.
+04/12/85 by Lindsey Spratt:  Added lm_copy_fast_data_.
+*/
+
+Objectname: bound_dm_firstref_;
+
+Addname:
+	bjm_firstref_tv_,
+
+	dm_data_,
+	dm_firstref_tv_,
+
+	fm_data_,
+	fm_firstref_tv_,
+
+	lm_firstref_tv_,
+
+	tm_firstref_tv_;
+
+Order:				/* same as order of objectname's */
+	bj_adopt_txn,
+	bj_ci_zero,
+	bj_cleanup_tables,
+	bj_close_oid,
+	bj_error_util_,
+	bj_flush_pnt,
+	bj_max_txn_storage_limit,
+	bj_oid_util,
+	bj_open_by_uid,
+	bj_ppt_search,
+	bj_ppte_create,
+	bj_ppte_register,
+	bj_pst_lock,
+	bj_pst_search,
+	bj_pste_create,
+	bj_pste_delete,
+	bj_pste_lock,
+	bj_pste_register,
+	bj_report_err,
+	bj_storage_append,
+	bj_storage_flush,
+	bj_storage_get,
+	bj_storage_get_header,
+	bj_storage_put_buffered_ci,
+	bj_storage_recycle,
+	bj_storage_util,
+	bj_txte_util,
+	bjm_abandon_transaction,
+	bjm_adjust_process_id,
+	bjm_adopt_transaction,
+	bjm_attribute_fref_,
+	bjm_close,
+	bjm_create,
+	bjm_data_,
+	bjm_delete,
+	bjm_find_old_uid_pn_table,
+	bjm_find_txns_after_crash,
+	bjm_flush_all,
+	bjm_flush_transaction,
+	bjm_get_bj_oid,
+	bjm_get_bj_path_from_oid,
+	bjm_get_bj_path_from_uid,
+	bjm_get_default_bj,
+	bjm_get_journal_status,
+	bjm_firstref_tv_,
+	bjm_open,
+	bjm_open_all_after_crash,
+	bjm_per_process_init_,
+	bjm_per_system_init_2_,
+	bjm_rebuild_after_crash,
+	bjm_rollback,
+	bjm_set_default_bj,
+	bjm_user_shutdown,
+	bjm_write,
+	dm_admin_sched_shutdown,
+	dm_compare_shutdown_info,
+	dm_data_,
+	dm_get_daemon_info_,
+	dm_process_shutdown_spec,
+	dm_send_request_,
+	dm_set_shutdown_info,
+	dm_firstref_tv_,
+	dm_firstref_util_,
+	fm_attribute_fref_,
+	fm_combos_,
+          fm_create_open_,
+	fm_data_,
+          fm_delete_close_,
+          fm_do_,
+          fm_error_util_,
+	fm_get_,
+          fm_get_last_ci_num,
+	fm_firstref_tv_,
+          fm_open_by_uid_,
+          fm_per_process_init_,
+          fm_prepare_to_copy_,
+	fm_put_,
+	fm_status,
+	fm_stream_,
+          fm_sys_pn_tbl_delete,
+          fm_sys_pn_tbl_get_path,
+          fm_sys_pn_tbl_insert,
+	fm_sys_pn_tbl_opens,
+          fm_sys_pn_tbl_rename,
+          fm_sys_pn_tbl_util_,
+	fm_user_shutdown,
+	lm_check_for_deadlock_,
+	lm_copy_data_,
+	lm_copy_fast_data_,
+	lm_expand_lock_seg_,
+	lm_fast_lock_,
+	lm_hash_,
+	lm_init_fast_lock_,
+	lm_init_fast_per_process_,
+	lm_firstref_tv_,
+	lm_log_,
+	lm_per_process_,
+	lm_per_process_init_,
+	lm_per_system_,
+	lm_reset_system_meters_,
+	lm_salvage_lock_seg_,
+	lm_signal_,
+	lm_user_shutdown,
+	tm_abandon,
+	tm_abort,
+	tm_adjust,
+	tm_adjust_tdt,
+	tm_begin,
+	tm_bump_all,
+	tm_cleanup,
+	tm_commit,
+	tm_daemon_adjust,
+	tm_daemon_adopt,
+	tm_error_state,
+	tm_generate_txn_id,
+	tm_get_current_txn_id,
+	tm_get_tdt_size,
+	tm_get_txn_index,
+	tm_get_txn_info,
+	tm_firstref_tv_,
+	tm_per_process_init_,
+	tm_recover_after_crash,
+	tm_rollback,
+	tm_ips_wakeup,
+	tm_suspend,
+	tm_user_shutdown_adjust,
+	tm_user_shutdown_free;
+
+
+Global: delete;
+
+
+objectname: bj_adopt_txn;
+objectname: bj_ci_zero;
+objectname: bj_cleanup_tables;
+objectname: bj_close_oid;
+objectname: bj_error_util_;
+objectname: bj_flush_pnt;
+objectname: bj_max_txn_storage_limit;
+objectname: bj_oid_util;
+objectname: bj_open_by_uid;
+objectname: bj_ppt_search;
+objectname: bj_ppte_create;
+objectname: bj_ppte_register;
+objectname: bj_pst_lock;
+objectname: bj_pst_search;
+objectname: bj_pste_create;
+objectname: bj_pste_delete;
+objectname: bj_pste_lock;
+objectname: bj_pste_register;
+objectname: bj_report_err;
+objectname: bj_storage_append;
+objectname: bj_storage_flush;
+objectname: bj_storage_get;
+objectname: bj_storage_get_header;
+objectname: bj_storage_put_buffered_ci;
+objectname: bj_storage_recycle;
+objectname: bj_storage_util;
+objectname: bj_txte_util;
+objectname: bjm_abandon_transaction;
+objectname: bjm_adjust_process_id;
+objectname: bjm_adopt_transaction;
+objectname: bjm_attribute_fref_;
+objectname: bjm_close;
+objectname: bjm_create;
+objectname: bjm_data_;
+objectname: bjm_delete;
+objectname: bjm_find_old_uid_pn_table;
+objectname: bjm_find_txns_after_crash;
+objectname: bjm_flush_all;
+objectname: bjm_flush_transaction;
+objectname: bjm_get_bj_oid;
+objectname: bjm_get_bj_path_from_oid;
+objectname: bjm_get_bj_path_from_uid;
+objectname: bjm_get_default_bj;
+objectname: bjm_get_journal_status;
+objectname: bjm_firstref_tv_;
+	global: retain;
+objectname: bjm_open;
+objectname: bjm_open_all_after_crash;
+objectname: bjm_per_process_init_;
+objectname: bjm_per_system_init_2_;
+objectname: bjm_rebuild_after_crash;
+objectname: bjm_rollback;
+objectname: bjm_set_default_bj;
+objectname: bjm_user_shutdown;
+objectname: bjm_write;
+
+objectname: dm_admin_sched_shutdown;
+objectname: dm_compare_shutdown_info;
+objectname: dm_data_;
+	global: retain;
+objectname: dm_firstref_util_;
+objectname: dm_firstref_tv_;
+	global: retain;
+objectname: dm_get_daemon_info_;
+objectname: dm_process_shutdown_spec;
+objectname: dm_send_request_;
+objectname: dm_set_shutdown_info;
+
+objectname: fm_attribute_fref_;
+objectname: fm_combos_;
+objectname: fm_create_open_;
+objectname: fm_data_;
+	retain: sys_pn_tbl_ptr, sys_pn_tbl_name;
+objectname: fm_delete_close_;
+objectname: fm_do_;
+objectname: fm_error_util_;
+objectname: fm_get_;
+objectname: fm_get_last_ci_num;
+objectname: fm_firstref_tv_;
+	global: retain;
+objectname: fm_open_by_uid_;
+objectname: fm_per_process_init_;
+objectname: fm_prepare_to_copy_;
+objectname: fm_put_;
+objectname: fm_status;
+objectname: fm_stream_;
+objectname: fm_sys_pn_tbl_delete;
+objectname: fm_sys_pn_tbl_get_path;
+objectname: fm_sys_pn_tbl_insert;
+objectname: fm_sys_pn_tbl_opens;
+objectname: fm_sys_pn_tbl_rename;
+objectname: fm_sys_pn_tbl_util_;
+objectname: fm_user_shutdown;
+
+objectname: lm_check_for_deadlock_;
+objectname: lm_copy_data_;
+objectname: lm_copy_fast_data_;
+objectname: lm_expand_lock_seg_;
+objectname: lm_fast_lock_;
+objectname: lm_hash_;
+objectname: lm_init_fast_lock_;
+objectname: lm_init_fast_per_process_;
+objectname: lm_firstref_tv_;
+	global: retain;
+objectname: lm_log_;
+objectname: lm_per_process_;
+objectname: lm_per_process_init_;
+
+objectname: lm_per_system_;
+objectname: lm_reset_system_meters_;
+objectname: lm_salvage_lock_seg_;
+objectname: lm_signal_;
+objectname: lm_user_shutdown;
+
+objectname: tm_abandon;
+objectname: tm_abort;
+objectname: tm_adjust;
+objectname: tm_adjust_tdt;
+objectname: tm_begin;
+objectname: tm_bump_all;
+objectname: tm_cleanup;
+objectname: tm_commit;
+objectname: tm_daemon_adjust;
+objectname: tm_daemon_adopt;
+objectname: tm_error_state;
+objectname: tm_generate_txn_id;
+objectname: tm_get_current_txn_id;
+objectname: tm_get_tdt_size;
+objectname: tm_get_txn_index;
+objectname: tm_get_txn_info;
+objectname: tm_firstref_tv_;
+	global: retain;
+objectname: tm_per_process_init_;
+objectname: tm_recover_after_crash;
+objectname: tm_rollback;
+objectname: tm_ips_wakeup;
+objectname: tm_suspend;
+objectname: tm_user_shutdown_adjust;
+objectname: tm_user_shutdown_free;
+
+
+/* END */

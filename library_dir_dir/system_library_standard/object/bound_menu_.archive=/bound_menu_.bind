@@ -1,0 +1,72 @@
+/* Bindfile for the menu system -- BIM July 1981 */
+/* Modified 4 May 1982 by Chris Jones to add COBOL/FORTRAN interface */
+
+Objectname:	bound_menu_;
+
+Addname:		menu_create,
+		menu_delete,
+		menu_describe,
+		menu_display,
+		menu_get_choice,
+		menu_list,
+		menu_,
+		menu_et_,
+		cb_menu_,
+		cb_window_,
+		ft_menu_,
+		ft_window_,
+		fc_menu_data_;
+
+Global:		delete;
+
+Order:		menu_,
+		menu_create,
+		menu_et_,
+		ft_window_,
+		cb_window_,
+		fc_menu_window,
+		fc_menu_utils,
+		fc_menu_init1,
+		cb_menu_,
+		ft_menu_,
+		fc_menu_video,
+		fc_menu_create,
+		fc_menu_value_seg_man,
+		fc_menu_data_;
+
+objectname:	menu_;
+ global:		retain;
+ delete:		menu_;
+
+objectname:	menu_et_;
+ global:		retain;
+
+objectname:	menu_create;
+ synonym:		menu_display,
+		menu_delete,
+		menu_get_choice,
+		menu_list,
+		menu_describe;
+ retain:		menu_create, 
+		menu_delete,
+		menu_describe,
+		menu_display,
+		menu_list,
+		menu_get_choice;
+
+objectname:	ft_window_;
+ global:		retain;
+
+objectname:	cb_window_;
+ global:		retain;
+
+objectname:	cb_menu_;
+ global:		retain;
+
+objectname:	ft_menu_;
+ global:		retain;
+
+objectname:	fc_menu_data_;
+ global:		retain;
+
+/* end */

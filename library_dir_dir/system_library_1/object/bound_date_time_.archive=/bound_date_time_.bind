@@ -1,0 +1,82 @@
+/* ********************************************
+   *                                          *
+   * Copyright, (C) Honeywell Bull Inc., 1987 *
+   *                                          *
+   ******************************************** */
+
+
+
+/* HISTORY COMMENTS:
+  1) change(86-09-04,GDixon), approve(86-09-04,MCR7495),
+     audit(86-09-04,Martinson), install(86-09-08,MR12.0-1150):
+     Retain debug entry point in time_defaults_.
+  2) change(87-04-07,Lippard), approve(87-04-27,MCR7673),
+     audit(87-05-15,Fawcett), install(87-05-26,MR12.1-1036):
+     Add set_system_time_zone_.
+  3) change(88-08-04,GDixon), approve(88-08-04,MCR7900),
+     audit(88-08-04,Beattie):
+      A) Retain new convert_date_to_binary_$analyze entrypoint.
+                                                   END HISTORY COMMENTS */
+
+
+/* Bindfile for bound_date_time_, the full-blown date time software. */
+/* Order improved, Keith Loepere, April 1, 1985. */
+/* Added back format_max_length, Keith Loepere, APril 16, 1985. */
+
+Objectname:	bound_date_time_;
+Global:		delete;
+Perprocess_Static;			/* I don't know why */
+Order:		convert_date_to_binary_,
+		time_defaults_,
+		time_info_,
+		date_time_,
+		encode_clock_value_,
+		cv_fstime_,
+		date_name_,
+		set_system_time_zone_;
+
+objectname:	convert_date_to_binary_;
+ retain:		convert_date_to_binary_,
+		relative,
+		analyze;
+
+objectname:	cv_fstime_;
+ retain:		cv_fstime_;
+
+objectname:	date_name_;
+ retain:		date_name_;
+
+objectname:	date_time_;
+ synonym:		decimal_date_time_,
+		request_id_;
+ retain:		hundredths, fstime, date_time_,
+		decimal_date_time_, valid_format,
+		format, from_clock, from_clock_interval, format_max_length,
+		get_time_info_index, offset_to_clock, set_lang,
+		set_time_defaults, set_zone, to_clock,
+		request_id_;
+
+objectname:	encode_clock_value_;
+   synonym:	decode_clock_value_;
+ retain:		decode_clock_value_, date_time, time, all,
+		encode_clock_value_, offsets;
+
+objectname:	set_system_time_zone_;
+ retain:		set_system_time_zone_;
+
+objectname:	time_defaults_;
+   synonym:	time_data_;
+    retain:	date,		date_time,	debug,
+	 	language,		language_index,	time,
+		zone_delta,	zone_index,	zone_long,
+		zone_short,	/* time_data_$ */	time_delta,
+		time_zone;
+
+objectname:	time_info_;
+    retain:	date_time_keywords, day_names,
+		default_language_index,		gmt_zone_index,
+		language_names,	month_names,	offset_names,
+		tokens,		version,		word_names,
+		zone_names;
+
+/* END */

@@ -1,0 +1,36 @@
+/* HISTORY COMMENTS:
+  1) change(86-03-18,Fawcett), approve(86-03-18,MCR7374),
+     audit(86-09-05,Lippard):
+     Created to control the MCA for online use. This is mainly used by online
+     T&D.
+                                                   END HISTORY COMMENTS */
+/* Created by R. A. Fawcett NOV 1984 */
+
+Objectname:	bound_mca_;
+
+Global:		delete;
+
+Order:		mca_attach_,
+		mca_util_,
+		mca_tandd_,
+		mca_parse_;
+
+Addname:		mca_attach_,
+		mca_util_,
+		mca_tandd_;
+
+objectname:	mca_attach_;
+ retain:		ipc_attach, mca_attach, ipc_detach, mca_detach,
+		finish_detach, force_reset_mca;
+
+objectname:	mca_util_;
+ retain:		diskette_read, io_event, load_ipc, load_all_ipcs,
+		display, read_config, reset, reset_all_ipcs,
+		reset_ipc, read_data, trace_sw;
+
+objectname:	mca_tandd_;
+ retain:		read_data, write_data, write_text;
+
+objectname:	mca_parse_;
+
+/* END of bound_mca_.bind */

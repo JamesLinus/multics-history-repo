@@ -1,0 +1,22 @@
+/* Bindfile for bound_bce_save_, goes in collection 1.5. */
+
+/* HISTORY COMMENTS:
+  1) change(86-09-25,Farley), approve(86-07-18,MCR7439),
+     audit(86-09-26,Fawcett), install(86-10-20,MR12.0-1189):
+     Created...
+                                                   END HISTORY COMMENTS */
+
+Objectname:	bound_bce_save_;
+
+Global:		delete;
+Order:		bce_save,
+		bce_save_util_,
+		tape_error_data;
+
+objectname:	bce_save;
+   retain:	bce_save,
+		bce_restore;
+
+objectname:	bce_save_util_;
+
+/* end of bindfile for bound_bce_save_. */

@@ -1,0 +1,169 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(85-07-10,EJSharpe), approve(86-02-20,MCR7304),
+     audit(86-03-27,CLJones), install(86-04-23,MR12.0-1044):
+     added get_access_for_attach
+                                                   END HISTORY COMMENTS */
+
+
+/* Bindfile for bound_mdxhdx_ */
+/* Bernard Greenberg 09/19/76 - expanded by THVV */
+/* Modified '82 to move out fill_vol_extents_ */
+/* Modified 831207 for disk_table_$set_vacate_pdirs_bit and mdx$set_vacate_pdirs_bit... -E. A. Ranzenbach */
+/* Modified 840823 by EJ Sharpe to replace hdx with volume_registration_mgr_
+     and to add volume_registration_cmds_ (used to be hvr_ in bound_system	startup_ */
+
+Objectname:	bound_mdxhdx_;
+
+Global:		delete;
+Order:		wdx,
+		volume_registration_mgr_,
+		vrm_lock_,
+		mdx,
+		lv_request_communicator_,
+		init_disk_pack_,
+		verify_label_,
+		disk_table_,
+		salv_caller,
+		disk_rebuild_caller,
+		countervalidate_label_,
+		volume_registration_cmds_;
+
+objectname:	wdx;
+ retain:		check_mount,
+		free_lvate,
+		init,
+		invalidate_lvate,
+		mhvmessage,
+		poll_mounts,
+		respond_mount_lv,
+		retrieve_lvate,
+		scan_lv,
+		scan_process,
+		set_lvinfo,
+		test;
+
+objectname:	volume_registration_mgr_;
+ retain:		add_lvr,
+		add_pvr,
+		check_volume_registration,
+		change_lvr,
+		change_pvr,
+		delete_lvr,
+		delete_pvr,
+		find,
+		find_lvid,
+		find_lvname,
+		find_volname,
+		get_access,
+		get_access_for_attach,
+		get_lv_pvinfo,
+		init,
+		lvname_info,
+		pvname_info,
+		read_lvr,
+		read_pvr,
+		test,
+		test2;
+
+objectname:	vrm_lock_;
+
+objectname:	mdx;
+ retain:		add_del,
+		assert,
+		check_lv,
+		check_pv,
+		demount_lv,
+		demount_pv,
+		forget,
+		init,
+		mdx,
+		mhv,
+		read_disk_table,
+		reregister,
+		rlvolcheck,
+		set_lv_pdir_bit,
+		set_vacate_pdirs_bit,
+		ss_io_reconfig,
+		take,
+		test,
+		volsalv;
+
+objectname:	lv_request_communicator_;
+ retain:		abandon,
+		alloc_lvate,
+		check,
+		intent_to_detach,
+		intent_to_mount,
+		test;
+
+objectname:	init_disk_pack_;
+ retain:		init_disk_pack_;
+
+objectname:	verify_label_;
+ retain:		verify_label_;
+
+objectname:	disk_table_;
+ retain:		accept,
+		accept_all,
+		accept_rlv,
+		demount_hvol,
+		dhv,
+		disk_table_,
+		dry_run_mhv,
+		general_mhv,
+		get_dtp,
+		init,
+		initialize_disk,
+		io_ss_reconfig,
+		list,
+		mhv,
+		mount_hvol,
+		rbld_disk,
+		remove,
+		reregister,
+		salv_flag,
+		set_vacate_pdirs_bit,
+		set_lv_pdir_bit,
+		volrlvcheck,
+		volsalv,
+		volsalvall;
+
+objectname:	salv_caller;
+ retain:		salv_caller, rbld_disk, dirsalv, packsalv, test;
+
+objectname:	disk_rebuild_caller;
+ retain:		disk_rebuild_caller;
+
+objectname:	countervalidate_label_;
+ retain:		countervalidate_label_,
+		query;
+
+objectname:	volume_registration_cmds_;
+ synonym:		add_volume_registration,
+		add_vol_registration,	/* obsolete name */
+		avr,
+		change_volume_registration,
+		change_vol_registration,	/* obsolete name */
+		cvr,
+		delete_volume_registration,
+		del_vol_registration,	/* obsolete name */
+		dvr,
+		list_volume_registration,
+		list_vol_registration,	/* obsolete name */
+		lvr;
+ retain:		add_volume_registration,
+		add_vol_registration,	/* obsolete name */
+		avr,
+		change_volume_registration,
+		change_vol_registration,	/* obsolete name */
+		cvr,
+		delete_volume_registration,
+		del_vol_registration,	/* obsolete name */
+		dvr,
+		list_volume_registration,
+		list_vol_registration,	/* obsolete name */
+		lvr;
+
+/* end */

@@ -1,0 +1,20 @@
+/* Created Feb 1976 by D  R Vinograd */
+
+Objectname:	bound_hc_backup;
+Global:		retain;
+Order:		hc_dmpr_primitives,
+		dbm_man,
+		retv_copy,
+		retv_util;
+
+objectname:	hc_dmpr_primitives;
+objectname:	dbm_man;
+
+objectname:	retv_copy;
+retain:		retv_copy;
+
+objectname:	retv_util;
+retain:		status, check, name_list, hash_search, set_bc;
+
+
+

@@ -1,0 +1,149 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1984 *
+   *                                                         *
+   *********************************************************** */
+
+/* Bindfile for bound_msg_facility_ */
+/* Written 12/17/83 by Jim Lippard */
+/* Modified 11/15/84 by Jim Lippard to remove the name "acc" from
+   accepting. */
+
+/* HISTORY COMMENTS:
+  1) change(86-01-07,Lippard), approve(86-01-07,MCR7298),
+     audit(86-01-07,Spitzer), install(86-01-20,MR12.0-1006):
+     retain print_message entry point in message_facility_
+  2) change(86-04-23,Lippard), approve(86-05-27,MCR7418),
+     audit(86-06-24,Hartogs), install(86-06-30,MR12.0-1080):
+     Remove get_current_message_info entry point.
+                                                   END HISTORY COMMENTS */
+
+Objectname:	bound_msg_facility_;
+   Global:	delete;
+   Perprocess_Static;
+
+   Addname:	accepting,
+		accept_messages, am,
+		defer_messages, dm,
+		delete_message, dlm,
+		immediate_messages, im,
+		last_message, lm,
+		last_message_destination, lmds,
+		last_message_sender, lms,
+		last_message_time, lmt,
+		message_status, msgst,
+		mail, ml,
+		message_facility_,
+		print_messages, pm,
+		send_mail_,
+		send_message, sm,
+		send_message_acknowledge, sma,
+		send_message_express, smx,
+		send_message_silent, sms,
+		send_message_,
+		send_message_acknowledge_,
+		send_message_express_;
+
+   Order:		message_facility_,
+		accept_messages,
+		defer_messages,
+		delete_message,
+		last_message_info,
+		mail,
+		message_status,
+		send_mail_,
+		send_message,
+		send_message_obsolete;
+
+objectname:	accept_messages;
+   synonym:	am;
+   retain:	accept_messages, am;
+
+objectname:	defer_messages;
+   synonym:	dm,
+		immediate_messages, im;
+   retain:	defer_messages, dm,
+		immediate_messages, im;
+
+objectname:	delete_message;
+   synonym:	dlm,
+		print_messages, pm;
+   retain:	delete_message, dlm,
+		print_messages, pm;
+
+objectname:	last_message_info;
+   synonym:	last_message, lm,
+		last_message_sender, lms,
+		last_message_time, lmt;
+   retain:	last_message, lm,
+		last_message_sender, lms,
+		last_message_time, lmt;
+
+objectname:	mail;
+   synonym:	ml;
+   retain:	mail, ml;
+
+objectname:	message_status;
+   synonym:	msgst;
+   retain:	message_status, msgst;
+
+objectname:	message_facility_;
+   retain:	alarm_processor,
+		default_alarm_handler,
+		default_wakeup_handler,
+		delete_message,
+		free_msgf_mbx_ptr,
+		get_alarm_handler,
+		get_last_message_info,
+		get_mbx_path,
+		get_message_format,
+		get_msg_array_ptr,
+		get_msgf_mbx_ptr,
+		get_next_msgf_mbx_ptr,
+		get_prefix,
+		get_wakeup_handler,
+		get_wakeup_state,
+		print_message,
+		read_message,
+		send_message,
+		send_message_access_class,
+		set_alarm_handler,
+		set_message_format,
+		set_prefix,
+		set_seen_switch,
+		set_wakeup_handler,
+		set_wakeup_state,
+		wakeup_processor;
+
+objectname:	send_mail_;
+   retain:	send_mail_,
+		access_class,
+		path,
+		path_access_class;
+
+objectname:	send_message;
+   synonym:	sm,
+		accepting,
+		last_message_destination, lmds;
+   retain:	send_message, sm,
+		accepting,
+		last_message_destination, lmds;
+
+objectname:	send_message_obsolete;
+   synonym:	send_message_acknowledge, sma,
+		send_message_express, smx,
+		send_message_silent, sms,
+		send_message_,
+		send_message_acknowledge_,
+		send_message_express_;
+   retain:	send_message_acknowledge, sma,
+		send_message_express, smx,
+		send_message_silent, sms,
+		send_message_,
+		send_message_acknowledge_,
+		send_message_express_,
+		notify_mail;
+/* end; */
+
+
+

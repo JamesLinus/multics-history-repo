@@ -1,0 +1,426 @@
+/* ***********************************************************
+   *                                                         *
+   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+   *                                                         *
+   * Copyright (c) 1972 by Massachusetts Institute of        *
+   * Technology and Honeywell Information Systems, Inc.      *
+   *                                                         *
+   *********************************************************** */
+
+
+et_util: procedure;
+
+
+/*	Modified Aug, 1980 to add capability to run the new ets scripts.
+   *	Accomplished by changing declaration of most fixed bin variables to
+   *	fixed bin (35).
+*/
+
+
+/*	This procedure contains code which performs utility jobs for  ET.
+   *
+   *
+   *
+   *	The following data items are parameters to the various utility entries
+   *	and procedures.
+*/
+
+
+dcl  script_ptr ptr,				/* Pointer to input data segment. */
+
+     start fixed bin (35),				/* The number of script characters
+						   *  allready processed.  The next
+						   *  character is the start of the
+						   *  window.  */
+
+     size fixed bin (35),				/* The current size ( in characters )
+						   *  of the window on the script seg. */
+
+     next_statement_x fixed bin (35),			/* The number of the last character in
+						   *  the current statement.  */
+
+     arg_test_string char (*),			/* The character string searched for
+						   *  by  get_next. */
+
+     len fixed bin (35),				/* A temporary string length.  It is returned
+						   *  by  get_next.  */
+
+     ptr_data ptr,					/* Pointer to be adjusted in call to char_rel. */
+
+     rel fixed bin,					/* Number of characters to adjust above pointer. */
+
+     dec_num fixed bin,				/* Holds converted decimal number. */
+
+     code fixed bin (35);				/* Error code. */
+
+
+
+
+/*	The following data items are work variables used by the various utility
+   *	entries and procedures.  */
+
+dcl  save fixed bin (35),				/* Used to save the start of the
+						   *  current window.  */
+
+     field_len fixed bin (35),			/* A work variable which indicates
+						   *  the size of a character string. */
+
+     i fixed bin (35),				/* Temporary index. */
+
+     sign fixed bin,				/* The sign of a decimal number.  */
+
+     test_string char (8) aligned,			/* Contains the string searched for by
+						   *  get_next.  */
+
+     ptr_ptr ptr,					/* Points to the pointer being adjusted.  */
+
+     bit_count fixed bin,				/* Work variable used by  char_rel.  */
+
+     word_count fixed bin,				/* Number of words used when adjusting a pointer. */
+
+     workx fixed bin;
+
+
+
+dcl 1 script based (script_ptr),			/* Used to access the input data segment
+						   *  as a stream of characters. */
+
+    2 offset char (start),				/* The part of the segment which we have
+						   *  allready processed. */
+
+    2 window char (size);				/* The part of the segment which we are
+						   *  currently accessing.  */
+
+
+dcl  based_offset fixed bin (17) based unaligned,
+
+     based_bit_offset fixed bin (5) based unaligned;
+
+
+
+
+dcl  com_err_ entry options (variable),
+     ioa_ entry options (variable);
+
+
+dcl (addr,
+     divide,
+     fixed,
+     index,
+     length,
+     search,
+     substr,
+     verify) builtin;
+						/* 	*/
+%include its;
+/*  */
+get_next:	entry (script_ptr, start, size, arg_test_string, len);
+
+
+
+/*	This  entry  searches the current window for a specified character
+   *	string.  The trick is to ignore any such occurrences of the
+   *	specified string which are within comment fields.  Otherwize
+   *	we could have used the  index  built-in.
+*/
+
+
+
+	field_len = length (arg_test_string);
+
+	test_string = arg_test_string;
+
+
+	do while (field_len > -1);			/* Loop on some imposible condition. */
+
+	     call skip_proc;
+
+/*	If there are no non skip characters in the window we won't find
+   *	our test_string. */
+
+	     if workx = 0
+	     then do;
+		len = 0;
+		return;
+	     end;
+
+
+/*	We have found a  DATA  field.  We must be sure that we don't look for our test string
+   *	inside of quotes.  If the data field begins with a quote then we must perform some
+   *	special processing.  If the test string is a quote then we have found it and will return.
+   *	If it is not then we will look for the right hand quote and skip the whole string.
+   *	Note, imbedded quotes will be handled OK.  They just take an extra pass through this
+   *	loop.
+*/
+
+	     if substr (window, 1, 1) = """"		/* Do we have a quote ? */
+
+
+	     then do;				/* YES, we must do some special work.  */
+
+		if test_string = """"
+		then return;
+
+		start = start + 1;			/* We want to skip this quote string. */
+		size = size - 1;			/* Skip over the left hand quote. */
+
+		len = search (window, """");		/* Get right hand quote. */
+
+		if len = 0			/* No right hand quote is an error. */
+		then return;
+
+		start = start + len;		/* Move window past quote string. */
+		size = size - len;
+
+		goto end_search_loop;		/* Keep searching. */
+
+	     end;
+
+
+/*	We have a data field that is not inside quotes.  Find out its length.  We will look
+   *	for the next skip character.  Note, a "/" is not a valid character in any
+   *	data field except a comment field.  Thus if we find a "/" we will assume
+   *	that it is the start of a comment field and thus the end of the non skip
+   *	field.  The  "...." field below contains a  ( NL character, a TAB,
+   *	a BLANK, and a "/" ).
+*/
+
+	     len = search (window, "
+	 /");
+
+/*	If no SKIP character was found then we must test the rest of the window.
+   *	Otherwise test just the  NON SKIP character field.
+*/
+
+	     if len = 0
+
+	     then len = size;
+
+	     else len = len - 1;
+
+
+/*	Make sure the NON SKIP field is at least as long as the test string we
+   *	are looking for.  If it is we will begin searching down the string for
+   *	our test string.
+*/
+
+	     if len ^< field_len
+
+
+	     then do i = 1 to (len - field_len + 1);
+
+		if substr (window, i, field_len) = test_string
+
+/*	If we find the test string then we will set the beginning of the
+   *	window to the beginning of the test string in the NON SKIP field.
+*/
+
+		then do;
+		     start = start + i - 1;
+		     size = size - i + 1;
+		     return;
+		end;
+
+	     end;					/* END of the search loop.  */
+
+
+/*	The test_string was not within this string.  So lets move the window
+   *	to after this string and search for the next non skip string. */
+
+	     start = start + len;
+	     size = size - len;
+
+end_search_loop:
+	end;					/* End of the major do loop. */
+
+
+	return;
+						/*  */
+skip:	entry (script_ptr, start, size);
+
+
+/*	This entry is called from  other ET procedures.   However, the same function
+   *	must be performed for the  et_util$get_next  entry.  Thus this entry is
+   *	simply a call to an internal procedure which does the real work.
+*/
+
+	call skip_proc;
+
+	return;					/* End of the  skip  entry.  */
+
+
+
+skip_proc: procedure;
+
+
+/*	This internal procedure will search the window for the first character
+   *	that is not a skip character.  The skip characters are:
+   *
+   *	1.  Blanks.
+   *
+   *	2.  Tabs.
+   *
+   *	3.  New line characters.
+   *
+   *	4.  Any comment fields which  begin with a  "/*"
+   *	    and  end with a  "*/".
+*/
+
+
+
+
+/*	Look for a character that is not a blank, tab, or new_line. */
+
+
+	     do while (start > -1);			/* Loop on a condition that will
+						   *  always be true.  */
+		workx = verify (window, "
+	 ");
+
+/*	If workx = 0 then all the characters in the current window are skip
+   *	characters. */
+
+		if workx = 0 then return;
+
+/*	We know that there is a non skip character at start + workx. */
+
+		start = start + workx - 1;		/* Move window to 1st non skip */
+		size = size - workx + 1;		/* character. */
+
+/*	Now we will test for a comment field.  If we don't find one then we
+   *	have found a valid non skip field. */
+
+		if substr (window, 1, 2) ^= "/*" then return;
+
+/*	We found the beginning of a comment.  Search for the end of the
+   *	comment */
+
+		workx = index (window, "*/");
+
+/*	If the end of the comment field can not be found then type a warning
+   *	message to the user and move the window  to just before the last
+   *	character in the window. */
+
+		if workx = 0
+		then do;
+		     call ioa_ ("WARNING: The end of a comment was not found. ");
+		     call ioa_ ("Comment is: ^a", window);
+		     start = start + size - 1;
+		     size = 1;
+		     return;
+		end;
+
+/*	If found then move the window to after the "*/". */
+
+		start = start + workx + 1;		/* Note, workx indicates "*" */
+		size = size - workx - 1;
+
+/*	Now we will keep skipping.  To do this we must go back to the
+   *	beginning of the loop.
+*/
+
+	     end;					/* End of the  do loop.  */
+
+
+
+	end skip_proc;
+						/* 	*/
+char_rel:	entry (ptr_data, rel);
+
+
+/*	This entry will adjust the pointer passed in ptr_data the number of characters
+   *	specified in  rel.
+*/
+
+
+
+	ptr_ptr = addr (ptr_data);
+
+	bit_count = rel * 9 + fixed (ptr_ptr -> its.bit_offset, 6);
+
+	if bit_count ^< 0
+
+	then do;
+	     word_count = divide (bit_count, 36, 17, 0);
+	     addr (ptr_ptr -> its.offset) -> based_offset =
+		fixed (ptr_ptr -> its.offset, 17) + word_count;
+	     addr (ptr_ptr -> its.bit_offset) -> based_bit_offset =
+		(bit_count - word_count*36);
+	end;
+
+	else do;
+	     bit_count = -bit_count - 1;
+	     word_count = divide (bit_count, 36, 17, 0);
+	     addr (ptr_ptr -> its.offset) -> based_offset =
+		fixed (ptr_ptr -> its.offset, 17) -1 -word_count;
+	     addr (ptr_ptr -> its.bit_offset) -> based_bit_offset =
+		36 - ((bit_count + 1) - (word_count * 36));
+	end;
+
+	return;
+						/*  */
+convert_decimal: entry (script_ptr, start, size, dec_num, code);
+
+
+
+/*	This entry will convert a character string number starting in the
+   *	first position of the window to a decimal number which will be
+   *	returned in the fixed bin(17) variable:  "dec_num".
+*/
+
+
+
+/*	Check for an explicit sign before the decimal number.  */
+
+	sign = 1;					/* Assume a positive number.  */
+
+	if substr (window, 1, 1) = "+"
+	then goto skip_sign;
+
+	if substr (window, 1, 1) = "-"
+	then do;
+	     sign = -1;
+
+skip_sign:
+
+	     start = start + 1;			/* Move window past sign. */
+	     size = size - 1;
+
+	end;
+
+
+/*	Find the first character in the string that is not a decimal digit.
+   *	It is an error if there is not at least one such decimal digit.
+   *	This also tells us the length of the decimal number string.
+*/
+
+	field_len = verify (window, "0123456789");
+
+	if field_len = 1
+	then do;
+	     code = 701;
+	     call com_err_ (0, "ET", "^d Decimal conversion failed - ^a",
+		code, substr (window, 1, 1));
+	     return;
+	end;
+
+	if field_len ^= 0
+
+	then field_len = field_len - 1;
+	else field_len = size ;
+
+/*	Use the character - decimal conversion feature. */
+
+	dec_num = sign * fixed (substr (window, 1, field_len), 17);
+
+/*	Move the window to after the number character string. */
+
+	start = start + field_len;
+	size = size - field_len;
+
+
+	return;					/* The end of the convert decimal entry.  */
+
+
+
+     end et_util;

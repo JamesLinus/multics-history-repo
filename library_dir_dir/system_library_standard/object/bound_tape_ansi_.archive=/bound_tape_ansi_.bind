@@ -1,0 +1,79 @@
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  */
+/*                                                           */
+/*  N__a_m_e: bound_tape_ansi_                                   */
+/*                                                           */
+/*      This bound segment contains the ANSI and IBM         */
+/*  tape I/O Modules.                                        */
+/*                                                           */
+/*  S__t_a_t_u_s                                                   */
+/*                                                           */
+/*  0) Created:  January, 1975 by Ross E. Klinger            */
+/*  1) Modified: March 13, 1975 by R.E. Klinger              */
+/*  2) Modified: June 16, 1975 by R.E. Klinger		 */
+/*  3) Modified: 11 October 1982 by Chris Jones to move	 */
+/*	tdcm_ into bound_tape_ansi_			 */
+/*						 */
+/*  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  */
+
+
+Objectname:	bound_tape_ansi_;
+
+Global:             delete;
+
+/*  ascii_to_ebcdic_ placed at beginning		 */
+/*  to ensure that page faults do not occur referencing the  */
+/*  mvt translation tables				 */
+
+Order:		ascii_to_ebcdic_,
+		tape_ansi_attach_,
+		tape_ansi_parse_options_,
+		tape_ansi_mount_cntl_,
+		tape_ansi_tape_io_,
+		tape_ansi_interpret_status_,
+		tape_status_,
+		tape_ansi_file_cntl_,
+		tape_ansi_lrec_io_,
+		tape_ansi_detach_,
+		tape_ansi_nl_file_cntl_,
+		tape_ansi_ibm_lrec_io_,
+		tape_ansi_control_,
+		tape_ansi_position_,
+		tape_ansi_read_length_,
+		tdcm_,
+		tdcm_attach_,
+		tdcm_detach_,
+		tdcm_message_;
+
+Addname:            ascii_to_ebcdic_,
+                    tape_ansi_,
+                    tape_ibm_,
+		tdcm_;
+
+objectname:         ascii_to_ebcdic_;
+ retain:            ascii_to_ebcdic_,
+                    ae_table;
+
+objectname:         tape_ansi_file_cntl_;
+ retain:            debug_on,
+                    debug_off;
+
+objectname:         tape_ansi_attach_;
+ retain:            tape_ansi_attach,
+                    tape_ibm_attach;
+
+objectname:	tdcm_;
+ retain:		tdcm_attach,
+		tdcm_detach,
+		tdcm_get_buf_size,
+		tdcm_iocall,
+		tdcm_message,
+		tdcm_promote,
+		tdcm_reset_signal,
+		tdcm_set_buf_size,
+		tdcm_set_disposition,
+		tdcm_set_signal;
+
+/* END */
+
+
+

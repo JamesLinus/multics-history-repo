@@ -1,0 +1,92 @@
+/* Bindfile for bound_remote_io_
+   Created 8/77 by D.R. Vinograd */
+/* Modified by J. C. Whitmore, 5/79, to add tty_printer_ and tty_printer_conv_ */
+/* Modified by J. C. Whitmore, 4/80, to move ibm2780_ and ibm3780_ to bound_ibm_io_ (and some cleanup) */
+/* Modified by J. C. Whitmore, 4/80, to add remote_conv_ and rename remote_reader_ to remote_input_ */
+
+
+/* HISTORY COMMENTS:
+  1) change(88-09-12,Brunelle), approve(88-09-12,MCR7911),
+     audit(88-10-20,Wallman), install(88-10-28,MR12.2-1199):
+     Added entrypoint problem_notification to remote_driver_.  Added
+     entrypoints remote_printer_position and remote_printer_close to
+     remote_printer_.  Added iodd_hblp_support_ and iodd_hblp_banner_pages_
+     to support the Honeywell Bull Model 80 laser printer.
+                                                   END HISTORY COMMENTS */
+
+
+
+Objectname:	bound_remote_io_;
+
+Force_Order:	remote_driver_,
+		remote_printer_,
+		remote_punch_,
+		remote_input_,
+		remote_teleprinter_,
+		remote_conv_,
+		convert_string_,
+		convert_string_util_,
+		get_ttt_info_,
+		tty_printer_,
+		tty_printer_conv_,
+		iodd_hblp_support_,
+		iodd_hblp_banner_pages_;
+
+Addname:		remote_driver_, remote_reader_, remote_punch_, remote_printer_, remote_teleprinter_, remote_input_,
+		convert_string_, get_ttt_info_, tty_printer_, tty_printer_conv_, remote_conv_,
+		iodd_hblp_support_, iodd_hblp_banner_pages_;
+
+Global:		delete;
+
+objectname:	iodd_hblp_support_;
+  retain:		complete_attach,
+		hblp_control,
+		hblp_modes,
+		hblp_open,
+		hblp_put_chars;
+
+objectname:	iodd_hblp_banner_pages_;
+  retain:		init,
+		print_head_sheet,
+		print_separator,
+		print_tail_sheet,
+		set_ctl,
+		test;
+
+objectname:	remote_driver_;
+ retain:		init, request, command, default_handler, problem_notification;
+
+objectname:	remote_input_;
+ synonym:		remote_reader_;
+ retain:		remote_input_attach, remote_reader_attach;
+
+objectname:	remote_punch_;
+ retain:		remote_punch_attach;
+
+objectname:	remote_printer_;
+ retain:		remote_printer_attach,
+		remote_printer_position,
+		remote_printer_close;
+
+objectname:	remote_teleprinter_;
+ retain:		remote_teleprinter_attach;
+
+
+objectname:	convert_string_;
+ retain:		input, output;
+
+objectname:	convert_string_util_;
+
+objectname:	get_ttt_info_;
+ retain:		get_ttt_info_;
+
+objectname:	tty_printer_;
+ retain:		tty_printer_attach;
+
+objectname:	tty_printer_conv_;
+ retain:		printer, teleprinter;
+
+objectname:	remote_conv_;
+ retain:		printer, teleprinter;
+
+/* END */

@@ -1,0 +1,12 @@
+/* Bind file for bound_unencacheable */
+/* Created by J. A. Bush 2/13/80 */
+
+Objectname:	bound_unencacheable;
+ Global:		delete;
+
+Order:		cache_priv;
+
+objectname:	cache_priv;
+ retain:		csh1,csh2;
+
+/* End */

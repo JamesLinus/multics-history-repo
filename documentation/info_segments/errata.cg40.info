@@ -1,0 +1,12 @@
+11/30/89  CG40 (Multics qedx Text Editor User's Guide)
+          Errata Information for MR12.3
+
+
+pg E-5:  under "Syntax error in quit request" replace the text in
+     step 3 with the following.
+
+     3.  If you really are attempting to quit, you cannot precede
+         the "q" with any form of address, and it must be
+         followed (with optional whitespaces) immediately by a
+         newline character.
+

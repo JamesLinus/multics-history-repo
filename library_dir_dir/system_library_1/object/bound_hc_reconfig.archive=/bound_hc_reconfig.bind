@@ -1,0 +1,57 @@
+/* bind file for bound_hc_reconfig */
+/* Modified 3/76 by N. I. Morris */
+/* Modified 7/78 by J. A. Bush */
+/* Modified 9/18/80 by J. A. Bush  to add validate_cpu_card */
+/* Modified 04/13/84 by Chris Jones for IOM reconfiguration */
+
+Objectname:	bound_hc_reconfig;
+Global:		delete;
+
+Order:		reconfig,
+		start_cpu,
+		stop_cpu,
+		add_scu,
+		configure_test_cpu,
+		validate_cpu_card,
+		io_reconfig,
+		fv_iv_template;
+
+objectname:	reconfig;
+ retain:		add_cpu,
+		del_cpu,
+		add_scu,
+		del_scu,
+		add_main,
+		del_main,
+		reconfig_info,
+		rc_unlock,
+		rc_force_unlock,
+		check_resource,
+		create_cpu_test_env,
+		destroy_cpu_test_env;
+
+objectname:	start_cpu;
+ retain:		start_cpu;
+
+objectname:	configure_test_cpu;
+ retain:		configure_test_cpu,
+		isolts_final,
+		int_test_cpu;
+
+objectname:	stop_cpu;
+ retain:		stop_cpu,
+		shutdown;
+
+objectname:	io_reconfig;
+ retain:		add_channel,
+		delete_channel,
+		add_iom,
+		delete_iom;
+
+objectname:	add_scu;
+
+objectname:	fv_iv_template;
+
+objectname:	validate_cpu_card;
+
+/* END */

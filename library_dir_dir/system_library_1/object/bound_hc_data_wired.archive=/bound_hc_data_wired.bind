@@ -1,0 +1,16 @@
+/* Bindfile for bound_hc_data_wired, a miscelaneous collection of 
+hc data areas too small to each be given their own page.
+Keith Loepere, October 1983. */
+
+Objectname:	bound_hc_data_wired;
+
+Global:		retain;
+
+Order:		scs,		/* keep proper alignment of scs */
+		hardcore_sct_seg,
+		wired_hardcore_data;
+
+/* end; */
+
+
+

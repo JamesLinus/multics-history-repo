@@ -1,0 +1,18 @@
+
+/* special characters include file -------------------------------------------- */
+dcl (nl initial("
+"),				/* new line character */
+     return_char initial(""
+), /* return character */
+     print_on initial(""),	/* turn printer on */
+     print_off initial(""),	/*  turn printer off */
+     red_shift initial(""),	/* red ribbon */
+     black_shift initial(""),	/* black ribbon shift */
+     tab initial("	"),	/* tab character */
+     quote initial(""""),	/* double quote */
+     apostrophe initial("'"),	/* single quote */
+     backspace initial(""),	/* backspace */
+     del_char initial("?")	/* delimiter - six seven seven character */
+	) static internal char(1) aligned;
+/* end of special characters include file ------------------------------------- */
+

@@ -1,0 +1,505 @@
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) Honeywell Bull Inc., 1987                *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(87-07-01,GWMay), approve(87-07-01,MCR7730), audit(87-08-10,JRGray),
+     install(87-09-10,MR12.1-1104):
+     Added the -truncate, -tc argument so that the -extend arg can be
+     overriden.
+                                                   END HISTORY COMMENTS */
+
+
+/* format: style2,ind3 */
+vfile_attach:
+   proc (iocb_ptr_arg, option_array, command_switch, code);
+
+/* Modified:
+04/05/82 by Lindsey Spratt:  Changed to correctly report the blocking value,
+	  the wait-time for the share option, and the identifier for the
+	  unstructured header.  If more than one of these was present in the
+	  attach options, the values for all of them would be reported as
+	  being the same as the value for the last one given.  Also, changed
+	  "-exclu" to "-exclusive" in the attach description, as -exclu is
+	  not a valid attach option.
+*/
+/* Declarations and general comments are at the end
+   of the program. */
+
+      iocb_ptr = iocb_ptr_arg;
+      call verify_and_interpret_args;
+      if trans_opt & (code = 0)			/* -transaction attachment */
+      then
+         do;
+	  call iox_$look_iocb ((tcf_name), tcf_ptr, code);
+	  if code = 0
+	  then if tcf_ptr -> iocb.actual_iocb_ptr -> iocb.attach_descrip_ptr ^= null
+	       then if index (tcf_ptr -> iocb.actual_iocb_ptr -> iocb.attach_descrip_ptr -> attach_descrip_string,
+		       "-stationary") ^= 0
+		  then
+		     do;				/* complain */
+		        code = error_table_$incompatible_attach;
+		        call sub_err_ (code, "vfile_", "c", null,
+			   "The tcf switch must not be attached with the -stationary option.");
+		     end;
+         end;
+      if code = 0
+      then call create_attach_block;
+      if code = 0
+      then
+         do;					/* set pointers, entries in iocb */
+	  attach_data_ptr = attach_block_ptr;
+	  attach_descrip_ptr = addr (attach_descrip);
+	  open = open_file;
+	  control = control_file;			/* file_status supported with switch closed */
+	  detach_iocb = detach_file;
+	  call iox_$propagate (iocb_ptr);
+         end;
+      else if command_switch
+      then call com_err_ (code, "vfile_", "^a", name);
+      return;
+
+verify_and_interpret_args:
+   proc;
+      if attach_descrip_ptr ^= null
+      then code = error_table_$not_detached;
+      else if length (option_array (1)) > 168
+      then code = error_table_$pathlong;
+      else
+         do;
+	  code = 0;
+	  n_opts = hbound (option_array, 1);
+	  if n_opts > 10
+	  then code = error_table_$bad_arg;
+	  else
+	     do i = 2 to n_opts while (code = 0);
+	        if option_array (i) = "-extend"
+	        then extend_attach_option = "1"b;
+	        else if option_array (i) = "-truncate" | option_array (i) = "-tc"
+	        then extend_attach_option = "0"b;
+
+	        else if option_array (i) = "-share"
+	        then
+		 do;				/* pick up wait_time */
+		    shared_option = "1"b;
+		    call get_n_opt (wait_time_option);	/* pick up number */
+		    if wait_time_option < -1
+		    then code = error_table_$bad_arg;
+		 end;
+	        else if option_array (i) = "-blocked"	/* blocked file */
+	        then
+		 do;				/* pick up max_rec_len if given */
+		    blocked_option = "1"b;
+		    call get_n_opt (max_recl);	/* get optional number */
+		    if max_recl < 0
+		    then code = error_table_$negative_nelem;
+		 end;
+	        else if option_array (i) = "-append"
+	        then append_option = "1"b;
+	        else if option_array (i) = "-no_trunc"
+	        then no_trunc_option = "1"b;
+	        else if option_array (i) = "-header"
+	        then
+		 do;				/* set header info */
+		    header_option = "1"b;
+		    call get_n_opt (identifier);	/* pick up optional ident number */
+		 end;
+	        else if option_array (i) = "-old"
+	        then old_option = "1"b;		/* prevents creation */
+	        else if option_array (i) = "-ssf"
+	        then ssf_option = "1"b;
+	        else if option_array (i) = "-dup_ok"
+	        then dup_ok_opt = "1"b;
+	        else if (option_array (i) = "-stationary") | (option_array (i) = "-stat")
+	        then stat_opt = "1"b;
+	        else if option_array (i) = "-no_end"
+	        then noend_option = "1"b;		/* allows positioning beyond eof */
+	        else if option_array (i) = "-exclusive"
+	        then exclu_option = "1"b;
+	        else if (option_array (i) = "-transaction") | (option_array (i) = "-trans")
+	        then if i >= n_opts			/* no more args */
+		   then code = error_table_$noarg;
+		   else
+		      do;				/* get tcf switch name */
+		         i = i + 1;			/* skip over next arg */
+		         tcf_name = option_array (i);
+		         trans_opt = "1"b;
+		      end;
+	        else if (option_array (i) = "-checkpoint")
+	        then checkpoint_opt = "1"b;
+	        else code = error_table_$bad_arg;
+	     end;
+         end;
+      if code = 0
+      then
+         do;
+	  rel_pathname = option_array (1);
+	  rel_pathname_length = length (option_array (1));
+	  if ((extend_attach_option & (append_option | no_trunc_option)) | (append_option & no_trunc_option)
+	       | (header_option & (checkpoint_opt | blocked_option | exclu_option | shared_option))
+	       | (blocked_option & (checkpoint_opt | no_trunc_option))
+	       | ((dup_ok_opt | stat_opt | trans_opt)
+	       & (checkpoint_opt | ssf_option | blocked_option | no_trunc_option | append_option | noend_option))
+	       | (shared_option & (no_trunc_option | exclu_option)))
+	  then code = error_table_$bad_arg;
+         end;
+      return;
+   end;						/* end verify args */
+
+get_n_opt:
+   proc (n);					/* used to pick up optional numerical argument */
+      if i < n_opts
+      then
+         do;					/* another option exists--look at it */
+	  num = cv_dec_check_ ((option_array (i + 1)), er_code);
+	  if er_code = 0				/* valid integer */
+	  then
+	     do;					/* grab next option */
+	        i = i + 1;				/* advance option_array index */
+	        saved_i = i;			/* save element number */
+	        n = num;				/* set the argument */
+	     end;
+         end;
+      dcl	    (n, num)	       fixed (35);
+   end get_n_opt;
+
+create_attach_block:
+   proc;
+      dname, ename = " ";
+      call expand_path_ (addr (rel_pathname), rel_pathname_length, addr (dname), addr (ename), code);
+      if code = 0
+      then
+         do;
+	  call alloc_cb_file (size (attach_block), attach_block_ptr);
+	  dup_ok_sw = dup_ok_opt;
+	  noend_sw = noend_option;
+	  exclu_sw = exclu_option;
+	  stat_sw = stat_opt;
+	  trans_sw = trans_opt;
+	  checkpoint_sw = checkpoint_opt;
+	  ssf = ssf_option;
+	  old = old_option;
+	  blocked = blocked_option;
+	  max_rec_len = max_recl;
+	  header_present = header_option;
+	  header_id = identifier;
+	  no_trunc = no_trunc_option;
+	  appending = append_option;
+	  extend_attach = extend_attach_option | appending | no_trunc | old;
+	  shared = shared_option;
+	  wait_time = 1000000 * wait_time_option;
+	  interp = 0;				/* this option may be supported in future */
+	  dname_len = length (dname) + 1 - verify (reverse (dname), " ");
+	  ename_len = length (ename) + 1 - verify (reverse (ename), " ");
+	  string = "vfile_ " || substr (dname, 1, dname_len) || ">";
+	  string = string || substr (ename, 1, ename_len);
+	  if no_trunc
+	  then string = string || " -no_trunc";
+	  if appending
+	  then string = string || " -append";
+	  if extend_attach_option
+	  then string = string || " -extend";
+	  if noend_sw
+	  then string = string || " -no_end";
+	  if interp = 1
+	  then string = string || " -raw";
+	  if old
+	  then string = string || " -old";
+	  if ssf					/* limited to single-segment files */
+	  then string = string || " -ssf";
+	  if dup_ok_sw
+	  then string = string || " -dup_ok";
+	  if stat_sw
+	  then string = string || " -stationary";
+	  if trans_sw
+	  then
+	     do;
+	        string = string || " -transaction " || tcf_name;
+	        attach_block.tcf_iocbp = tcf_ptr;
+	     end;
+	  if checkpoint_sw
+	  then string = string || " -checkpoint";
+	  if header_present
+	  then
+	     do;
+	        string = string || " -header";
+	        string = string || " " || ltrim (char (identifier));
+	     end;
+	  if blocked
+	  then
+	     do;
+	        string = string || " -blocked";
+	        string = string || " " || ltrim (char (max_rec_len));
+	     end;
+	  if exclu_sw
+	  then string = string || " -exclusive";
+	  if shared
+	  then
+	     do;
+	        string = string || " -share ";
+	        string = string || ltrim (char (wait_time_option));
+	     end;
+	  attach_descrip_len = length (string);
+	  attach_descrip_string = string;
+         end;
+
+      dcl	    ename		       char (32) aligned;
+      dcl	    expand_path_	       external entry (ptr,	/* ptr to relative pathname */
+			       fixed bin,		/* length of relative pathname */
+			       ptr,		/* ptr to char(l68) aligned to hold expanded
+						   directory name */
+			       ptr,		/* ptr to char(32) aligned to hold expanded
+						   entry name */
+			       fixed bin (35));	/* status code */
+      dcl	    dname		       char (168) aligned;
+      dcl	    string	       char (256) varying;
+   end;						/* end create_attach_block */
+
+open_file:
+   entry (	  "-exclu" to "-exclusive" in the attach description, as -exclu is
+	  not a valid attach option.
+*/
+/* Declarations and general comments are at the end
+   of the program. */
+
+      iocb_ptr = iocb_ptr_arg;
+      call verify_and_interpret_args;
+      if trans_opt & (code = 0)			/* -transaction attachment */
+      then
+         do;
+	  call iox_$look_iocb ((tcf_name), tcf_ptr, code);
+	  if code = 0
+	  then if tcf_ptr -> iocb.actual_iocb_ptr -> iocb.attach_descrip_ptr ^= null
+	       then if index (tcf_ptr -> iocb.actual_iocb_ptr -> iocb.attach_descrip_ptr -> attach_descrip_string,
+		       "-stationary") ^= 0
+		  then
+		     do;				/* complain */
+		        code = error_table_$incompatible_attach;
+		        call sub_err_ (code, "vfile_", "c", null,
+			   "The tcf switch must not be attached with the -stationary option.");
+		     end;
+         end;
+      if code = 0
+      then call create_attach_block;
+      if code = 0
+      then
+         do;					/* set pointers, entries in iocb */
+	  attach_data_ptr = attach_block_ptr;
+	  attach_descrip_ptr = addr (attach_descrip);
+	  open = open_file;
+	  control = control_file;			/* file_status supported with switch closed */
+	  detach_iocb = detach_file;
+	  call iox_$propagate (iocb_ptr);
+         end;
+      else if command_switch
+      then call com_err_ (code, "vfile_", "^a", name);
+      return;
+
+verify_and_interpret_args:
+   proc;
+      if attach_descrip_ptr ^= null
+      then code = error_table_$not_detached;
+      else if length (option_array (1)) > 168
+      then code = error_table_$pathlong;
+      else
+         do;
+	  code = 0;
+	  n_opts = hbound (option_array, 1);
+	  if n_opts > 10
+	  then code = error_table_$bad_arg;
+	  else
+	     do i = 2 to n_opts while (code = 0);
+	        if option_array (i) = "-extend"
+	        then extend_attach_option = "1"b;
+	        else if option_array (i) = "-truncate" | option_array (i) = "-tc"
+	        then extend_attach_option = "0"b;
+
+	        else if option_array (i) = "-share"
+	        then
+		 do;				/* pick up wait_time */
+		    shared_option = "1"b;
+		    call get_n_opt (wait_time_option);	/* pick up number */
+		    if wait_time_option < -1
+		    then code = error_table_$bad_arg;
+		 end;
+	        else if option_array (i) = "-blocked"	/* blocked file */
+	        then
+		 do;				/* pick up max_rec_len if given */
+		    blocked_option = "1"b;
+		    call get_n_opt (max_recl);	/* get optional number */
+		    if max_recl < 0
+		    then code = error_table_$negative_nelem;
+		 end;
+	        else if option_array (i) = "-append"
+	        then append_option = "1"b;
+	        else if option_array (i) = "-no_trunc"
+	        then no_trunc_option = "1"b;
+	        else if option_array (i) = "-header"
+	        then
+		 do;				/* set header info */
+		    header_option = "1"b;
+		    call get_n_opt (identifier);	/* pick up optional ident number */
+		 end;
+	        else if option_array (i) = "-old"
+	        then old_option = "1"b;		/* prevents creation */
+	        else if option_array (i) = "-ssf"
+	        then ssf_option = "1"b;
+	        else if option_array (i) = "-dup_ok"
+	        then dup_ok_opt = "1"b;
+	        else if (option_array (i) = "-stationary") | (option_array (i) = "-stat")
+	        then stat_opt = "1"b;
+	        else if option_array (i) = "-no_end"
+	        then noend_option = "1"b;		/* allows positioning beyond eof */
+	        else if option_array (i) = "-exclusive"
+	        then exclu_option = "1"b;
+	        else if (option_array (i) = "-transaction") | (option_array (i) = "-trans")
+	        then if i >= n_opts			/* no more args */
+		   then code = error_table_$noarg;
+		   else
+		      do;				/* get tcf switch name */
+		         i = i + 1;			/* skip over next arg */
+		         tcf_name = option_array (i);
+		         trans_opt = "1"b;
+		      end;
+	        else if (option_array (i) = "-checkpoint")
+	        then checkpoint_opt = "1"b;
+	        else code = error_table_$bad_arg;
+	     end;
+         end;
+      if code = 0
+      then
+         do;
+	  rel_pathname = option_array (1);
+	  rel_pathname_length = length (option_array (1));
+	  if ((extend_attach_option & (append_option | no_trunc_option)) | (append_option & no_trunc_option)
+	       | (header_option & (checkpoint_opt | blocked_option | exclu_option | shared_option))
+	       | (blocked_option & (checkpoint_opt | no_trunc_option))
+	       | ((dup_ok_opt | stat_opt | trans_opt)
+	       & (checkpoint_opt | ssf_option | blocked_option | no_trunc_option | append_option | noend_option))
+	       | (shared_option & (no_trunc_option | exclu_option)))
+	  then code = error_table_$bad_arg;
+         end;
+      return;
+   end;						/* end verify args */
+
+get_n_opt:
+   proc (n);					/* used to pick up optional numerical argument */
+      if i < n_opts
+      then
+         do;					/* another option exists--look at it */
+	  num = cv_dec_check_ ((option_array (i + 1)), er_code);
+	  if er_code = 0				/* valid integer */
+	  then
+	     do;					/* grab next option */
+	        i = i + 1;				/* advance option_array index */
+	        saved_i = i;			/* save element number */
+	        n = num;				/* set the argument */
+	     end;
+         end;
+      dcl	    (n, num)	       fixed (35);
+   end get_n_opt;
+
+create_attach_block:
+   proc;
+      dname, ename = " ";
+      call expand_path_ (addr (rel_pathname), rel_pathname_length, addr (dname), addr (ename), code);
+      if code = 0
+      then
+         do;
+	  call alloc_cb_file (size (attach_block), attach_block_ptr);
+	  dup_ok_sw = dup_ok_opt;
+	  noend_sw = noend_option;
+	  exclu_sw = exclu_option;
+	  stat_sw = stat_opt;
+	  trans_sw = trans_opt;
+	  checkpoint_sw = checkpoint_opt;
+	  ssf = ssf_option;
+	  old = old_option;
+	  blocked = blocked_option;
+	  max_rec_len = max_recl;
+	  header_present = header_option;
+	  header_id = identifier;
+	  no_trunc = no_trunc_option;
+	  appending = append_option;
+	  extend_attach = extend_attach_option | appending | no_trunc | old;
+	  shared = shared_option;
+	  wait_time = 1000000 * wait_time_option;
+	  interp = 0;				/* this option may be supported in future */
+	  dname_len = length (dname) + 1 - verify (reverse (dname), " ");
+	  ename_len = length (ename) + 1 - verify (reverse (ename), " ");
+	  string = "vfile_ " || substr (dname, 1, dname_len) || ">";
+	  string = string || substr (ename, 1, ename_len);
+	  if no_trunc
+	  then string = string || " -no_trunc";
+	  if appending
+	  then string = string || " -append";
+	  if extend_attach_option
+	  then string = string || " -extend";
+	  if noend_sw
+	  then string = string || " -no_end";
+	  if interp = 1
+	  then string = string || " -raw";
+	  if old
+	  then string = string || " -old";
+	  if ssf					/* limited to single-segment files */
+	  then string = string || " -ssf";
+	  if dup_ok_sw
+	  then string = string || " -dup_ok";
+	  if stat_sw
+	  then string = string || " -stationary";
+	  if trans_sw
+	  then
+	     do;
+	        string = string || " -transaction " || tcf_name;
+	        attach_block.tcf_iocbp = tcf_ptr;
+	     end;
+	  if checkpoint_sw
+	  then string = string || " -checkpoint";
+	  if header_present
+	  then
+	     do;
+	        string = string || " -header";
+	        string = string || " " || ltrim (char (identifier));
+	     end;
+	  if blocked
+	  then
+	     do;
+	        string = string || " -blocked";
+	        string = string || " " || ltrim (char (max_rec_len));
+	     end;
+	  if exclu_sw
+	  then string = string || " -exclusive";
+	  if shared
+	  then
+	     do;
+	        string = string || " -share ";
+	        string = string || ltrim (char (wait_time_option));
+	     end;
+	  attach_descrip_len = length (string);
+	  attach_descrip_string = string;
+         end;
+
+      dcl	    ename		       char (32) aligned;
+      dcl	    expand_path_	       external entry (ptr,	/* ptr to relative pathname */
+			       fixed bin,		/* length of relative pathname */
+			       ptr,		/* ptr to char(l68) aligned to hold expanded
+						   directory name */
+			       ptr,		/* ptr to char(32) aligned to hold expanded
+						   entry name */
+			       fixed bin (35));	/* status code */
+      dcl	    dname		       char (168) aligned;
+      dcl	    string	       char (256) varying;
+   end;						/* end create_attach_block */
+
+open_file:
+   entry ( z z z z z z z z z z z z z z z zThis is the beginning of a backup logical record.        z z z z z z z z z z z z z z z zR0/>library_dir_dir>system_library_standard>source                                                                                                                         bound_vfile_.s.archive          \Ok1IBackup_dump 21 March 1985       DGJohnson.SysMaint.a             ~.GJohnson.SysMaint.a             }XPhw"O\uM27M._M39\ E0S~R@  bound_vfile_.s.archive          @  alloc_cb_file.pl1               A  change_index.pl1                Arcchange_record_list.pl1          @incheck_file_version.pl1          @  create_position_stack.pl1       @  create_seg_ptrs.pl1             @  delete_old_subsets.pl1          @  fast_put.alm                    @  find_key.alm                    @  open_blk_file.pl1               @ivopen_indx_file.pl1              @  open_seq_file.pl1               @  open_uns_file.pl1               @  record_stream_attach_.pl1       @  restart.pl1                     @  rs_open_seq_in_.pl1             A.ars_open_seq_out_.pl1            @  rs_open_str_in_.pl1             @  rs_open_str_out_.pl1            A.btransaction_call.pl1            Ac_transaction_call_.pl1           @  vfile_adjust.pl1                @  vfile_attach.pl1                A_dvfile_copy_opening_.pl1         As vfile_io_control.pl1            @  vfile_status.pl1                Ac_vfile_status_.pl1               ~Troot                            root4                           $z@:1ack_>*.*.*                               0e_subsys_util_.pl1          Ar_probe_trace_a_stack_.pl1

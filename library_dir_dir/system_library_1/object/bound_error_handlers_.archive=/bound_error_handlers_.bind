@@ -1,0 +1,73 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(87-08-19,Parisek), approve(87-08-19,PBF7716),
+     audit(87-09-03,Farley), install(87-09-10,MR12.1-1104):
+     Retain get_ppr_ entrypoint so it can be called externally.
+                                                   END HISTORY COMMENTS */
+
+
+/* bound_error_handlers_ */
+
+/* Created:  June 1972 by V. Voydock as part of the fast command loop */
+/* Modified: December 1973 by M. Weaver to remove several procedures now in other bound segments */
+/* Modified: August 1977 by S. Webber to add new entries default_error_handler_$(wall wall_ignore_pi) */
+/* Modified: 25 August 1978 by S. Herbst to add the entry point active_fnc_err_$af_suppress_name */
+/* Modified: 15 December 1981 by G. Palter to add the active_fnc_err transfer vector */
+/* Modified: 12 May 1982 by Chris Jones to add cv_error_ */
+/* Modified: '83 by Keith Loepere to move com_err_, sub_err_ and active_fnc_err_ */
+
+Objectname:	bound_error_handlers_;
+
+  Global:		  delete;
+
+  Order:		  default_error_handler_,
+		  message_table_,
+		  special_messages_,
+		  get_ppr_,
+		  get_tpr_,
+		  linkage_error_,
+		  find_pathname_,
+		  interpret_info_struc_,
+		  interpret_oncode_,
+		  cv_error_;
+
+/* Instructions for individual components */
+
+objectname:	default_error_handler_;
+  synonym: 	  interpret_condition_, condition_interpreter_,
+		    standard_default_handler_, reinterpret_condition_;
+  retain:		  default_error_handler_, interpret_condition_,
+		    standard_default_handler_, condition_interpreter_,
+		    reprint_error_message_, add_finish_handler,
+		    reinterpret_condition_, change_error_message_mode_,
+		    ignore_pi, wall, wall_ignore_pi;
+
+objectname:	get_ppr_;
+ retain:		get_ppr_;
+
+objectname:	get_tpr_;
+
+objectname:	linkage_error_;
+
+objectname:	message_table_;
+  global:		  retain;
+
+objectname:	special_messages_;
+
+objectname:	interpret_info_struc_;
+  retain:		  interpret_info_struc_;
+
+objectname:	find_pathname_;
+  retain:		  find_pathname_;
+
+objectname:	interpret_oncode_;
+  retain:		  interpret_oncode_;
+
+objectname:	cv_error_;
+  retain:		  name;
+
+/* end; */
+
+
+

@@ -1,0 +1,184 @@
+11/30/89  HH07 (Multics C User's Guide)
+          Errata Information for MR12.3
+
+
+pg 3-1 to 3-3:  replace the documentation for "c_compile" with
+     the following.
+
+         Syntax:  cc pathnames {-control_args}
+
+         Function:  cc is used to process and link-edit C
+         programs.  cc will process input files and generate a
+         single link-edited object.  When invoked with multiple
+         pathnames, cc will also leave unlinked object segments
+         (with a '.cob' suffix) for each file assembled.  cc will
+         invoke the C preprocessor, the C Compiler, the
+         assembler, and the Linkage Editor as appropriate for
+         each input file.
+
+
+         Arguments:
+         pathnames
+            are pathnames of files that are to be processed; the
+            amount of processing is determined by the pathname's
+            suffix .  cc processes files in phases by invoking
+            the C Preprocessor, then the C Compiler, then the
+            assembler, and then finally the Linkage Editor.
+            Pathnames that have the '.c' suffix are processed by
+            all phases.  Pathnames that have the '.cpp' suffix
+            start with the C Compiler phase.  Pathnames that have
+            the '.alm' suffix start with the assembly phase.  All
+            other pathnames are processed by only the final
+            Linkage Editor phase.
+
+
+         Control arguments:
+         -brief, -bf
+            Suppress printing of messages that state the current
+            pass being performed.  (Default)
+
+         -definition args, -def args
+            Specifies define names to be defined or undefined in
+            the preprocessor, where "args" is a list of define
+            names separated by commas with no spaces (in the
+            following form:
+
+               -def n,x=2,^y
+
+
+            The first arg specifies that n is to be defined as 1
+            in the same way as '#define n' would define n to be
+            1.  The second arg specifies that x is to be given a
+            definition of 2 and the last arg specifies that y is
+            to be undefined in the preprocessor.  A maximum of
+            ten defines and ten undefines are allowed.
+
+         -include paths, -incl paths
+            Specifies the pathnames of include file directories
+            the user wishes the preprocessor to look in for
+            include files.  All arguments up to the next control
+            argument are treated as include directory pathnames.
+            A maximum of ten include directories can be
+            specified.
+
+
+         -library paths, -lb paths
+            Specifies the pathnames of library directories,
+            archives or object files the user wishes the Linkage
+            Editor to use when resolving external references.
+            All arguments up to the next control argument are
+            treated as include library pathnames.  A maximum of
+            ten libraries can be specified.
+
+         -list, -ls
+            Specifies that a Linkage Editor listing file should
+            be generated for the Linkage Editor pass of
+            c_compile.  The listing file will specify where the
+            objects brought in by the Linkage Editor were found.
+
+
+         -long, -lg
+            Specifies that a message should be printed specifying
+            the completion of each pass of the compiler for each
+            specified pathname.
+
+         -output_file pathname, -of pathname
+            Forces the output to be placed in the file defined by
+            pathname.  If no output file name is given the output
+            will be put into the Linkage Editor's default output
+            file 'a.out'.
+
+
+         -stop_after pass, -spaf pass
+            Tells cc to stop after the specified pass of the
+            compiler.  Valid values for pass are:
+
+            preprocessor, pp:  generates a ".cpp" file which is
+                 the output from the preprocessor.
+
+            c: generates a ".alm" file which is an alm source
+                 file which is the output from the C compiler.
+
+            alm: generates a ".cob" file which is the
+                 intermediate executable file which is the output
+                 from the assembler.  This file is normally used
+                 as the input to the Linkage Editor.
+
+
+         -table, -tb
+            Generates a full symbol table for use by symbolic
+            debuggers.  The symbol table is part of the symbol
+            section of the object program and consists of two
+            parts:  a statement map that gives the correspondence
+            between source line numbers and object locations of
+            the source, and an identifier table containing
+            information about every identifier referenced in the
+            source program.
+
+
+         Notes:
+         C_compile has been altered to use the standard search
+         rules to find the default C runtime library
+         (runtime.archive).  This library is normally located in
+         >sl3p>cc>e and will be found automatically by the
+         referencing_dir search rule.
+
+
+pg 4-60:  for the "execve" routine, add the following description
+     to the RETURN VALUE section.
+
+          The return value will take on the following format.  If
+          an error occurs during the creation of the child, errno
+          will be set to indicate the error and the return value
+          will be negative.  Otherwise, the return value will
+          give information about the termination of the child
+          process as follows:
+
+          RETURN VALUE <= EXIT STATUS|CORE BIT|SIGNAL NUMBER
+
+
+          EXIT STATUS is an 8 bit value (sign extended to fill
+          out the rest of the word) specified as an argument to
+          the exit function.
+
+          CORE BIT is a single bit value that indicates that a
+          core dump has been generated (this value will always be
+          zero on Multics).
+
+          SIGNAL NUMBER is a 7 bit value representing the signal
+          number that may have caused the child's termination
+          (Example SIGFPE = 8).
+
+          Note:  because of sign extension, a negative EXIT
+          STATUS will result in a negative return value.
+
+
+pg 4-197:  for the "system" routine, add a new section (RETURN
+     VALUE) with the information below.
+
+          RETURN VALUE:
+
+          The return value will take on the following format.  If
+          an error occurs during the creation of the child errno
+          will be set to indicate the error and the return value
+          will be negative.  Otherwise, the return value will
+          give information about the termination of the child
+          process as follows:
+
+          RETURN VALUE <= EXIT STATUS|CORE BIT|SIGNAL NUMBER
+
+
+          EXIT STATUS is an 8 bit value (sign extended to fill
+          out the rest of the word) specified as an argument to
+          the exit function.
+
+          CORE BIT is a single bit value that indicates that a
+          core dump has been generated (this value will always be
+          zero on Multics).
+
+          SIGNAL NUMBER is a 7 bit value representing the signal
+          number that may have caused the child's termination
+          (Example SIGFPE = 8).
+
+          Note:  because of sign extension, a negative EXIT
+          STATUS will result in a negative return value.
