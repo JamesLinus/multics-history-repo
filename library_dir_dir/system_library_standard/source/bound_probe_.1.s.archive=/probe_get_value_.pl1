@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1988                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -51,6 +53,10 @@
      Modified code to compute the complete address of a character pointer
      referenced with subscripts. Prior to this fix, only literal values could
      be used as pointer subscripts.
+  9) change(90-09-20,Bubric), approve(90-10-01,MCR8211), audit(90-10-01,Itani),
+     install(90-10-17,MR12.4-1044):
+     Have the calls to the routine 'nothing' changed to calls to the routine
+     'null_entry_'.
                                                    END HISTORY COMMENTS */
 
 probe_get_value_:
@@ -380,8 +386,8 @@ parse_normal:
 		 + offset_bits;
 	    end;
 	end;
-        dcl nothing		      entry options (variable);
-        call nothing ();
+        dcl null_entry_		      entry options (variable);
+        call null_entry_ ();
 
         P_reference.address_ptr = final_ptr;
 

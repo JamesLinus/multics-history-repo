@@ -1,11 +1,24 @@
 " ***********************************************************
 " *                                                         *
+" * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+" *                                                         *
 " * Copyright, (C) Honeywell Information Systems Inc., 1982 *
 " *                                                         *
 " * Copyright (c) 1972 by Massachusetts Institute of        *
 " * Technology and Honeywell Information Systems, Inc.      *
 " *                                                         *
 " ***********************************************************
+
+
+
+
+" HISTORY COMMENTS:
+"  1) change(90-09-20,Bubric), approve(90-10-01,MCR8211),
+"     audit(90-10-01,Itani), install(90-10-17,MR12.4-1044):
+"     Add the entry point 'null_entry_'
+"                                                      END HISTORY COMMENTS
+
+
 
 "
 "	NOTHING -- command to return, and do nothing.
@@ -15,13 +28,16 @@
 
 	segdef	nothing
 	segdef	nt
+          segdef    null_entry_
 	segdef	main_			" for fortran refname hack
 
 	name	nothing
 
 nothing:
 nt:
+null_entry_:
 main_:
 	short_return
 
 	end
+

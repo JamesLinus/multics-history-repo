@@ -1,10 +1,12 @@
 /****^  **************************************************************
         *                                                            *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990      *
+        *                                                            *
         * Copyright, (C) Honeywell Bull Inc., 1988                   *
         *                                                            *
-        * Copyright, (C) Massachusetts Institute of Technology, 1983 *
-        *                                                            *
         * Copyright, (C) Honeywell Information Systems Inc., 1983    *
+        *                                                            *
+        * Copyright, (C) Massachusetts Institute of Technology, 1983 *
         *                                                            *
         ************************************************************** */
 
@@ -21,6 +23,10 @@
   3) change(88-05-05,Lippard), approve(88-05-02,MCR7881),
      audit(88-06-16,Fawcett), install(88-08-02,MR12.2-1074):
      Added audit_switch.
+  4) change(90-09-20,Bubric), approve(90-10-01,MCR8211), audit(90-10-01,Itani),
+     install(90-10-17,MR12.4-1044):
+     Have the calls to the routine 'nothing' changed to calls to the routine
+     'null_entry_'.
                                                    END HISTORY COMMENTS */
 
 
@@ -88,7 +94,7 @@ MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 MAKE_ENTRY_LABEL (OPx):				/** link */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	return (fs_acl_util_$add_msf);
@@ -101,14 +107,14 @@ MAKE_ENTRY_LABEL (OPx):				/** segment */
 MAKE_ENTRY_LABEL (OPx):				/** directory */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 	%set OPx to OPx + 1;
 	return (file_manager_$add_extended_acl_entries);
 MAKE_ENTRY_LABEL (OPx):				/** link */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	return (fs_acl_util_$add_msf_extended);
@@ -139,14 +145,14 @@ MAKE_ENTRY_LABEL (OPx):				/** segment */
 MAKE_ENTRY_LABEL (OPx):				/** directory */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 	%set OPx to OPx + 1;
 	return (file_manager_$copy);
 MAKE_ENTRY_LABEL (OPx):				/** link */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	return (fs_copy_util_$msf);
@@ -159,7 +165,7 @@ MAKE_ENTRY_LABEL (OPx):				/** segment */
 MAKE_ENTRY_LABEL (OPx):				/** directory */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;	/* use delete_ */
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 	%set OPx to OPx + 1;
 	return (file_manager_$delentry_file);
@@ -169,7 +175,7 @@ MAKE_ENTRY_LABEL (OPx):				/** link */
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** segment */
 	%set OPx to OPx + 1;
 	return (hcs_$delentry_file);
@@ -185,7 +191,7 @@ MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 MAKE_ENTRY_LABEL (OPx):				/** link */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	return (fs_acl_util_$delete_msf);
@@ -204,11 +210,11 @@ MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 MAKE_ENTRY_LABEL (OPx):				/** link */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** segment */
 	%set OPx to OPx + 1;
 	return (get_bc_seg_or_dir);
@@ -217,18 +223,18 @@ MAKE_ENTRY_LABEL (OPx):				/** segment */
 MAKE_ENTRY_LABEL (OPx):				/** directory */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 	%set OPx to OPx + 1;
 	return (file_manager_$get_max_length);
 MAKE_ENTRY_LABEL (OPx):				/** link */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** segment */
 	%set OPx to OPx + 1;
 	return (hcs_$get_max_length);
@@ -246,7 +252,7 @@ MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 MAKE_ENTRY_LABEL (OPx):				/** link */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	return (fs_msf_rb_util_$get);
@@ -267,7 +273,7 @@ MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 MAKE_ENTRY_LABEL (OPx):				/** link */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	return (get_msf_switch);
@@ -287,7 +293,7 @@ MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 MAKE_ENTRY_LABEL (OPx):				/** link */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	return (msf_get_user_access_modes);
@@ -306,7 +312,7 @@ MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 MAKE_ENTRY_LABEL (OPx):				/** link */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	return (fs_acl_util_$list_msf);
@@ -319,14 +325,14 @@ MAKE_ENTRY_LABEL (OPx):				/** segment */
 MAKE_ENTRY_LABEL (OPx):				/** directory */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 	%set OPx to OPx + 1;
 	return (file_manager_$list_extended_acl);
 MAKE_ENTRY_LABEL (OPx):				/** link */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	return (fs_acl_util_$list_msf_extended);
@@ -345,7 +351,7 @@ MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 MAKE_ENTRY_LABEL (OPx):				/** link */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	return (list_msf_switches);
@@ -364,7 +370,7 @@ MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 MAKE_ENTRY_LABEL (OPx):				/** link */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	return (fs_acl_util_$replace_msf);
@@ -377,14 +383,14 @@ MAKE_ENTRY_LABEL (OPx):				/** segment */
 MAKE_ENTRY_LABEL (OPx):				/** directory */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 	%set OPx to OPx + 1;
 	return (file_manager_$replace_extended_acl);
 MAKE_ENTRY_LABEL (OPx):				/** link */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	return (fs_acl_util_$replace_msf_extended);
@@ -403,7 +409,7 @@ MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 MAKE_ENTRY_LABEL (OPx):				/** link */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	return (hcs_$set_bc);
@@ -416,18 +422,18 @@ MAKE_ENTRY_LABEL (OPx):				/** segment */
 MAKE_ENTRY_LABEL (OPx):				/* directory */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 	%set OPx to OPx + 1;
 	return (file_manager_$set_max_length);
 MAKE_ENTRY_LABEL (OPx):				/** link */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** segment */
 	%set OPx to OPx + 1;
 	return (hcs_$set_max_length);
@@ -443,7 +449,7 @@ MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 MAKE_ENTRY_LABEL (OPx):				/** link */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	return (fs_msf_rb_util_$set);
@@ -462,7 +468,7 @@ MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 MAKE_ENTRY_LABEL (OPx):				/** link */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	return (set_msf_switch);
@@ -481,7 +487,7 @@ MAKE_ENTRY_LABEL (OPx):				/** dm_file */
 MAKE_ENTRY_LABEL (OPx):				/** link */
 	%set OPx to OPx + 1;
 	Code = error_table_$unsupported_operation;
-	return (nothing);
+	return (null_entry_);
 MAKE_ENTRY_LABEL (OPx):				/** msf */
 	%set OPx to OPx + 1;
 	return (msf_suffix_info);
@@ -1084,7 +1090,7 @@ get_bc_seg_or_dir:
 	        error_table_$unimplemented_version
 	        )			 fixed bin (35) external;
 
-	declare nothing		 entry;
+	declare null_entry_		 entry;
 
 	declare hcs_$delentry_file	 entry external;
 

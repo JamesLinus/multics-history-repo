@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1981 *
@@ -25,6 +27,10 @@
      audit(88-10-06,Farley), install(88-10-07,MR12.2-1148):
      In the reconnection entrypoint attach_data.tc_info_ptr was not being
      checked for a null value before starting to process.
+  5) change(90-09-20,Bubric), approve(90-10-01,MCR8211), audit(90-10-01,Itani),
+     install(90-10-17,MR12.4-1044):
+     Have the calls to the routine 'nothing' changed to calls to the routine
+     'null_entry_'.
                                                    END HISTORY COMMENTS */
 
 
@@ -165,7 +171,7 @@ tc_io_:
 	     )			entry (ptr, fixed bin (35));
 	dcl  get_system_free_area_	entry () returns (pointer);
 	dcl  ioa_$rsnnl		entry options (variable);
-	dcl  nothing		entry ();
+	dcl  null_entry_		entry ();
 	dcl  ipc_$create_ev_chn	entry (fixed bin (71), fixed bin (35));
 	dcl  ipc_$create_event_channel
 				entry (ptr, fixed bin (71), fixed bin (35));
@@ -741,7 +747,7 @@ allocate_ev_channel:
 
 	ipcas.version = ipc_create_arg_structure_v1;
 	ipcas.channel_type = FAST_EVENT_CHANNEL_TYPE;
-	ipcas.call_entry = nothing;
+	ipcas.call_entry = null_entry_;
 	ipcas.call_data_ptr = null ();
 	ipcas.call_priority = 0;
 	call ipc_$create_event_channel (addr (ipcas), attach_data.event_wait.channel_id (1), Code);
@@ -934,3 +940,6 @@ reset_ips_mask:
 %include ipc_create_arg;
 %include terminal_info;
      end tc_io_;
+
+
+

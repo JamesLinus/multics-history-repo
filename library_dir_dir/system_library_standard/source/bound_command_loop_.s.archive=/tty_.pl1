@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -51,6 +53,10 @@ tty_:
   1) change(85-06-23,Negaret), approve(87-07-23,MCR7742),
      audit(87-07-23,GDixon), install(87-08-04,MR12.1-1055):
      Handle DSA network connections.
+  2) change(90-09-20,Bubric), approve(90-10-01,MCR8211), audit(90-10-01,Itani),
+     install(90-10-17,MR12.4-1044):
+     Have the calls to the routine 'nothing' changed to calls to the routine
+     'null_entry_'.
                                                    END HISTORY COMMENTS */
 
 
@@ -211,7 +217,7 @@ tty_:
 	        ipc_$mask_ev_calls,
 	        ipc_$unmask_ev_calls
 	        )			 entry (fixed bin (35));
-	dcl     nothing		 entry ();
+	dcl     null_entry_		 entry ();
 	dcl     (
 	        tty_io_$put_chars,
 	        tty_io_$get_chars,
@@ -798,7 +804,7 @@ allocate_ev_channel:
 
 	ipcas.version = ipc_create_arg_structure_v1;
 	ipcas.channel_type = FAST_EVENT_CHANNEL_TYPE;
-	ipcas.call_entry = nothing;
+	ipcas.call_entry = null_entry_;
 	ipcas.call_data_ptr = null ();
 	ipcas.call_priority = 0;
 	call ipc_$create_event_channel (addr (ipcas), attach_data.event_wait.channel_id (1), code);
@@ -1119,7 +1125,4 @@ clean_up_attach:
 %page; %include tty_attach_data_;
 %page; %include tty_states;
      end tty_;
-
-
-
 
