@@ -1,11 +1,22 @@
-/* ******************************************************
-   *                                                    *
-   *                                                    *
-   * Copyright (c) 1972 by Massachusetts Institute of   *
-   * Technology and Honeywell Information Systems, Inc. *
-   *                                                    *
-   *                                                    *
-   ****************************************************** */
+/****^  *********************************************************
+        *                                                       *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990 *
+        *                                                       *
+        * Copyright (c) 1972 by Massachusetts Institute of      *
+        * Technology and Honeywell Information Systems, Inc.    *
+        *                                                       *
+        ********************************************************* */
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(90-05-16,Kallstrom), approve(90-05-16,MCR8176),
+     audit(90-06-21,Blackmore), install(90-07-17,MR12.4-1022):
+     fixed menu_get_choice so that the -dfkeys string is not used when the
+     number of characters in the string is the same as the number of function
+     keys defined for the terminal type.
+                                                   END HISTORY COMMENTS */
+
 
 /* format: style2 */
 
@@ -445,7 +456,7 @@ get_function_key_info:
 		goto ERROR_EXIT;
 	     end;
 	else do;
-		if dfkey_string_ptr ^= null () & f -> function_key_data.highest <= dfkey_string_len
+		if dfkey_string_ptr ^= null () & f -> function_key_data.highest + 1 < dfkey_string_len
 		then f = make_function_key_info (dfkey_string);
 		else do;				/* make sure all required function keys are present */
 			do fx = 1 to dfkey_string_len;
