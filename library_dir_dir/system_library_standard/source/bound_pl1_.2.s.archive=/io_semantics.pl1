@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -16,6 +18,10 @@
   1) change(87-06-26,Huen), approve(87-06-26,MCR7712), audit(87-12-01,RWaters),
      install(87-12-01,MR12.2-1005):
      Fix bug2164
+  2) change(90-08-24,Huen), approve(90-08-24,MCR8187),
+     audit(90-09-07,Zimmerman), install(90-10-17,MR12.4-1046):
+     pl1_2224: Fix the PL1 compiler use of variables that are targets of "read
+     into" statements.
                                                    END HISTORY COMMENTS */
 
 
@@ -566,6 +572,8 @@ action(29):								/* (ref) for lock,unlock */
 
 action(25):								/* into */
 	call propagate_bit((tp->reference.symbol),set_bit);
+	/* TR13134: Padded ref. bug occurs at read into statement */
+	call propagate_bit((tp->reference.symbol),passed_as_arg_bit);
 	/* if i=29 then goto set_variable_p; */
 action(27):								/* from */
 

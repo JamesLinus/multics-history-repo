@@ -49,6 +49,9 @@
      install(90-05-30,MR12.4-1012):
      Updated version to 33a for pl1 opt concat of a common string exp bug
      (pl1_1885)
+ 12) change(90-08-24,Huen), approve(90-08-24,MCR8187),
+     audit(90-10-03,Zimmerman), install(90-10-17,MR12.4-1046):
+     Updated version to 33b for pl1 padded reference bug (phx13134, pl1_2224)
                                                    END HISTORY COMMENTS */
 
 
@@ -93,7 +96,7 @@ dcl	(stringsize, error) condition;
 /* RELEASE = "" for the >experimental_library compiler,
 	 = <release_number> for the >system_standard_library compiler */
 
-dcl	RELEASE		character (3) varying init ("33a");
+dcl	RELEASE		character (3) varying init ("33b");
 dcl	(clock_reading, microsecond)
 			fixed bin (71);
 dcl	(month, day_of_month, year, day_of_week, hour, minute, second)
