@@ -1,8 +1,10 @@
-/****^  ********************************************
-        *                                          *
-        * Copyright, (C) Honeywell Bull Inc., 1987 *
-        *                                          *
-        ******************************************** */
+/****^  *********************************************************
+        *                                                       *
+        * Copyright, (C) BULL HN Information Systems Inc., 1992 *
+        *                                                       *
+        * Copyright, (C) Honeywell Bull Inc., 1987              *
+        *                                                       *
+        ********************************************************* */
 
 
 /****^  HISTORY COMMENTS:
@@ -13,6 +15,10 @@
   2) change(87-07-08,Blair), approve(87-07-08,MCR7731),
      audit(87-07-08,Fawcett), install(87-07-16,MR12.1-1040):
      Change the copy_disk command to copy_disk_volume and and -pv_name CA.
+  3) change(92-10-02,Vu), approve(92-10-02,MCR8270),
+     audit(92-10-09,WAAnderson), install(92-10-23,MR12.5-1040):
+     copy_disk_volume fails with an invalid IOCB error and missing arguments in
+     the call to print out the error summary.
                                                    END HISTORY COMMENTS */
 
 copy_disk_volume:
@@ -177,13 +183,13 @@ dcl (addr, char, clock, codeptr, divide, float, index, lbound, length, mod,
 	     call check_for_alt_partition (use_alt_partition);
 	     if ^use_alt_partition then do;
 		alt_mode = "";
-		call iox_$close (addr(source), code);
+		call iox_$close (source.iocb, code);
 		if code ^= 0 then do;
 		     call com_err_ (code, WHOAMI, "Error in closing ^a.", source.device);
 		     goto MAIN_RETURN;
 		     end;
 		source.opened = "0"b;
-		call open (addr(source), alt_mode, source_pv_name, Sequential_update);
+		call open (addr(source), alt_mode, source_pv_name, Sequential_input);
 		end;
 	     end;
 	
@@ -280,8 +286,8 @@ MAIN_RETURN:
 	     if ((source.errors + target.errors) > 0) then
 		call ioa_ ("^a: ^[no^s^;^d^] error^[s^] on source disk ^a, ^[no^s^;^d^] error^[s^] on target disk ^a.",
 		     WHOAMI, (source.errors = 0), source.errors,
-		     (source.errors ^= 1), (target.errors = 0),
-		     target.errors, (target.errors ^= 1));
+		     (source.errors ^= 1), source.device, (target.errors = 0),
+		     target.errors, (target.errors ^= 1), target.device);
 	     end;
 
 	call clean_up ("1"b);
@@ -300,21 +306,22 @@ dcl 1 p_info aligned like copy_disk_info based (p_info_ptr);
 dcl  pv_name char (32);
 dcl  rdisk_modes char (32) unaligned;
 
-          if p_pv_name = "" then pv_name = "scratch";
-	else pv_name = p_pv_name;
 	rdisk_modes = p_rdisk_modes;
-	p_info.iocb_name = "copy_disk_vol." || unique_chars_ (""b);
-	call iox_$find_iocb (p_info.iocb_name, p_info.iocb, (0));
 
-	p_info.desc = "rdisk_ ";		/* i/o module */
-	p_info.desc = p_info.desc || device_names (p_info.device_type); /* must be correct for rcprm */
-	p_info.desc = p_info.desc || " " || rtrim (pv_name);
-	p_info.desc = p_info.desc || " -system ";
-	if p_info_ptr = addr(target) then
-	     p_info.desc = p_info.desc || "-write ";	/* for target only */
-	p_info.desc = p_info.desc || "-device " || rtrim (p_info.device);
+          if ^p_info.attached then do;
+               if p_pv_name = "" then pv_name = "scratch";
+               else pv_name = p_pv_name;
+	     p_info.iocb_name = "copy_disk_vol." || unique_chars_ (""b);
+	     call iox_$find_iocb (p_info.iocb_name, p_info.iocb, (0));
 
-	if ^p_info.attached then do;
+	     p_info.desc = "rdisk_ ";		/* i/o module */
+	     p_info.desc = p_info.desc || device_names (p_info.device_type); /* must be correct for rcprm */
+	     p_info.desc = p_info.desc || " " || rtrim (pv_name);
+	     p_info.desc = p_info.desc || " -system ";
+	     if p_info_ptr = addr(target) then
+	          p_info.desc = p_info.desc || "-write ";	/* for target only */
+	     p_info.desc = p_info.desc || "-device " || rtrim (p_info.device);
+
 	     call iox_$attach_name (p_info.iocb_name, p_info.iocb, (p_info.desc), codeptr (copy_disk_volume), code);
 	     if (code ^= 0) then do;
 		call com_err_ (code, WHOAMI, "attaching ^a", p_info.desc);
@@ -452,7 +459,6 @@ dcl P_highest_record fixed bin (18) parm;
 dcl bit_idx			fixed bin;
 dcl find_bit_$last_off entry (bit(*)) returns (fixed bin(24)) reducible;
 dcl last_record_bit		          fixed bin (24);
-dcl last_volmap_record_used		fixed bin (18);
 dcl last_volmap_entry		fixed bin;
 dcl all_free_in_word_mask		bit (32) int static options (constant) init ("ffffffff"b4);
 dcl entries_per_word		fixed bin int static options (constant) init (32);
