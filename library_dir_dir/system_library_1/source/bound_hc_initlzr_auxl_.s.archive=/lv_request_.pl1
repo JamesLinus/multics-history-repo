@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -40,6 +42,9 @@ lv_request_: proc (msgp);
      list_lv_attachments (llva) request.  Added "signal_io_" to the
      any_other_handler's list of conditions to pass on, so Initializer I/O
      will work properly.
+  4) change(90-07-04,Schroth), approve(90-07-16,MCR8184),
+     audit(90-07-30,WAAnderson), install(90-08-16,MR12.4-1024):
+     Ensure event call channels are unmasked on exit.
                                                    END HISTORY COMMENTS */
 
 
@@ -530,7 +535,7 @@ mhv_it:	call sys_log_ (SL0,
 	do lvx = 1 to dt.n_lv_entries;
 	     lvep = addr (dt.lv_array (lvx));
 	     if lve.lvname = lvname then do;
-		if lve.hv_mounted then return;	/* lv_request_$mhv_complete took care */
+		if lve.hv_mounted then go to unmask;	/* lv_request_$mhv_complete took care */
 		if lve.mounting then do;
 		     call initializer_mdc_$respond_mount_lv (lvax, 4, 0, ec);
 		     call initializer_mdc_$mhvmessage (lvax, user_procname);
