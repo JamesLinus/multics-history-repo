@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1988                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1984 *
@@ -54,6 +56,9 @@
   3) change(88-11-11,Brunelle), approve(88-11-11,MCR7911),
      audit(88-11-14,Wallman), install(88-11-14,MR12.2-1212):
      Correct problem of not suppressing trailing blank pages.
+  4) change(90-09-10,Itani), approve(90-09-10,MCR8198),
+     audit(90-09-21,WAAnderson), install(90-10-01,MR12.4-1034):
+     Correct the problem of indenting centered labels.
                                                    END HISTORY COMMENTS */
 
 /* format: on */
@@ -1833,7 +1838,6 @@ dcl  ll fixed bin;					/* line length for this request */
 dcl  ind fixed bin;					/* line indentation */
 dcl  temp_label char (136);				/* temporary for cleaning the label */
 dcl  len fixed bin;
-dcl  field fixed bin;				/* print field for centering */
 
 /* since this request may have a different forms specification than the previous
    reset the paper size data based on this request */
@@ -1909,14 +1913,13 @@ dcl  field fixed bin;				/* print field for centering */
 	pg_labels.top_label, pg_labels.bottom_label = " ";/* set leading blanks */
 
 	if ^nep_mode_set then do;			/* only if labels can be used */
-	     field = ll - ind;			/* space available for page labels */
 
 	     temp_label = translate (dprint_msg.top_label, " ", nl_vt_ff); /* remove naughty characters */
 	     if verify (temp_label, space_ht_bs) > 0 then do; /* anything other than white space? */
 		set_page_labels = "1"b;		/* set the labels in the main loop */
 		len = length (rtrim (temp_label));	/* how long is  the label */
-		if (field > len) & dprint_msg.control.center_top_label then do;
-		     len = divide (field - len, 2, 17, 0) + 1; /* calculate starting position (dim adds ind) */
+		if (ll > len) & dprint_msg.control.center_top_label then do;
+		     len = divide (ll - len - ind, 2, 17, 0) - divide(ind, 2, 17, 0) + 1; /* calculate starting position (dim adds ind) */
 		     substr (pg_labels.top_label, len) = temp_label; /* drop it in the right position */
 		end;
 		else pg_labels.top_label = temp_label;	/* put it in as given (almost) */
@@ -1926,8 +1929,8 @@ dcl  field fixed bin;				/* print field for centering */
 	     if verify (temp_label, space_ht_bs) > 0 then do;
 		set_page_labels = "1"b;
 		len = length (rtrim (temp_label));
-		if (field > len) & dprint_msg.control.center_bottom_label then do;
-		     len = divide (field - len, 2, 17, 0) + 1;
+		if (ll > len) & dprint_msg.control.center_bottom_label then do;
+		     len = divide (ll - len - ind, 2, 17, 0) - divide(ind, 2, 17, 0) + 1;
 		     substr (pg_labels.bottom_label, len) = temp_label;
 		end;
 		else pg_labels.bottom_label = temp_label;
@@ -2172,6 +2175,3 @@ single_copy: entry ();
 %page; %include system_forms_info;
 
      end do_prt_request_;
-
-
-
