@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1988                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1984 *
@@ -15,6 +17,9 @@
      install(89-03-01,MR12.3-1020):
      Fix kermit bug: PC_File_Transfer 24 - kermit is being changed to correctly
      handle links to multisegment files.
+  3) change(90-09-20,Huen), approve(90-09-20,MCR8203), audit(90-09-25,Gray),
+     install(90-10-14,MR12.4-1039):
+     phx21339 (pc_25): kermit is changed to ignore redundant ACKs.
                                                    END HISTORY COMMENTS */
 
 
@@ -108,7 +113,6 @@ kermit_send_: proc;
 	dcl     pathname_$component	 entry (char (*), char (*), char (*)) returns (char (194));
 	dcl     pathname_		 entry (char(*), char(*)) returns(char(168));
 	dcl     terminate_file_	 entry (ptr, fixed bin (24), bit (*), fixed bin (35));
-	dcl     unique_chars_	 entry (bit (*)) returns (char (15));
 	
 
 /* include files  */
@@ -288,6 +292,7 @@ send_break: proc (infop, ktip, state);
 	call kermit_pad_$send (infop, Eot_packet, null, (0), kti.sequence_n, chars_sent, packet_size, ec);
 	if ec ^= 0 then goto Retry_packet;
 
+Ignore_packet:
 	call kermit_pad_$receive (infop, packet_type, remote_datap, Max_remote_packet_size, packet_n, chars_received, packet_size, eol_split, ec);
 	if ec ^= 0 then goto Retry_packet;
 
@@ -296,6 +301,8 @@ send_break: proc (infop, ktip, state);
 
 
 Ack:						/*  Received an ACK packet  */
+	if mod (packet_n + 1, Mod_64) = kti.sequence_n 
+	     then goto Ignore_packet;                     /*  Ignore redundant ACK */
 	if kti.sequence_n ^= packet_n then goto Retry_packet;
 	kti.retry_count = 0;
 	kti.sequence_n = mod (kti.sequence_n + 1, Mod_64);
@@ -385,6 +392,7 @@ send_data: proc (infop, ktip, state);
 	call kermit_pad_$send (infop, Data_packet, kti.buffp, kermit_stats.file_len - kermit_stats.char_count, kti.sequence_n, chars_sent, packet_size, ec);
 	if ec ^= 0 then goto Retry_packet;
 
+Ignore_packet:
 	call kermit_pad_$receive (infop, packet_type, remote_datap, Max_remote_packet_size, packet_n, chars_received, r_packet_size, eol_split, ec);
 	if ec ^= 0 then goto Retry_packet;
 
@@ -392,7 +400,9 @@ send_data: proc (infop, ktip, state);
 	goto packet (idx);
 
 Ack:						/*  Received an ACK packet  */
-	if kti.sequence_n ^= packet_n then goto Retry_packet;
+	if mod (packet_n + 1, Mod_64) = kti.sequence_n 
+	     then goto Ignore_packet;                     /*  Ignore redundant ACK */
+	else if kti.sequence_n ^= packet_n then goto Retry_packet;
 
 	kti.retry_count = 0;
 	kti.sequence_n = mod (kti.sequence_n + 1, Mod_64);
@@ -516,6 +526,7 @@ send_eof: proc (infop, ktip, state);
 	call kermit_pad_$send (infop, Eof_packet, addr (abort_char), abort_char_lth, kti.sequence_n, chars_sent, packet_size, ec);
 	if ec ^= 0 then goto Retry_packet;
 
+Ignore_packet:
 	call kermit_pad_$receive (infop, packet_type, remote_datap, Max_remote_packet_size, packet_n, chars_received, packet_size, eol_split, ec);
 	if ec ^= 0 then goto Retry_packet;
 
@@ -523,6 +534,8 @@ send_eof: proc (infop, ktip, state);
 	goto packet (idx);
 
 Ack:						/*  Received an ACK packet  */
+	if mod (packet_n + 1, Mod_64) = kti.sequence_n 
+	     then goto Ignore_packet;                     /*  Ignore redundant ACK */
 	if kti.sequence_n ^= packet_n then goto Retry_packet;
 
 	kti.retry_count = 0;
@@ -692,6 +705,7 @@ send_filename: proc (infop, ktip, first_filename, file_sw, state);
 	call kermit_pad_$send (infop, File_header_packet, source_filep, source_file_lth, kti.sequence_n, chars_sent, packet_size, ec);
 	if ec ^= 0 then goto Retry_packet;
 
+Ignore_packet:
 	call kermit_pad_$receive (infop, packet_type, remote_datap, Max_remote_packet_size, packet_n, chars_received, packet_size, eol_split, ec);
 	if ec ^= 0 then goto Retry_packet;
 
@@ -699,6 +713,8 @@ send_filename: proc (infop, ktip, first_filename, file_sw, state);
 	goto packet (idx);
 
 Ack:						/*  Received an ACK packet  */
+	if mod (packet_n + 1, Mod_64) = kti.sequence_n 
+	     then goto Ignore_packet;                     /*  Ignore redundant ACK */
 	if kti.sequence_n ^= packet_n then goto Retry_packet;
 
 	kti.retry_count = 0;
@@ -798,6 +814,7 @@ send_init: proc (infop, ktip, state);
 	call kermit_pad_$send (infop, Send_init_packet, send_init_packetp, send_init_packet_lth, kti.sequence_n, chars_sent, packet_size, ec);
 	if ec ^= 0 then goto Retry_packet;
 
+Ignore_packet:
 	call kermit_pad_$receive (infop, packet_type, remote_datap, Max_remote_packet_size, packet_n, chars_received, packet_size, eol_split, ec);
 	if ec ^= 0 then goto Retry_packet;
 
@@ -806,6 +823,8 @@ send_init: proc (infop, ktip, state);
 
 
 Ack:						/*  Received an ACK packet  */
+	if mod (packet_n + 1, Mod_64) = kti.sequence_n 
+	     then goto Ignore_packet;                     /*  Ignore redundant ACK */
 	if packet_n ^= kti.sequence_n then goto Retry_packet;
 						/* Have the remote init data, so set the transfer modes  */
 	call kermit_xfer_modes_$process_params (infop, remote_datap, chars_received, send_init_datap, ec);

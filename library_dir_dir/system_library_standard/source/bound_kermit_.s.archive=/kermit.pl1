@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1988                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1984 *
@@ -15,6 +17,9 @@
   2) change(89-01-02,Huen), approve(89-01-02,MCR8027), audit(89-01-25,Lee),
      install(89-03-01,MR12.3-1020):
      Fix kermit bugs: PC_File_Transfer 18, 20, 23, 24.
+  3) change(90-09-20,Huen), approve(90-09-20,MCR8203), audit(90-09-25,Gray),
+     install(90-10-14,MR12.4-1039):
+     phx21339 (pc_25): Change version to 1.4
                                                    END HISTORY COMMENTS */
 
 
@@ -40,6 +45,8 @@ kermit: proc;
   /*l			to allow for msf traces (kermit 17)	*/
   /*l     Modified: 89-01-02  by S. Huen - Change subsystem version   */
   /*l			to 1.3. (PC_18, 20, 23, 24)    	*/
+  /*l     Modified: 90-09-24  by S. Huen - Change subsystem version   */
+  /*l			to 1.4. (PC_25)                         */
   /*							*/
   /********************************************************************/
   
@@ -51,7 +58,7 @@ kermit: proc;
   dcl Subsystem_Name	char (6) static options (constant)
 			     init ("kermit");
   dcl Subsystem_Version	char (3) static options (constant)
-			     init ("1.3");
+			     init ("1.4");
   dcl Subsystem_Info_Dir	char (168) static options (constant)
 			     init (">doc>subsystem>kermit");
   dcl Default_prompt	char (29) static options (constant)
