@@ -1,11 +1,23 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   * Copyright (c) 1972 by Massachusetts Institute of        *
-   * Technology and Honeywell Information Systems, Inc.      *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(90-05-23,Gray), approve(90-05-23,MCR8175), audit(90-06-21,Huen),
+     install(90-07-04,MR12.4-1019):
+     Added cleanup handler to the condition handler to fix case where the
+     condition command does a non-local goto.
+                                                   END HISTORY COMMENTS */
 
 
 on:
@@ -78,7 +90,6 @@ on:
 	dcl     PUNCTUATION		 character (2) static options (constant) initial (" ,");
 	dcl     NL		 character (1) static options (constant) initial ("
 ");
-	dcl     SP		 character (1) static options (constant) initial (" ");
 
 	dcl     (error_table_$badopt,
 	        error_table_$inconsistent,
@@ -356,6 +367,8 @@ handler:
 	dcl     error_msg_lth	 fixed binary (21);
 	dcl     error_msg_ptr	 pointer;
 
+	dcl     old_invocation_depth	fixed binary;
+
 	dcl     software_msg	 character (256) varying;
 
 	dcl     length		 builtin;
@@ -402,6 +415,8 @@ handler:
 
 /* Check for recursive signalling */
 
+	old_invocation_depth = invocation_depth;
+on	cleanup invocation_depth = old_invocation_depth;
 	invocation_depth = invocation_depth + 1;
 
 	if invocation_depth > 2 then go to RETURN;	/* bad loop */
@@ -447,7 +462,7 @@ handler:
 	if call_cp_sw then
 	     call cu_$cp (action_ptr, action_lth, (0));
 
-	invocation_depth = invocation_depth - 1;
+	invocation_depth = old_invocation_depth;
 
 	if call_cl_sw then do;
 		on any_other system;
