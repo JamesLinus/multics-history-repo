@@ -1,4 +1,4 @@
-05/16/88  status, st
+07/25/90  status, st
 
 
 Syntax as a command:  st paths {-control_args}
@@ -105,7 +105,8 @@ Control arguments:
 -audit_switch, -asw
    prints whether the audit switch is on or off.
 -bc_author, -bca
-   prints the bit count author of the entry.  Not valid for DM files.
+   prints the bit count author who last sets bit count of the entry.
+   Not valid for DM files.
 -bit_count, -bc
    prints the bit count.  Not valid for DM files.
 -copy_switch, -csw

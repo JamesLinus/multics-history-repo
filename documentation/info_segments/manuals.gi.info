@@ -1,41 +1,26 @@
-10/31/90  Multics manuals
-
-Publications or their associated updates can be ordered from the
-Distribution Center; for information about how to order manuals
-type "help order_manuals".
+10/31/92  Multics manuals
 
 
-Manuals associated with MR12.4, updated with ERRATA info segs.
+Manuals associated with MR12.5, updated with ERRATA info segs.
 
-- Multics Programmer's Reference Manual (AG91)
 - Multics Commands and Active Functions (AG92)
 - Multics Subroutines and I/O Modules (AG93)
-- Multics PL/I Language Specification (AG94)
-- Multics PL/I Reference Manual (AM83)
-- Logical Inquiry and Update System Reference Manual (AZ49)
-- Multics qedx Text Editor User's Guide (CG40)
-
-
-- Multics Extended Mail System User's Guide (CH23)
-- Multics Emacs Text Editor User's Guide (CH27)
-- Multics Emacs Extension Writer's Guide (CJ52)
-- Multics Menu Creation Facilities (CP51)
-- Fundamentals of Multics Executive Forum (DX71)
+- Multics Project Administrator's Guide (AK51)
+- Multics Processor Manual (AL39)
+- Multics Communications Administration (CC75)
+- Multics Forum Interactive Meeting System User's Guide (CY74)
 - Multics Common Commands (GB58)
-- Multics C User's Guide (HH07)
+- Multics Administration, Maintenance and Operations Commands (GB64)
+
 
 (To view GB58 for example, type "help errata.gb58.info".)
-Note: Change bars indicate additions to or changes from ERRATA
-      info segs of past release.  Asterisks indicate deletions.
 
-Manual associated with MR12.4, updated as an online manual
-
-- Inter-Multics File Transfer Facility Reference Manual (CY73)
-  (>doc>12.4>IMFT.Reference.Manual)
+Note: CHANGE BARS indicate additions to or changes from the errata
+      of the past release. ASTERISKS indicate deletions.
 
 
 Manuals which will not be updated with ERRATA info segs (nor in any
-other manner) are the following:
+other manner) for this or any future releases are the following:
 
 AN50-08  Guide to Multics Manuals
 AW17-07  Multics Commands and Active Functions Quick Reference Guide
@@ -71,6 +56,7 @@ AG92-05     10.1   02/83  Multics Commands and Active Functions
     -06C    12.2   06/89
     -Errata 12.3   11/89
     -Errata 12.4   10/90
+    -Errata 12.5   10/92
 
 
 AG93-04     10.1   02/83  Multics Subroutines and I/O Modules
@@ -81,6 +67,7 @@ AG93-04     10.1   02/83  Multics Subroutines and I/O Modules
             12.2   02/89
     -Errata 12.3   11/89
     -Errata 12.4   10/90
+    -Errata 12.5   10/92
 
 
 AG94-02      5.0   07/76  Multics PL/I Language Specification
@@ -107,6 +94,7 @@ AK51-01      4.0   08/76  Multics Project Administrator's Guide
     -01F    10.1   02/83
     -02     11.0   02/85
     -02A    12.0   10/86
+    -Errata 12.5   10/92
 
 
 AK95-01      7.0   03/79  Multics APL User's Guide
@@ -119,6 +107,7 @@ AL39-01     ----   04/79  Multics Processor Manual
     -01A    ----   12/79
     -01B    ----   02/82
     -01C    ----   11/85
+    -Errata 12.5   10/92
 AM81-03     11.0   05/85  Multics System Maintenance Procedures
     -04     12.0   11/86
     -04A    12.1   06/88
@@ -212,6 +201,7 @@ CC75-01     10.0   07/82  Multics Communications Administration
     -02     11.0   02/85
     -02A    12.1   -----  (combined with 12.2 release)
             12.2   04/89
+    -Errata 12.5   10/92
 
 
 CGxx, CHxx, CJxx, CPxx, CXxx, and CYxx manuals:
@@ -270,6 +260,7 @@ CY74-00     10.0   07/82  Multics Forum Interactive Meeting System UG
     -00A    10.1   02/83
     -01     10.2   12/83
     -02     11.0   02/85
+    -Errata 12.5   10/92
 
 
 DJxx, DUxx, GBxx, GLxx, GNxx, HHxx and HMxx manuals:
@@ -285,6 +276,7 @@ GB58-00     10.1   02/83  Multics Common Commands
     -Errata 12.2   03/89
     -Errata 12.3   11/89
     -Errata 12.4   10/90
+    -Errata 12.5   10/92
 GB59-00     10.2   12/83  DPS 6/Multics Satellite 6M Reference Manual
 
 
@@ -303,6 +295,7 @@ GB64-00     11.0   06/85  Multics Admin, Maint, and Operations Commands
     -00B    12.1   12/88
     -00C    12.2   04/89
     -Errata 12.3   11/89
+    -Errata 12.5   10/92
 
 
 GB65-00     11.0   06/86  Multics/Personal Computer File

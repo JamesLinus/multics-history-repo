@@ -1,4 +1,4 @@
-:Info: probe: pb: 09/30/88  probe, pb
+:Info: probe: pb: 07/24/90  probe, pb
 
 Syntax as a command:  pb {procedure_name} {-control_args}
 
@@ -166,6 +166,41 @@ available.
  the following will not be supported : bitwise operators (&& ||), type
  casting, conditional expressions (?:), logical "and" and "or"
  operators, and compound assignments (+= -= etc.).
+
+
+:Info: PL1: pl1:
+06/28/90   Probe and PL1
+
+Notes on probe and the pl1 language:
+
+Probe uses a PL/1_like syntax when the current language is PL/1.  Probe
+communicates with you based on information in the symbol table and the
+statement map which are produced by the PL/1 compiler.  The limitations
+of the symbol table sometimes limit the communication with probe.
+
+
+Examples:
+
+ (1) Probe cannot determine the correct dimension size of an array if
+     the upperbound of the dimension is an element other than the first
+     element of an "external" structure.
+     For example: "dcl x dim (1:struct.e4) fixed bin based (pt);
+     where "e4" is the fourth element in, "struct", the external
+     structure.  Probe (symbol) incorrectly interprets the upperbound
+     of the dimension as the first element instead of the proper
+     element in the external structure.
+
+ (2) Probe cannot determine the correct value of a variable if the
+     variable has an implicit subscripted base reference.
+     For example:  "dcl x fixed bin based (b (3));".
+     Probe (value) interprets "x based (b (3))" as b(1) -> x.
+
+
+ (3) Probe cannot determine the correct value of a variable if the
+     address of the variable has an implicit base reference containing
+     the address expression or is a defined reference.
+     For example: "dcl x fixed bin based (addr (p1))"; or
+                  "dcl x fixed bin defined (p2)"
 
 
 :Info: COBOL: cobol:

@@ -1,4 +1,4 @@
-03/21/88  dial_out, connect
+12/12/91  dial_out, connect
 
 Syntax as a command:  dial_out channel {destination} {-control_args}
                  or:  connect channel {destination} {-control_args}
@@ -98,19 +98,30 @@ wait {STR} {-control_args}, [wait {STR} {-control_args}]
    until the specified string is sent.
 
    Control arguments are--
+   -inhibit_error, -ihe
+      specifies that dial_out should not abort after a timeout has
+      occured. This control argument requires that a timeout interval
+      greater than zero also be specified (See the '-timeout' ctl arg).
+      This control argument is most useful when wait is used as an
+      active request.
+
+
    -nl
       waits until the specified string is sent with a trailing new
       line.
    -nnl
       waits until the specified string is sent but without a trailing
       new line.
-
-
+   -no_inhibit_error, -nihe
+      Specifies that timeouts should result in an abort.  This is the
+      default.
    -no_timeout, -ntm
       specifies that there is no limit to how much time can elapse
       between character transmissions from the foreign system before
       dial_out assumes that the foreign system has finished
       transmitting.  (Default)
+
+
    -timeout N, -tm N
       specifies the maximum number of seconds that can elapse between
       character transmissions from the foreign system before dial_out
@@ -219,6 +230,7 @@ default).  Characters from the escape character to the next escape
 character or the end of the line are interpreted as a request.  You
 must double the escape character to send it to the remote system.
 
+
 When calling dial_out from an absentee process or from an exec_com
 which is to send canned input lines to the remote system, it is
 important to use the "dial_out -request ""ec PATH""" control argument.
@@ -230,6 +242,7 @@ input.  See the descriptions of the wait and send requests above.
 Any attempt to dial_out without the use of PATH.dial_out, or by
 placing the dial_out subsystem requests within the calling absin/ec
 will result in unrecoverable I/O errors.
+
 
 The send request sends only the data string given as its first
 argument.  It does not append a carriage return (CR) or newline (NL)
@@ -245,6 +258,7 @@ receive the input.  Such pauses are especially important when
 communicating with systems that are not prepared to receive type-ahead
 input.
 
+
 When dialing out to another Multics system, the general_ready command
 can be used on the remote system to set a ready message which is
 distinct from the local ready message.  A distinctive string in the
@@ -253,6 +267,7 @@ the remote system is ready to receive the next command line.  This
 technique avoids sending data faster than the remote communications
 system can process it.  Rapid bursts of data can cause Front-end
 Network Processor (FNP) buffer overflows (the Bell-QUIT syndrome).
+
 
 Output from the remote system being directed to an absout file via an
 absentee process or output_file via the dial_out "file_output"
@@ -265,12 +280,14 @@ type and thus may be used as a parameter to the remote system login
 line in the PATH.dial_out exec_com.  Note the remote system login
 line in SAMPLE.dial_out below.
 
+
 A good way to verify that the absentee will correctly send and receive
 data as expected is to execute the absin file as an interactive
 exec_com until the entire absin/ec performs satisfactorily.  Once the
 absin/ec has successfully operated by sending and receiving data
 interactively, the absin/ec can be expected to run equivalently via
 an absentee process.
+
 
 If the dial_out exec_com pauses at a wait request and does not
 continue, then the remote system has not sent the string expected by

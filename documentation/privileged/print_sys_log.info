@@ -1,4 +1,4 @@
-85-04-18  print_sys_log, psl
+92-10-06  print_sys_log, psl
 
 Syntax:  psl LOG_SELECTOR {-control_args}
 
@@ -13,17 +13,11 @@ Arguments:
 LOG_SELECTOR
    is either the pathname of a named log or log family to be monitored,
    or one of the "log selection" control arguments listed below.
-   Unless -single is specified, the pathname must specify the first
-   segment in a family.  This argument is incompatible with any of the
-   log selection control arguments.
 
 
 Control arguments (log selection):
 -pathname LOG_PATH, -pn LOG_PATH
    specifies that the named log or log family is to be examined.
-   Unless -single is specified, the pathname must specify the first
-   segment in a family.  This argument is incompatible with any of the
-   other log selection control arguments, or an explicit log pathname.
 -admin
    specifies that the admin commands log is to be examined.  The admin
    commands log family is called "admin_log", and is located in the
@@ -94,8 +88,8 @@ Control arguments (limit selection):
    message selected by other control arguments, and proceed forwards.
    (Default)
 -reverse, -rv
-   specifies that the log is to be examined starting with the most
-   recent message selected by other control arguments, and proceed
+   specifies that the log is to be examined, starting with the most
+   recent message selected by other control arguments and proceeding
    backwards.
 
 
@@ -119,7 +113,7 @@ Control arguments (message selection):
 -severity SEV-1 ...  SEV-n, -sv SEV-1 ...  SEV-n
    only messages of the specified severity (severities) are processed.
    The severity values (SEV-1 to SEV-n) may either be decimal integers,
-   or ranges consisting of a pair decimal integers separated by a colon
+   or ranges consisting a pair of decimal integers separated by a colon
    ("20:29").  If multiple severities are specified, or the -severity
    control argument is specified more than once, all messages with any
    of those severities are printed.  A severity value must be between
@@ -133,7 +127,7 @@ Control arguments (message expansion):
 -expand {CLASS-1 ...  CLASS-n}, -exp {CLASS-1 ...  CLASS-n}
    specifies that binary data is to be expanded and displayed along
    with the message text, for the selected messages.  If a data class
-   value (CLASS-1 to CLASS-n is specified, only binary data of the
+   value (CLASS-1 to CLASS-n) is specified, only binary data of the
    specified classes will be expanded; otherwise, all selected messages
    with binary data will be expanded.  The type of expansion depends on
    whether the -octal or -interpret control arguments are also
@@ -167,7 +161,7 @@ Control arguments (message expansion):
    this interpretation is to be displayed as well, the -interpret
    control argument must also be specified.
 -exclude_data STR-1 ...  STR-n, -exd STR-1 ...  STR-n
-   no messages whose interpreted expanded data contains one of the
+   no message whose interpreted expanded data contains one of the
    specified strings (STR-1 to STR-n) is processed.  The strings are
    processed as for -exclude.  Note: This control argument merely
    matches against the textual interpretation of the expanded data; if
@@ -188,7 +182,7 @@ Control arguments (message expansion):
    data is to be displayed as well, the -octal or -interpret
    control argument must also be specified.
 -exclude_data_class CLASS-1 ... CLASS-n, -exdc CLASS-1 ... CLASS-n
-   no messages whose binary data class is one of the specified
+   no message whose binary data class is one of the specified
    strings (CLASS-1 to CLASS-n) is processed.  Note: This control
    argument merely matches against the data class;  if the binary
    data is to be displayed as well, the -octal or -interpret
@@ -210,9 +204,9 @@ Control arguments (message format):
    printer output).
 -indent N, -ind N
    specifies that all messages are to be formatted for printing
-   prefixed with N spaces.  The value of N must be between zero and
-   fifty.  The indentation is printed before any data associated with
-   the message, including the message prefix.  By default, there is no
+   prefixed with N spaces.  The value of N must be between 0 and 50.
+   The indentation is printed before any data associated with the
+   message, including the message prefix.  By default, there is no
    indentation.
 
 
@@ -222,7 +216,7 @@ Control arguments (message format):
    "standard" or "std" is used in place of a number, with the
    continuation lines indented sufficiently to line up under the first
    character of the text of the message.  The value of N must be
-   between zero and fifty.  By default, continuation lines are indented
+   between 0 and 50.  By default, continuation lines are indented
    to the "standard" indentation.
 
 
@@ -252,7 +246,7 @@ Control arguments (message format):
    as "1984-10-31 Wed est".
 
    By specifying null strings for date, time, and number formats, the
-   log can be printed and saved, so that it can be compared to another
+   log can be printed and saved; it can then be compared to another
    log script later, without spurious mis-compares because the times
    and sequence numbers do not match.
 
@@ -379,7 +373,7 @@ mos
    auto-corrected error.  Binary data of this class should be
    interpreted using the mos_edac_summary command.
 segdamage
-   identifies a message containg information about damage to a
+   identifies a message containing information about damage to a
    particular storage system object.
 voldamage
    identifies a message containing information about damage to a
@@ -388,7 +382,7 @@ voldamage
 
 mdc_del_uidpath
    identifies a message containing the UID pathname of a master
-   directory which was missing but still registered.
+   directory which is missing but still registered.
 mmdam
    identifies a message containing information about the location
    of main memory frames removed from service due to parity errors.
@@ -419,14 +413,13 @@ ibm3270_mde
 
 
 Access required:
-For all except inner-ring logs, read permission is required on the log
-segments themselves, and status permission is required on their
+For all logs except inner-ring logs, read permission is required on the
+log segments themselves, and status permission is required on their
 containing directories.  If an access error is encountered searching
 for older history logs, the search is stopped at that point, and no
 further history will be available.  For the logs selected by control
 arguments, the control argument descriptions list the standard history
-directories
-for the logs.
+directories for the logs.
 
 For inner-ring logs (the Data Management system log is the only
 standard inner-ring log), access to the logs is required, as is access
@@ -436,11 +429,11 @@ to the gate used by the log-reading procedure (see -procedure).
 Notes on message selection:
 Messages are selected for printing in a series of steps, each of which
 filters out certain messages according to the control arguments
-specified.  The set of messages at each step is any that were left
-after the previous step.  If a control argument was not specified, then
-its corresponding step eliminates no messages.  Note that the -expand
-control arguments do NOT select messages, but only affect how their
-contents are displayed:
+specified.  The set of messages at each step is any message that were
+left after the previous step.  If a control argument was not specified,
+then its corresponding step eliminates no messages.  Note that the
+-expand control arguments do NOT select messages, but only affect how
+their contents are displayed:
 
 
      1) -to            (stop looking after specified message)
@@ -468,7 +461,7 @@ logs, the severities have the following meanings:
    3 => Message logged, printed, and the system crashed
 
 
-For the syserr log, the severities have different meanings--
+For the syserr log, the severities have different meanings:
    0 => Message logged and printed on syserr console
    1 => Message logged, printed, and the system crashed
    2 => Message logged, printed, and the process writing the

@@ -1,24 +1,24 @@
-10/31/90  GB58 (Multics Common Commands)
-          Errata Information for MR12.4
+10/31/92  GB58 (Multics Common Commands)
+          Errata Information for MR12.5
 
 
-pg 3-6:  for the "add_name" command, add a CONTROL ARGUMENTS      |
-     section (after the ARGUMENTS section) containing the         |
-     following.                                                   |
-                                                                  |
-     -brief, -bf                                                  |
-         suppresses the error message "Name already on entry"     |
-                                                                  |
-     -interpret_as_extended_entry -inaee                          |
-         interprets the selected entry as an extended entry type  |
-                                                                  |
-     -interpret_as_standard_entry -inase                          |
-         interprets the selected entry as a standard entry type   |
+pg 3-6:  for the "add_name" command, add a CONTROL ARGUMENTS
+     section (after the ARGUMENTS section) containing the
+     following.
+
+     -brief, -bf
+         suppresses the error message "Name already on entry"
+
+     -interpret_as_extended_entry -inaee
+         interprets the selected entry as an extended entry type
 
 
-     -long, -lg                                                   |
-         does not suppress the error message "Name already on     |
-         entry" (Default)                                         |
+     -interpret_as_standard_entry -inase
+         interprets the selected entry as a standard entry type
+
+     -long, -lg
+         does not suppress the error message "Name already on
+         entry" (Default)
 
 
 pg 3-22:  for the "calc" command, under NOTES ON ASSIGNMENT
@@ -31,15 +31,15 @@ pg 3-22:  for the "calc" command, under NOTES ON ASSIGNMENT
      beginning of the name), and the underscore character (_).
 
 
-pg 3-27:  for the "cancel_output_request" command, in the NOTES   |
-     section replace "If the request is already running,...       |
-     ...are ignored by the system" (two paragraphs) with the      |
-     following.                                                   |
-                                                                  |
-     If the request is already running, the running request will  |
-     not be stopped and the request's entry will not be removed   |
-     from the queue.  A warning message will be displayed to warn |
-     the user of this action.                                     |
+pg 3-27:  for the "cancel_output_request" command, in the NOTES
+     section replace "If the request is already running,...
+     ...are ignored by the system" (two paragraphs) with the
+     following.
+
+     If the request is already running, the running request will
+     not be stopped and the request's entry will not be removed
+     from the queue.  A warning message will be displayed to warn
+     the user of this action.
 
 
 pg 3-32:  for the "copy" command, under NOTES add the paragraph
@@ -55,14 +55,14 @@ pg 3-126; for the "move" command, under NOTES add the paragraph
      that was given to it when created.
 
 
-pg 3-45:  for the "delete_name" command, add the following under  |
-     the CONTROL ARGUMENTS section.                               |
-                                                                  |
-     -interpret_as_extended_entry -inaee                          |
-         interprets the selected entry as an extended entry type  |
-                                                                  |
-     -interpret_as_standard_entry -inase                          |
-         interprets the selected entry as a standard entry type   |
+pg 3-45:  for the "delete_name" command, add the following under
+     the CONTROL ARGUMENTS section.
+
+     -interpret_as_extended_entry -inaee
+         interprets the selected entry as an extended entry type
+
+     -interpret_as_standard_entry -inase
+         interprets the selected entry as a standard entry type
 
 
 pg 3-55:  for the "enter_abs_request" command, under ARGUMENTS
@@ -89,14 +89,15 @@ pg 3-55:  for the "enter_abs_request" command, add the following
          used whenever the corresponding long names contain
          blanks or tabs.)  STR must represent an authorization
          that is within the range of minimum and maximum
-         authorization of Person_id on the Project_id.  If
+         authorization of Person_id on the Project_id.
 
 
-         -authorization is omitted, your current login
+         If -authorization is omitted, your current login
          authorization is used.  (See the Programmer's Reference
          Manual for more information about process
          authorizations.)  Allowed authorization range can be
          displayed via the "user auth_range" command.
+
 
      -home_dir path, -hd path
          sets the home directory of the absentee process to the
@@ -106,7 +107,6 @@ pg 3-55:  for the "enter_abs_request" command, add the following
          the -home_dir control argument.  The specified home dir
          cannot exceed 64 characters and must be specified as an
          absolute pathname.
-
 
      -no_start_up, -ns
          instructs the standard process overseer not to execute
@@ -159,24 +159,25 @@ pg 3-57:  for the "enter_abs_request" command, add the following
           -ring
 
 
-pg 3-64:  for the "exec_com" command (version 2), under LIST OF   |
-     LITERALS add the following after the description of &NL.     |
-                                                                  |
-     &CR, &CR(N)                                                  |
-         expands to a single carriage return character (ASCII     |
-         015) or to N carriage returns.                           |
+pg 3-64:  for the "exec_com" command (version 2), under LIST OF
+     LITERALS add the following after the description of &NL.
+
+     &CR, &CR(N)
+         expands to a single carriage return character (ASCII
+         015) or to N carriage returns.
 
 
-pg 3-72:  for the "exec_com" command (version 2), under LIST OF   |
-     CONTRUCTS replace the line                                   |
-                                                                  |
-         &&NL, &QT, &SP, &VT List of literals                     |
-     with                                                         |
-         &&NL, &CR, &QT, &SP, &VT List of literals                |
+pg 3-72:  for the "exec_com" command (version 2), under LIST OF
+     CONTRUCTS replace the line
+
+         &&NL, &QT, &SP, &VT List of literals
+     with
+         &&NL, &CR, &QT, &SP, &VT List of literals
 
 
-pg 3-101:  for the "link" command, under "-chase" control         |
-     arguments, replace "ia" with "is".                           |
+pg 3-101:  for the "link" command, under the "-chase" control
+     argument, replace "ia" with "is".
+
 
 pg 3-121:  for the "memo" command, under LIST OF MEMO OPTIONS
      delete the following sentence under the description of the
@@ -203,6 +204,7 @@ pg 3-139:  change the documentation for the "program_interrupt"
      informs a suspended invocation of an interactive subsystem
      that you wish to abort a subsystem request and reenter the
      subsystem.
+
 
      CONTROL ARGUMENTS
 
@@ -261,142 +263,163 @@ pg 3-150:  for the "query" command, add the following to the
          (Default)
 
 
-pg 3-157:  for the "rename" command, add the following to the     |
-     CONTROL ARGUMENTS section.                                   |
-                                                                  |
-     -interpret_as_extended_entry, -inaee                         |
-         interprets the selected entry as an extended entry type. |
-                                                                  |
-     -interpret_as_standard_entry, -inase                         |
-         interprets the selected entry as a standard entry type.  |
+pg 3-157:  for the "rename" command, add the following to the
+     CONTROL ARGUMENTS section.
+
+     -interpret_as_extended_entry, -inaee
+         interprets the selected entry as an extended entry type.
+
+     -interpret_as_standard_entry, -inase
+         interprets the selected entry as a standard entry type.
 
 
-pg 3-195:  replace the documentation for the "working_dir"        |
-     command with the following.                                  |
+pg 3-181:  for the "status" command, replace the description of   |
+     the "-author" control argument with the following:           |
                                                                   |
-     SYNTAX AS A COMMAND                                          |
-                                                                  |
-     wd {LOCATIONS} {-control_arg}                                |
-                                                                  |
-     SYNTAX AS AN ACTIVE FUNCTION                                 |
-                                                                  |
-     [wd {LOCATIONS}]                                             |
+     -author, -at                                                 |
+         prints the author of the entry.  The author is the name  |
+         of the user who created the segment or directory.  This  |
+         attribute cannot be modified.                            |
 
 
-     FUNCTION                                                     |
+pg 3-182:  for the "status" command, under LIST OF TYPE-SPECIFIC  |
+     CONTROL ARGUMENTS, replace the description of "-bc_author"   |
+     with the following:                                          |
                                                                   |
-     prints or returns the pathname of the current working        |
-     directory.  Optional arguments can be given to print or      |
-     return entries on the stack of working directories.  Refer   |
-     to the change_wdir command for a description of the working  |
-     directory stack.                                             |
+     -bc_author, -bca                                             |
+         prints the bit count author of the entry.  The bit count |
+         author is the name of the user who last set the bit      |
+         count of the segment or directory.  This attribute is    |
+         automatically updated when the bit count is set.  Not    |
+         valid for DM files.                                      |
 
 
-     ARGUMENTS                                                    |
-                                                                  |
-     LOCATIONS                                                    |
-         selects entries on the working directory stack to be     |
-         printed or returned.  LOCATION can be an integer         |
-         position N from the top of the stack; or a text LABEL    |
-         associated with a stack entry; or one of the reserved    |
-         words first (f), last (l) or all (a).  The reserved word |
-         first identifies the current working directory (which is |
-         not on the stack of prior working directories and is     |
-         displayed above stack position 1); last identifies the   |
-         bottom stack entry; and all identifies the current       |
-         working directory plus all stacked directories.          |
+pg 3-195:  replace the documentation for the "working_dir"
+     command with the following.
+
+     SYNTAX AS A COMMAND
+
+     wd {LOCATIONS} {-control_arg}
+
+     SYNTAX AS AN ACTIVE FUNCTION
+
+     [wd {LOCATIONS}]
 
 
-         More than one LOCATION can be given to select several    |
-         entries.  Individual locations are separated by a space. |
-         A LOCATION_RANGE is given by a starting and ending       |
-         LOCATION separated by a colon.  For example, f:2         |
-         identifies the current working directory and the top two |
-         directories on the stack, and 1:XXX identifies stack     |
-         entries from the top of the stack to the entry with      |
-         label XXX.                                               |
+     FUNCTION
+
+     prints or returns the pathname of the current working
+     directory.  Optional arguments can be given to print or
+     return entries on the stack of working directories.  Refer
+     to the change_wdir command for a description of the working
+     directory stack.
 
 
-     CONTROL ARGUMENTS                                            |
-                                                                  |
-     -header, -he                                                 |
-         displays a heading of the form:  LOC LABEL PATHNAME.     |
-         The default is to print a heading when more than one     |
-         directory is displayed.                                  |
-                                                                  |
-     -no_header, -nhe                                             |
-         suppresses the heading before the stack contents are     |
-         displayed.  [default]                                    |
+     ARGUMENTS
+
+     LOCATIONS
+         selects entries on the working directory stack to be
+         printed or returned.  LOCATION can be an integer
+         position N from the top of the stack; or a text LABEL
+         associated with a stack entry; or one of the reserved
+         words first (f), last (l) or all (a).  The reserved word
+         first identifies the current working directory (which is
+         not on the stack of prior working directories and is
+         displayed above stack position 1); last identifies the
+         bottom stack entry; and all identifies the current
+         working directory plus all stacked directories.
 
 
-     NOTES                                                        |
-                                                                  |
-     Since the working_dir is returned in quotes, the command     |
-     processor treats it as a single argument regardless of       |
-     special characters in the name.                              |
-                                                                  |
-     The current working directory is located at location zero.   |
-     The most recent prior working directory is at the stack      |
-     position 1 and the least recent prior working directory is   |
-     at the Nth (last position).  If a stack of prior working     |
-     directories is empty then only the current working directory |
-     is printed.  For the case when the current working directory |
-     has been deleted, an attempt to print it out will display    |
-     the "directory has been deleted" message in square brackets, |
+         More than one LOCATION can be given to select several
+         entries.  Individual locations are separated by a space.
+         A LOCATION_RANGE is given by a starting and ending
+         LOCATION separated by a colon.  For example, f:2
+         identifies the current working directory and the top two
+         directories on the stack, and 1:XXX identifies stack
+         entries from the top of the stack to the entry with
+         label XXX.
 
 
-     separated from the directory pathname by a blank space.      |
-     This does not apply when one or more prior working           |
-     directories on the stack have been deleted.  See also the    |
-     change_wdir (cwd) command for stack features.                |
-                                                                  |
-                                                                  |
-     Examples:  Assume the stack looks like the following:        |
-                                                                  |
-        0     >udd>m>tai>archive_dev                              |
-        1     >udd>m>tai>abbrev_dev                               |
-        2 XXX >udd>m>tai>cwd_dev                                  |
-        3     >udd>m>tai                                          |
+     CONTROL ARGUMENTS
+
+     -header, -he
+         displays a heading of the form:  LOC LABEL PATHNAME.
+         The default is to print a heading when more than one
+         directory is displayed.
+
+     -no_header, -nhe
+         suppresses the heading before the stack contents are
+         displayed.  [default]
 
 
-     then                                                         |
-                                                                  |
-        ! wd XXX                                                  |
-        2 XXX >udd>m>tai>cwd_dev                                  |
-                                                                  |
-        ! wd 2 -he                                                |
-        LOC LABEL PATHNAME                                        |
-                                                                  |
-          2 XXX >udd>m>tai>cwd_dev                                |
-                                                                  |
-        ! wd f:XXX                                                |
-        LOC LABEL PATHNAME                                        |
+     NOTES
+
+     Since the working_dir is returned in quotes, the command
+     processor treats it as a single argument regardless of
+     special characters in the name.
 
 
-          0     >udd>m>tai>archive_dev                            |
-          1     >udd>m>tai>abbrev_dev                             |
-          2 XXX >udd>m>tai>cwd_dev                                |
-                                                                  |
-        ! string [wd XXX]                                         |
-        >udd>m>tai>cwd_dev                                        |
-                                                                  |
-        ! string [wd 2]                                           |
-        >udd>m>tai>cwd_dev                                        |
-                                                                  |
-        ! string [wd a]                                           |
-        >udd>m>tai>archive_dev >udd>m>tai>abbrev_dev              |
-             >udd>m>tai>cwd_dev >udd>m>tai                        |
+     The current working directory is located at location zero.
+     The most recent prior working directory is at the stack
+     position 1 and the least recent prior working directory is
+     at the Nth (last position).  If a stack of prior working
+     directories is empty then only the current working directory
+     is printed.  For the case when the current working directory
+     has been deleted, an attempt to print it out will display
+     the "directory has been deleted" message in square brackets,
+     separated from the directory pathname by a blank space.
+     This does not apply when one or more prior working
+     directories on the stack have been deleted.  See also the
+     change_wdir (cwd) command for stack features.
 
 
-        ! dd >udd>m>tai>archive_dev                               |
-        ! wd a                                                    |
-        LOC LABEL PATHNAME                                        |
-                                                                  |
-          0    >udd>m>tai>archive_dev [directory has been deleted]|
-          1    >udd>m>tai>abbrev_dev                              |
-          2 XXX >udd>m>tai>cwd_dev                                |
-          3    >udd>m>tai                                         |
-                                                                  |
-        ! string [wd a]                                           |
-        >udd>m>tai>archive_dev >udd>m>tai>abbrev_dev              |
-             >udd>m>tai>cwd_dev >udd>m>tai                        |
+     Examples:  Assume the stack looks like the following:
+
+        0     >udd>m>tai>archive_dev
+        1     >udd>m>tai>abbrev_dev
+        2 XXX >udd>m>tai>cwd_dev
+        3     >udd>m>tai
+
+     then
+
+        ! wd XXX
+        2 XXX >udd>m>tai>cwd_dev
+
+        ! wd 2 -he
+        LOC LABEL PATHNAME
+
+
+          2 XXX >udd>m>tai>cwd_dev
+
+        ! wd f:XXX
+        LOC LABEL PATHNAME
+
+          0     >udd>m>tai>archive_dev
+          1     >udd>m>tai>abbrev_dev
+          2 XXX >udd>m>tai>cwd_dev
+
+        ! string [wd XXX]
+        >udd>m>tai>cwd_dev
+
+        ! string [wd 2]
+        >udd>m>tai>cwd_dev
+
+
+        ! string [wd a]
+        >udd>m>tai>archive_dev >udd>m>tai>abbrev_dev
+             >udd>m>tai>cwd_dev >udd>m>tai
+
+        ! dd >udd>m>tai>archive_dev
+        ! wd a
+        LOC LABEL PATHNAME
+
+          0    >udd>m>tai>archive_dev [directory has been deleted]
+          1    >udd>m>tai>abbrev_dev
+          2 XXX >udd>m>tai>cwd_dev
+          3    >udd>m>tai
+
+
+        ! string [wd a]
+        >udd>m>tai>archive_dev >udd>m>tai>abbrev_dev
+             >udd>m>tai>cwd_dev >udd>m>tai
+

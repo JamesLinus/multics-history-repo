@@ -1,4 +1,4 @@
-04/12/89 new_user
+04/12/91 new_user
 
 Syntax as a command:  new_user
 or
@@ -84,7 +84,7 @@ Function:  This entry point is similar to new_user$change but is less
 verbose.
 
 
-:Entry:  cga:  04/12/89  new_user$cga
+:Entry:  cga:  04/12/91  new_user$cga
 
 
 
@@ -251,7 +251,7 @@ item
          password is locked until TIME.
       operator
          user can use the sign_on command to sign on as an operator.
-      revalidate
+   + revalidate
          the user's password is revalidated (after having expired
          following a period of non-use).
    name

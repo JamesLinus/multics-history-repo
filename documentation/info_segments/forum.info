@@ -1,4 +1,4 @@
-12/26/85  forum
+01/26/91  forum
 
 Syntax as a command:  forum {meeting_name} {-control_args}
 
@@ -23,6 +23,9 @@ Control arguments:
    request processor.  If the -profile argument is not given, the
    user's default profile segment
    (>udd>Project_id>Person_id>Person_id.profile) is used.
+-auto_write
+   specifies that the qedx request automatically updates the message
+   when you quit the editor.
 -brief, -bf
    suppresses some messages from Forum and shortens others.
 -input_fill, -ifi
@@ -48,6 +51,11 @@ Control arguments:
 -no_abbrev, -nab
    specifies that abbreviation processing is not to be done by the
    Forum request processor.  (Default)
+-no_auto_write
+   specifies that the qedx request requires you to use the write
+   request to update the
+   message before quitting the editor.  Any attempt to exit without
+   writing results in a query.  (Default)
 
 
 -no_input_fill, -nif
@@ -284,7 +292,8 @@ reply {trans_spec} {-control_args}, rp {trans_spec} {-control_args}
    specified by trans_spec.
 reset {trans_spec} {-control_args}, rs {trans_spec} {-control_args}
    resets the user's current or highest-seen transaction index to the
-   specified transaction.
+   specified transaction. The highest transaction seen is only maintained
+   for pre-MR11 version meetings.
 retrieve trans_specs, rt trans_specs
    retrieves specified transactions that were previously deleted with
    the "delete" request.  Only the chairman or the author of the

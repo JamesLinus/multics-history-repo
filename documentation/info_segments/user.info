@@ -1,4 +1,4 @@
-03/17/88 user
+06/18/91 user
 
 Syntax as a command:  user key
 
@@ -85,6 +85,8 @@ charge_type
 cpu_secs
    is your CPU usage (in seconds) since login, in the form sss.t, with
    leading zeros suppressed.
+cutoff_date
+   returns the cutoff date for your spending.
 device_channel
    is the I/O device channel associated with your terminal.
 

@@ -1,4 +1,4 @@
-07/18/86  as_who
+09/08/92  as_who
 
 Syntax as a command:  as_who {-control_args} {User_ids}
 
@@ -97,10 +97,13 @@ Specification of -long returns time of login, tty ID, weight, device
 channel, load control group, flags indicating special variables, and a
 User_id for each user.
 
+
 Users should note the selection control arguments are usually additive.
 E.g. as_who -connected -disconnected is equivalent to as_who
 -interactive; as_who -as -daemon lists both absentee and deamon
 processes, -daemon does not override the absentee selection.
+
+Specification of any User_id will cause the headers to be suppressed.
 
 
 Notes on flags: Included in the output next to the User_id are flags,
@@ -123,8 +126,8 @@ S
 +
    the user has the nobump attribute (cannot be preempted).
 >
-   the user, whose grace period has not yet run out, is subject to
-   bumping (preemption).
+   the user, whose grace period has run out, is subject to bumping
+   (preemption).
 X
    the user has been bumped but has not yet logged out.
 D

@@ -1,4 +1,4 @@
-03/04/85  date_time_
+01/03/91 date_time_
 
 
 The date_time_ system is a utility which encodes, decodes, adjusts, or
@@ -196,7 +196,7 @@ request that the value be expressed in one of the default time zones.
 Syntax:
 declare date_time_$from_clock entry (fixed bin(71), char(*), ptr, fixed
      bin(35));
-call date_time_$from_clock_ (clock, zone, addr(time_value), code);
+call date_time_$from_clock (clock, zone, addr(time_value), code);
 
 
 Arguments:
@@ -239,7 +239,7 @@ clock2
    negative.
 time_offsets
    is the structure containing resulting time values.  (Output) The
-   structure is defined in time_offsets.incl.pl1
+   structure is defined in time_offset.incl.pl1
 code
    is a standard status code.  (Output)
 
@@ -304,7 +304,7 @@ Function:  This entry sets or resets the user's default time language.
 
 
 Syntax:
-declare date_time_$set_lang (char(*), fixed bin(35));
+declare date_time_$set_lang entry (char(*), fixed bin(35));
 call date_time_$set_lang (lang, code);
 
 
@@ -346,7 +346,7 @@ of these values.  All the values must be valid, i.e.  not greater than
 
 
 Syntax:
-declare date_time_$to_clock (ptr, fixed bin(71), fixed bin(35));
+declare date_time_$to_clock entry (ptr, fixed bin(71), fixed bin(35));
 call date_time_$to_clock (addr (time_value), clock, code);
 
 
@@ -368,7 +368,7 @@ precisely the same tests as date_time_$format.
 
 
 Syntax:
-declare date_time_$valid_format (char(*), fixed bin, fixed bin(35));
+declare date_time_$valid_format entry (char(*), fixed bin, fixed bin(35));
 call date_time_$valid_format (format, errloc, code);
 
 

@@ -1,4 +1,4 @@
-02/26/85  ask_
+02/26/90  ask_
 
 
 The ask_ subroutine provides a flexible terminal input facility for
@@ -152,8 +152,8 @@ call ask_$ask_clr;
 
 
 Function:  This entry point works like the ask_$ask_cint entry point
-except that it returns a value of "on" or "off" if an integer is
-available.
+except that it returns a value of "on" or "off" if a character string
+of either "on" or "off" is available.
 
 
 Syntax:
@@ -174,9 +174,9 @@ flag
 :Entry:  ask_cyn:  02/26/85 ask_$ask_cyn
 
 
-Function:  This entry point works like the ask_$ask_cint entry point
-except that it returns a value of yes (or y) or no (or n) if an integer
-is available.
+Function: This entry point works like the ask_$ask_cint entry point
+except that it returns a value of yes (or y) or no (or n) if a
+character string of either "yes" or "no" is available.
 
 
 Syntax:
@@ -264,8 +264,7 @@ call ask_$ask_line (ctl, line, ioa_args);
 Arguments:
 ctl
    is an ioa_ control string (char(*)) in the same format as that used
-   by the ioa_ subroutine.  (Input).  If a period is typed, zero is
-   returned.
+   by the ioa_ subroutine.  (Input)
 line
    is the return value (char(*)).  (Output)
 ioa_args
@@ -310,8 +309,7 @@ call ask_$ask_nf (ctl, line, ioa_args);
 Arguments:
 ctl
    is an ioa_ control string (char(*)) in the same format as that used
-   by the ioa_ subroutine.  (Input) If a period is typed, zero is
-   returned.
+   by the ioa_ subroutine.  (Input)
 line
    is the return value (char(*)).  (Output)
 ioa_args
@@ -332,7 +330,8 @@ call ask_$ask_nflo (flo, flag);
 
 Arguments:
 flo
-   is the returned value, if any.  (Output)
+   is the returned value, if any. If a period is typed, zero is
+   returned. (Output)
 flag
    is the flow flag.  (Output).  Its value can be:
       0    if the line is empty.
@@ -355,7 +354,8 @@ call ask_$ask_nint (int, flag);
 
 Arguments:
 int
-   is the returned value, if any.  (Output)
+   is the returned value, if any. If a period is typed, zero is
+   returned. (Output)
 flag
    is the int flag.  (Output).  Its value can be:
       1   if int is returned.
@@ -487,8 +487,7 @@ call ask_$ask_yn (ctl, ans, ioa_args);
 Arguments:
 ctl
    is an ioa_ control string (char(*)) in the same format as that used
-   by the ioa_ subroutine.  (Input).  If a period is typed, zero is
-   returned.
+   by the ioa_ subroutine.  (Input)
 ans
    is a value of yes (or y) or no (or n) if such a value was present.
    (Input)
