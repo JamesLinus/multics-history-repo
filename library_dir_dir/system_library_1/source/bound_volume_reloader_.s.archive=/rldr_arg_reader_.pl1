@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1992   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -44,6 +46,15 @@ rldr_arg_reader_: proc (rldr_datap, a_alp, a_code);
   3) change(86-10-23,Fawcett), approve(86-10-23,MCR7517),
      audit(86-10-30,Beattie), install(86-11-03,MR12.0-1206):
      Changed to remove the word BOS from message.
+  4) change(92-09-14,WAAnderson), approve(92-09-14,MECR0017),
+     audit(92-09-22,Vu), install(92-09-25,MR12.5-1018):
+     The value of rldr_data_.usable_sectors is not being calculated properly
+     for FIPS disks.  The constant 16 is being used instead of the appropriate
+     value in sect_per_rec (declard in fs_dev_types_sector.incl.pl1). The
+     result is a corrupted disk.  This fix replaces 16 with sect_per_rec.
+  5) change(92-10-02,WAAnderson), approve(92-10-02,MCR8272),
+     audit(92-10-13,Vu), install(92-10-21,MR12.5-1039):
+     This MCR closes MECR0017.
                                                    END HISTORY COMMENTS */
 
 
@@ -224,7 +235,7 @@ get_next_pvname:
 	do i = 1 to hbound (device_names, 1) while (device_names (i) ^= rldr_data_.disk_model (1));
 	end;
 	if i > hbound (device_names, 1) then goto bad_arg;
-	rldr_data_.usable_sectors (1) = divide (sect_per_cyl (i), 16, 17, 0) * 16;
+	rldr_data_.usable_sectors (1) = divide (sect_per_cyl (i), sect_per_rec (i), 17, 0) * sect_per_rec (i);
 	rldr_data_.unusable_sectors (1) = sect_per_cyl (i) - rldr_data_.usable_sectors (1);
         end;
       else if arg = "-save" then rldr_data_.save = "1"b;
@@ -322,6 +333,3 @@ dcl wdir		     char (168) aligned;
    END MESSAGE DOCUMENTATION */
 
   end rldr_arg_reader_;
-
-
-
