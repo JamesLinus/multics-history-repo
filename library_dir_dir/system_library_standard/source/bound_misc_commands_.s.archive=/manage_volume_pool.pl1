@@ -51,6 +51,13 @@ manage_volume_pool: mvp: mvp_: manage_volume_pool_: proc;
   3) change(92-05-14,Schroth), approve(91-11-25,MCR8251),
      audit(92-09-22,WAAnderson), install(92-09-24,MR12.5-1016):
      Replace MECR0015: Correct MR12.4 source code corruption.
+  4) change(92-09-16,WAAnderson), approve(92-09-16,MCR8262),
+     audit(92-10-06,Vu), install(92-10-19,MR12.5-1028):
+     The active function call [mvp l -tt] on very large volume pools failed due
+     to insufficient stack space. This occurred due to a misplaced call to
+     shorten_stack.  Also checked to make sure request was made as an active
+     function and the totals were not wanted before adding volume names into
+     the return string.
                                                    END HISTORY COMMENTS */
 
 
@@ -171,6 +178,7 @@ dcl  pvexp_str			char(pvexp_len) based (pvexp_ptr);
 dcl  pvexp_len			fixed bin(21);
 dcl  pvexp_ptr			ptr;
 dcl  pvexp_sw			bit(1);
+dcl  requoted_output                    char (512) var;
 dcl  reserve_sw			bit(1);
 dcl  ret				char (retl) var based (retp);
 dcl  retl				fixed bin(21);
@@ -2953,7 +2961,11 @@ dcl (vs_size, printx, vidx)		fixed bin;
 
        if verify(output, blank_NL) = 0 then;  /* don't print if no output is found */
        else do;
-          if active_fnc then ret = ret || " " || requote_string_ ((output)); 
+          if active_fnc & ^totals_wanted then do;
+               requoted_output = requote_string_ (substr (output, 1, length(output)));
+	     ret = ret || " ";
+   	     ret = ret || requoted_output;
+	     end;
           else do;
              if header_sw then do;               /* did we print the header yet?  */
 	      call ioa_("^a", header_output);
@@ -2987,7 +2999,11 @@ dcl printx			fixed bin parameter;
              call format_print_output(printx, True);
 	   listed_flag(printx) = True;
              if output ^= "" then do;
-	      if active_fnc then ret = ret || " " || requote_string_ ((output));
+	      if active_fnc & ^totals_wanted then do;
+	           requoted_output = requote_string_ (substr (output, 1, length(output)));
+		 ret = ret || " ";
+		 ret = ret || requoted_output;
+   	           end;
 	      else if ^totals_wanted then call ioa_("^a", output);
 	      end;
 	   printx = vpe(printx).secondary_idx;
