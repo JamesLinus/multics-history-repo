@@ -31,6 +31,9 @@
   6) change(87-08-18,Parisek), approve(87-08-18,PBF7716),
      audit(87-09-03,Farley), install(87-09-10,MR12.1-1104):
      Conditionally get next ec statement when noabort flag is on.
+  7) change(89-12-04,LZimmerman), approve(89-12-04,MCR8145),
+     audit(89-12-08,Kallstrom), install(90-05-17,MR12.4-1009):
+     Add literal &CR.
                                                    END HISTORY COMMENTS */
 
 
@@ -192,6 +195,8 @@ dcl NL char (1) int static options (constant) init ("
 ");
 dcl VT char (1) int static options (constant) init ("");
 dcl FF char (1) int static options (constant) init ("");
+dcl CR char (1) int static options (constant) init ("
+");
 
 /* The control statement keywords */
 /* NOTE: Do not change this array without changing the ACTION() and SKIP() labels in abs_io_v2_get_line */
@@ -226,17 +231,17 @@ dcl 1 STMT_SW_OVERLAY (39) based (addr (STMT_SWITCHES)),
 /* NOTE: Do not change this array without changing the labels in expand internal procedure */
 
 dcl NAMES_STRING char (NAMES_LEN) aligned based (addr (NAMES));
-dcl NAMES (37) char (32) aligned int static options (constant) init
+dcl NAMES (38) char (32) aligned int static options (constant) init
 	("&condition_info_ptr",  "&cond_info_ptr",  "&condition_name",  "&cond_name",	"&ec_dir",
 	 "&ec_name",	"&ec_path",	"&ec_switch",	"&handlers",	"&in_handler",
 	 "&is_absin",	"&is_active_function",  "&is_af",	"&is_attached",	"&is_defined",
 	 "&is_input_line",	"&n",		""/*&quote*/,	""/*&requote*/,	""/*&unquote*/,
-	 "&was_attached",	"&AMP",		"&BS",		"&FF",		"&HT",
-	 "&LF",		"&NL",		"&NP",		"&QT",		"&SP",
-	 "&VT",		"&begin",		"&do",		"&else",		"&end",
-	 "&if",		"&then");
+	 "&was_attached",	"&AMP",		"&BS",		"&CR",		"&FF",
+	"&HT",		"&LF",		"&NL",		"&NP",		"&QT",
+	"&SP",		"&VT",		"&begin",		"&do",		"&else",
+	"&end",		"&if",		"&then");
 
-dcl NAME_SWITCHES (37) bit (5) int static options (constant) init
+dcl NAME_SWITCHES (38) bit (5) int static options (constant) init
 					/* control_wd, allow_arg, require_arg, require_num, digit_ok (params) */
 (	"00000"b,		"00000"b,		"00000"b,		"00000"b,		"00000"b,
 	"00000"b,		"00000"b,		"00000"b,		"00000"b,		"00000"b,
@@ -244,8 +249,8 @@ dcl NAME_SWITCHES (37) bit (5) int static options (constant) init
 	"00000"b,		"00000"b,		"01100"b,		"01100"b,		"01100"b,
 	"00000"b,		"01010"b,		"01010"b,		"01010"b,		"01010"b,
 	"01010"b,		"01010"b,		"01010"b,		"01010"b,		"01010"b,
-	"01010"b,		"10000"b,		"10000"b,		"10000"b,		"10000"b,
-	"10000"b,		"10000"b);
+	"01010"b,		"01010"b,		"10000"b,		"10000"b,		"10000"b,
+	"10000"b,		"10000"b,		"10000"b);
 
 /* The &words not to be expanded (stmt control-args) */
 
@@ -1700,36 +1705,40 @@ EXPAND (26):					/* &BS */
 	call add_output (P_state.optr_len, copy (BS, numeric_arg));
 	return;
 
-EXPAND (27):					/* &FF, &NP */
+EXPAND (27):					/* &CR */
+	call add_output (P_state.optr_len, copy (CR, numeric_arg));
+	return;
+
+EXPAND (28):					/* &FF, &NP */
 	call add_output (P_state.optr_len, copy (FF, numeric_arg));
 	return;
 
-EXPAND (28):					/* &HT */
+EXPAND (29):					/* &HT */
 	call add_output (P_state.optr_len, copy ("	", numeric_arg));
 	return;
 
-EXPAND (29):					/* &LF */
+EXPAND (30):					/* &LF */
 	call add_output (P_state.optr_len, copy (NL, numeric_arg));
 	return;
 
-EXPAND (30):					/* &NL */
+EXPAND (31):					/* &NL */
 	call add_output (P_state.optr_len, copy (NL, numeric_arg));
 	return;
 
-EXPAND (31):					/* &NP = &FF */
+EXPAND (32):					/* &NP = &FF */
 	call add_output (P_state.optr_len, copy (FF, numeric_arg));
 	return;
 
 
-EXPAND (32):					/* &QT */
+EXPAND (33):					/* &QT */
 	call add_output (P_state.optr_len, copy ("""", numeric_arg));
 	return;
 
-EXPAND (33):					/* &SP */
+EXPAND (34):					/* &SP */
 	call add_output (P_state.optr_len, copy (" ", numeric_arg));
 	return;
 
-EXPAND (34):					/* &VT */
+EXPAND (35):					/* &VT */
 	call add_output (P_state.optr_len, copy (VT, numeric_arg));
 	return;
 
@@ -2193,3 +2202,6 @@ delete: entry (A_vars_ptr, A_var, A_val, A_code);
 
 
 end abs_io_expand_;
+
+
+
