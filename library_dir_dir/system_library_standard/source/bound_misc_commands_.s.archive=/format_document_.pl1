@@ -12,6 +12,9 @@
   1) change(90-03-14,Kallstrom), approve(90-03-27,MCR8150),
      audit(90-04-03,Zimmerman), install(90-04-11,MR12.4-1003):
      Added an rtrim after CRs and VTs are removed.
+  2) change(92-09-14,Vu), approve(92-09-14,MCR8260), audit(92-09-23,Zimmerman),
+     install(92-10-06,MR12.5-1024):
+     format_document_ looses characters and generates unwanted new paragraph.
                                                    END HISTORY COMMENTS */
 
 
@@ -143,6 +146,7 @@ dcl  buf char (256) varying;				/* input buffer */
 dcl  buf_len21 fixed bin (21);			/* length of buf -- needed for call to canonicalize_ */
 dcl  char_cnt fixed bin (21);				/* position of next char to be written */
 dcl  component_ends_wo_NL bit;			/* ON = component ends without a newline */
+dcl  continued_line bit (1);
 dcl  ctl char (5);					/* user specified control */
 dcl  ctl_index fixed bin;				/* index of ctl into ctl_list */
 dcl  current_syllable_size fixed bin;			/* syllable size as currently adjusted */
@@ -397,6 +401,7 @@ switch:	entry (dnamin, enamin, iocbptr, optptr, code);
 process:
 	char_cnt = 1;
 	component_ends_wo_NL = "0"b;
+          continued_line = "0"b;
 	current_syllable_size = default_syllable_size;
 	hyphenation_routine_state = 0;
 	in_comp_no = 0;
@@ -420,10 +425,12 @@ process_one_component:
 	do while (inlen > 0);			/* while there is more input */
 	     nlindex = index (infile, NL);
 	     inplnctr = inplnctr + 1;
+               continued_line = "0"b;
 	     if nlindex = 0
 		then nlindex = inlen + 1;
 	     if nlindex > BUFFER_SIZE_PLUS_ONE		/* line longer than internal buffer */
 		then do;				/* find someplace to break it */
+                    continued_line = "1"b;
 		if length (rtrim (substr (infile, 1, nlindex - 1), HT_or_SP)) <= BUFFER_SIZE
                     /* line merely had a lot of trailing blanks */
 		     then buf = rtrim (substr (infile, 1, nlindex - 1), HT_or_SP);
@@ -454,7 +461,8 @@ process_one_component:
 	     end;
 	     else buf = rtrim (substr (infile, 1, nlindex - 1), HT_or_SP); /* get the next line into buf */
 
-              if ^literal_mode & buf_len > 0		/* literal_sw says ignore controls */
+               if ^literal_mode & buf_len > 0 
+                    & ^continued_line                       /* literal_sw says ignore controls */
 		then if buf_chars (1) = "."
 		then do;
 		buf = translate (buf, " ", HT);	/* quasi- */
@@ -853,7 +861,7 @@ dont_canon:    end;
 		end;
 		else do;				/* concatenate buffer to end of save area */
 		     if store_len > 0
-			then buf = " " || buf;
+                              then store = store || " ";
 		     store = store || buf;
 		end;
 	     end;
@@ -944,10 +952,11 @@ process_normally:	if store_len = ll
 		     then do;			/* blank at ll + 1 */
 		     outline = rtrim (substr (store, 1, ll)); /* put first ll chars in out buffer */
 		     store = ltrim (substr (store, ll + 2)); /* let save area have the rest */
-		     if adjust & length (outline) < ll	/* needs adjusted */
-			then if length (outline) > 0	/* rtrim could have reduced this to "" */
+                         if outline ^= "" then do;
+                              if adjust & length (outline) < ll	/* needs adjusted */
 			then call adjust_line (outline, ll);
-		     call write (outline);		/* and write */
+		          call write (outline);		/* and write */
+                         end;
 		end;
 		else do;
 
@@ -1139,6 +1148,12 @@ continue:
 		then do;
 		inptr = addr (in_chars (nlindex + 1));	/* move input ptr past next NL */
 		inlen = inlen - nlindex;		/* change length to reflect what is left */
+                    if continued_line
+                           then do;
+                           spindex = verify (infile, " ");
+                           inptr = addr (in_chars (spindex));
+                           inlen = inlen - spindex + 1;
+                    end;
 	     end;
 	     else goto no_more_data;			/* end of component, maybe end of file */
 	end;
