@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -58,6 +60,9 @@ sc_init_:
      hphcs_$syserr_error_code.  Corrected error message documentation, and
      code which creates log and admin_log if they are not found.  Correct
      coding standard violations.
+  7) change(90-09-24,Schroth), approve(90-09-24,MCR8212), audit(90-10-10,Vu),
+     install(90-10-17,MR12.4-1047):
+     Correct possible fatal linkage error if booting nosc.
                                                    END HISTORY COMMENTS */
 %page;
 
@@ -130,6 +135,7 @@ sc_init_:
 	dcl     1 auto_log_salvage_arg        aligned like log_salvage_arg;
 	dcl     code		        fixed bin (35);
 						/* iox errcode */
+	dcl     invoke_emergency_listener     bit (1);	/* should emergency listener be invoked */
 	dcl     log_salv_code	        fixed bin (35);
 						/* returned from log_salvage_ */
 	dcl     log_salv_err_cnt	        fixed bin;	/* count of errors occurring on each log */
@@ -156,17 +162,22 @@ sc_init_:
 %page;
 /* Program */
 
+	invoke_emergency_listener = INVOKE_EMERGENCY_LISTENER ();
 	if ^sc_stat_$test_mode
 	then do;
 		call pl1_resignaller_$establish_handlers;
 		call sct_manager_$set (cput_sct_index, timer_manager_$cpu_time_interrupt, code);
 		call sct_manager_$set (alrm_sct_index, timer_manager_$alarm_interrupt, code);
-		call sct_manager_$set (system_shutdown_scheduled_sct_index, system_shutdown_handler_, code);
-		call sct_manager_$set (dm_shutdown_scheduled_sct_index, dm_misc_util_$shutdown_handler, code);
 		call sct_manager_$set (no_write_permission_sct_index, copy_on_write_handler_, code);
 		call sct_manager_$set (not_in_write_bracket_sct_index, copy_on_write_handler_, code);
-		call sct_manager_$set (system_message_sct_index, system_message_handler_, code);
 		call sct_manager_$set (wkp_sct_index, wkp_signal_handler_, code);
+		if ^invoke_emergency_listener
+		then do;
+			call sct_manager_$set (system_shutdown_scheduled_sct_index, system_shutdown_handler_, code);
+			call sct_manager_$set (dm_shutdown_scheduled_sct_index, dm_misc_util_$shutdown_handler,
+			     code);
+			call sct_manager_$set (system_message_sct_index, system_message_handler_, code);
+		     end;
 	     end;
 
 	code = 0;					/* ignore it */
@@ -251,7 +262,7 @@ sc_init_:
       listener.  This is useful in case we have problems with the
       logging software later on. */
 
-	if INVOKE_EMERGENCY_LISTENER ()
+	if invoke_emergency_listener
 	then do;
 		call hphcs_$syserr (BEEP,
 		     "sc_init_: Invoking emergency listener because ""nosc"" parameter specified.");
