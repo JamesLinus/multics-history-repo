@@ -1,10 +1,19 @@
-/* ***********************************************************
-   *                                                         *
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1981 *
-   *                                                         *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1981 *
+        *                                                         *
+        *********************************************************** */
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(90-03-14,Kallstrom), approve(90-03-27,MCR8150),
+     audit(90-04-03,Zimmerman), install(90-04-11,MR12.4-1003):
+     Added an rtrim after CRs and VTs are removed.
+                                                   END HISTORY COMMENTS */
+
 
 format_document_:
 	proc (dnamin, enamin, dnamout, enamout, optptr, code);
@@ -445,7 +454,7 @@ process_one_component:
 	     end;
 	     else buf = rtrim (substr (infile, 1, nlindex - 1), HT_or_SP); /* get the next line into buf */
 
-               if ^literal_mode & buf_len > 0		/* literal_sw says ignore controls */
+              if ^literal_mode & buf_len > 0		/* literal_sw says ignore controls */
 		then if buf_chars (1) = "."
 		then do;
 		buf = translate (buf, " ", HT);	/* quasi- */
@@ -755,6 +764,7 @@ process_text:
 		do while (index (buf, CR) ^= 0);
 		     buf = decat (buf, CR, "101"b);
 		end;
+		buf = rtrim (buf, HT_or_SP);            /* rtrim buf in case there are now blanks at the end */
 	     end;
 
 	     if search (buf, BS_or_HT) ^= 0 
