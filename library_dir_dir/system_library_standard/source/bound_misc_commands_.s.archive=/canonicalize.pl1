@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1988                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -61,8 +63,12 @@
       Modified to properly strip white space off the ends of lines which
       contain no other characters.
  10) change(88-05-26,TLNguyen), approve(88-05-26,MCR7879),
-     audit(88-10-04,RBarstad):
+     audit(88-10-04,RBarstad), install(90-04-12,MR12.4-1004):
      SCP6348: allow MSF in canon.
+ 11) change(90-03-02,LZimmerman), approve(90-03-02,MCR8158),
+     audit(90-03-07,Kallstrom), install(90-04-12,MR12.4-1004):
+     Correct unwarranted termination of input segment. (canonicalize_,
+     canonicalize_tabs_)
                                                    END HISTORY COMMENTS */
 
 /* format: style4 */
@@ -326,7 +332,11 @@ dcl  ME char (12) int static options (constant) init ("canonicalize");
 	     Desired_access = RW_ACCESS;		/* when wanted to overwrite the original input file (segment or MSF) */
 	else Desired_access = R_ACCESS;		/* otherwise, only "read" access is needed */
 
-	on cleanup call clean_up;
+	on cleanup begin;
+	     call clean_up;
+	     call term_segs;
+	end;
+	
 
 /* mainly proceeds canonicalization of an input file whose type is either a Segment or a Multisegment_file */
 	call get_temp_segment_ (ME, Outc_ptr, Ec);	/* points to a temp storage Outc which holds one line of canincal chars */
@@ -374,6 +384,8 @@ dcl  ME char (12) int static options (constant) init ("canonicalize");
 	end;
 
 	call clean_up;
+	call term_segs;
+
 
 	return;					/* complete canonicalize main program */
 
@@ -652,6 +664,8 @@ NON_MSF_COMMON:
 	     p_output_ptr -> Temp_seg = Temp_seg;	/* copy Temp_seg into a specified output file whose type is segment */
 	     p_output_len = Temp_seg_len_in_chars;	/* update the length of the output file */
 	end;
+
+Seg_ptr = null;
 
 	call clean_up;
 
@@ -1185,6 +1199,17 @@ clean_up: proc;
 	if Second_temp_seg_ptr ^= null then
 	     call release_temp_segment_ (ME, Second_temp_seg_ptr, (0));
 
+	return;
+
+     end clean_up;
+
+/***************************************************************************/
+/*  This is part of the clean_up procedure that is not required if the
+    call has come thru canonicalize_ or canonicalize_tabs_.                */
+
+term_segs:
+     proc;
+     
 	if Out_seg_ptr = Seg_ptr then Out_seg_ptr = null; /* Out_seg_ptr also pointed to source since wanted to overwrite the input file path1 */
 
 	if Seg_ptr ^= null then
@@ -1193,9 +1218,8 @@ clean_up: proc;
 	if Out_seg_ptr ^= null then
 	     call terminate_file_ (Out_seg_ptr, (0), TERM_FILE_TERM, (0));
 
-	return;
-
-     end clean_up;
+end term_segs;
+/****************************************************************************/
 
 /* -------------------------------------------------------------------------- */
 %page;
