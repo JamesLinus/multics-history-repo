@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1991   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -159,6 +161,9 @@ pdir_volume_manager_: proc;
      audit(88-08-03,Lippard), install(88-08-29,MR12.2-1093):
       A) Set ename identifier variable at print_pdq ep to avoid garbage in
          error messages. (phx17303)
+  4) change(91-03-11,Vu), approve(91-03-11,MCR8243), audit(91-12-09,Zimmerman),
+     install(91-12-12,MR12.5-1009):
+     Bad argument list for call to sys_log_.
                                                    END HISTORY COMMENTS */
 
 
@@ -540,7 +545,7 @@ vac_pdv: entry;
 	     if index (arg, "-") = 1 then do;
 		if arg = "-long" | arg = "-lg" then loud = 2;
 		else do;
-		     call sys_log_$error_log (2, error_table_$badopt, arg);
+		     call sys_log_$error_log (2, error_table_$badopt,"^a",  arg);
 		     return;
 		end;
 	     end;
@@ -924,3 +929,6 @@ valid_call: proc returns (bit (1) aligned);
 %page; %include user_table_header;
 
      end pdir_volume_manager_;
+
+
+
