@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1991   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1988                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -16,6 +18,9 @@
      install(88-10-17,MR12.2-1173):
      Updated iox_ dcls and calls.
      Changed read mechanism to deal with incomplete data from dump tapes.
+  2) change(91-11-12,Schroth), approve(91-12-02,MCR8252),
+     audit(92-10-15,Zimmerman), install(92-10-21,MR12.5-1035):
+     Correct error in truncating segments containing embedded nulled pages.
                                                    END HISTORY COMMENTS */
 
 
@@ -72,6 +77,7 @@ dcl nlc		     fixed bin;
 dcl nlp		     ptr;
 dcl nrp		     bit (18);
 dcl object_read	     bit (1);
+dcl object_size	     fixed bin (19);
 dcl objectp	     ptr;
 dcl page_bufferp	     ptr;
 dcl page_offset	     fixed bin (21);
@@ -80,7 +86,6 @@ dcl pname		     char (168) aligned;
 dcl pnl		     fixed bin;
 dcl pvid		     bit (36);
 dcl nel		     fixed bin (21);
-dcl buffer_len	     fixed bin (21);
 dcl requests_left	     fixed bin;
 dcl resynch_retry_count  fixed bin;
 dcl resynching	     bit (1);
@@ -153,7 +158,7 @@ dcl suffixed_name_$make  entry (char (*) aligned, char (*) aligned, char (*) ali
 dcl hc_backup_$retv_status entry (char (*) aligned, char (*) aligned, bit (72) aligned, char (*) aligned,
 		     fixed bin, fixed bin, bit (36), bit (36), bit (36), bit (36), (3) bit (36), bit (36), fixed bin (35));
 dcl convert_status_code_ entry (fixed bin (35), char (8) aligned, char (100) aligned);
-dcl hcs_$truncate_seg    entry (ptr, fixed bin, fixed bin (35));
+dcl hcs_$truncate_seg    entry (ptr, fixed bin (19), fixed bin (35));
 dcl hcs_$make_seg	     entry (char (*) aligned, char (*) aligned, char (*) aligned, fixed bin (5), ptr, fixed bin (35));
 dcl ioa_$rsnnl	     entry options (variable);
 dcl message_segment_$incremental_read_index entry (fixed bin, ptr, bit (2), bit (72) aligned, ptr, fixed bin (35));
@@ -331,7 +336,7 @@ pattern_match:
 
 	if ^object_read then do;
 	    object_read = "1"b;
-	    buffer_len, nel = backup_volume_record.rec2_len;
+	    nel = backup_volume_record.rec2_len;
 	    if fixed (backup_volume_record.csl) = fixed (backup_volume_record.records) then do;
 	        call read (objectp, nel, nelt,
 		   (backup_volume_record.version > backup_volume_record_version_1), code);
@@ -413,7 +418,8 @@ retry_append:     call hc_backup_$retv_append (pname, name_list (1), crbp, retv_
 	    else goto check_next_request;
 	  end;
 	else do;
-	    call hcs_$truncate_seg (objectp, divide (buffer_len, CHARS_PER_WORD, 17, 0), ignore);
+	    object_size = fixed (backup_volume_record.csl, 18, 0) * WORDS_PER_PAGE;
+	    call hcs_$truncate_seg (objectp, object_size + 1, ignore); /* object_size + 1 is first word to discard */
 	    if retv_input.new_dirname ^= "" then do;	/* cross object retrieval */
 	        call hc_backup_$retv_status (retv_input.new_dirname, "",
 		   retv_input.access_class, retv_input.requestor, retv_input.level, type,
