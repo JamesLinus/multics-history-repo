@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -21,6 +23,12 @@
      audit(88-10-12,Blair), install(88-10-17,MR12.2-1171):
      Upgrade to TTT_version 4 with c_chars structure changing from 3 to 15
      chars.
+  3) change(90-06-26,Schroth), approve(90-07-09,MCR8183),
+     audit(90-07-31,WAAnderson), install(90-08-16,MR12.4-1024):
+     Changed to ensure that the caller does not block indefinitely when output
+     is subdivided and yields no real output (whitespace or edited out), to
+     properly set current line counter upon FF or VT, and to free allocated
+     buffer chains on crawlout.
                                                    END HISTORY COMMENTS */
 
 /* format: style4,delnl,insnl,^ifthendo */
@@ -172,6 +180,7 @@ dcl  1 illegal_char_args aligned,
        2 pad2 (4) fixed bin;
 
 dcl  auto_buf_len fixed bin;				/* internal buffer length */
+dcl  allocated_buffers bit(1);			/* on if buffers have been obtained */
 
 /* INTERNAL STATIC */
 
@@ -258,6 +267,7 @@ declare LONGEST_POSSIBLE_STRING fixed bin init (8128) int static options (consta
 
 /* ENTRIES */
 
+dcl  pxss$ring_0_wakeup entry (bit (36) aligned, fixed bin (71), fixed bin (71), fixed bin (35));
 dcl  tty_lock$lock_channel entry (fixed bin, fixed bin (35)),
      tty_lock$unlock_channel entry (fixed bin);
 
@@ -326,6 +336,7 @@ dcl  cleanup condition;
 
 %include channel_manager_dcls;
 %include multiplexer_types;
+%include net_event_message;
 
 	locked_entry = "0"b;
 	forcesw = "0"b;				/* normal call, check buffer limit */
@@ -405,8 +416,19 @@ mark_join:
 	     call tty_lock$lock_channel (devx, ercode);	/* lock the channel lock */
 	     if ercode ^= 0
 	     then return;
-	     on cleanup call tty_lock$unlock_channel (devx);
 	end;
+
+	allocated_buffers = "0"b;
+	on cleanup
+	begin;
+	     if allocated_buffers
+	     then do;
+		allocated_buffers = "0"b;		/* don't try again */
+		call free_buffers;
+	     end;
+	     if ^locked_entry
+	     then call tty_lock$unlock_channel (devx);
+	end;					/* cleanup block */
 
 	lctep = addr (lct.lcte_array (devx));		/* get entry of interest */
 	if lcte.channel_type ^= TTY_MPX		/* not our type */
@@ -630,6 +652,8 @@ restart:						/* come here if we have to start over */
 		     if white_sw			/* take care of trailing white space */
 		     then if nelemt = nelem		/* if output really ends in white space */
 			then call insert_white;
+			else if target_len = 0	/* only white? */
+			     then call insert_white;	/* expand it */
 
 		end;
 
@@ -666,6 +690,7 @@ restart:						/* come here if we have to start over */
 		n_pages = 0;
 		headp = null;
 		new_head = 0;
+		allocated_buffers = "1"b;		/* crawlout can now safely free them */
 
 		do while (output_length > 0);		/* copy for as long as necessary */
 		     n_pages = n_pages + 1;
@@ -964,7 +989,21 @@ get_new_buf:
 		tty_buf.totbuf = tty_buf.totbuf + i;	/* set blocked-for-write meters  */
 		tty_buf.nblocked = tty_buf.nblocked + 1;
 
-		wtcb.flags.wflag = "1"b;		/* so wakeup will happen when write completes */
+		/*** If we did not consume all of our caller's output but
+		generated no output, ensure that the process sees a wakeup
+		so that the rest of the output will be handled. */
+		
+		if wtcb.send_output			/* nothing in progress */
+		then do;
+		     unspec (net_event_message) = "0"b;
+		     net_event_message.version = NET_EVENT_MESSAGE_VERSION_1;
+		     net_event_message.network_type = MCS_NETWORK_TYPE;
+		     net_event_message.handle = devx;
+		     net_event_message.type = MCS_WRITE_MSG;
+		     call pxss$ring_0_wakeup (wtcb.uproc, wtcb.event, net_event_message_arg, (0));
+		     wtcb.wflag = "0"b;
+		end;
+		else wtcb.flags.wflag = "1"b;		/* so wakeup will happen when write completes */
 	     end;
 
 	     tcb.cumulative_meters.write_chars = tcb.cumulative_meters.write_chars + nelemt;
@@ -1768,8 +1807,8 @@ move_formated_chars:
 			seqp = addr (special_ptr -> special_chars.end_of_page);
 			call insert_sequence ("0"b);
 			call insert_char (eop_sentinel);
-			line_count = 0;
 		     end;
+		     line_count = 0;
 		     seqp = addr (special_ptr -> special_chars.ff_seq);
 		end;
 
@@ -1966,28 +2005,6 @@ octal_escape:
 	stringl = stringl - 1;
      end octal_escape;
 
-free_buffers:
-     proc;
-
-/* procedure to free any buffers we allocated but can't use */
-
-	if headp ^= null				/* we'd peeled off a page */
-	then do;					/* Add for the Datanet 7100. */
-	     if uncp_flag then wtcb.send_turn = lastp -> buffer.turn;
-	     call tty_space_man$free_chain (devx, OUTPUT, headp);
-	end;
-	if new_head ^= 0
-	then call tty_space_man$free_chain (devx, OUTPUT, ptr (ttybp, new_head));
-
-	wtcb.end_frame = old_end_frame;
-	wtcb.write_first = old_head;			/* back to how we were when we came in */
-	wtcb.write_last = old_tail;
-	if wtcb.write_last ^= 0
-	then ptr (ttybp, wtcb.write_last) -> buffer.next = 0;
-
-	return;
-     end /* free_buffers */;
-
 	end /* giant begin block */;
 
 all_done:
@@ -2025,6 +2042,29 @@ nothing_written:
 	ercode = 0;
 	go to all_done;				/* exit */
 
+free_buffers:
+     proc;
+
+/* procedure to free any buffers we allocated but can't use */
+
+	if headp ^= null				/* we'd peeled off a page */
+	then do;					/* Add for the Datanet 7100. */
+	     if uncp_flag then wtcb.send_turn = lastp -> buffer.turn;
+	     call tty_space_man$free_chain (devx, OUTPUT, headp);
+	end;
+	if new_head ^= 0
+	then call tty_space_man$free_chain (devx, OUTPUT, ptr (ttybp, new_head));
+
+	wtcb.end_frame = old_end_frame;
+	wtcb.write_first = old_head;			/* back to how we were when we came in */
+	wtcb.write_last = old_tail;
+	if wtcb.write_last ^= 0
+	then ptr (ttybp, wtcb.write_last) -> buffer.next = 0;
+
+	return;
+     end /* free_buffers */;
+
+
 is_parent_mpx:					/* Check for match of channel's parent mpx type and input mpx type */
      proc (parent_mpx_type) returns (bit (1));
 
