@@ -1,8 +1,19 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1984 *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1984 *
+        *                                                         *
+        *********************************************************** */
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(90-08-07,Vu), approve(90-08-07,MCR8189),
+     audit(90-09-24,WAAnderson), install(90-10-02,MR12.4-1036):
+     Error message from tune_disk without arguments is malformed.
+                                                   END HISTORY COMMENTS */
+
 
 /* format: style4,delnl,insnl,indattr,ifthen,dclind10 */
 tune_disk:
@@ -23,17 +34,11 @@ dcl	arg_ptr		   ptr;
 
 dcl	brief		   bit (1) initial ("1"b);
 dcl	code		   fixed bin (35);
-dcl	dev		   fixed bin;
-dcl	dummy		   bit (1);
 dcl	i		   fixed bin;
-dcl	io_type		   fixed bin;
-dcl	j		   fixed bin;
 dcl	MYNAME		   char (9) static options (constant) initial ("tune_disk");
 dcl	prev_arg		   char (256) varying;
 dcl	reason		   char (64) varying;
 dcl	stagnate		   fixed bin (35);
-dcl	subsys_name	   char (4);
-dcl	sx		   fixed bin;
 dcl	time		   float bin (27);
 
 
@@ -43,13 +48,14 @@ dcl	1 s		   like sys_info_tune;
 dcl	error_table_$bad_arg   fixed bin (35) ext;
 dcl	error_table_$noarg	   fixed bin (35) ext;
 
-dcl	clock_		   entry returns (fixed bin (71));
 dcl	cu_$arg_count_rel	   entry (fixed bin, ptr, fixed bin (35));
 dcl	cu_$arg_list_ptr	   entry (ptr);
 dcl	cu_$arg_ptr_rel	   entry (fixed bin, ptr, fixed bin (21), fixed bin (35), ptr);
 dcl	com_err_		   entry () options (variable);
 dcl	hphcs_$disk_tune	   entry (char (*), ptr, char (*) varying, fixed bin (35));
 dcl	ioa_		   entry () options (variable);
+
+dcl       (addr, after, before, bin, float, null, substr) builtin;
 
 dcl	conversion	   condition;
 
@@ -62,7 +68,7 @@ dcl	conversion	   condition;
 
 	if ^get_next_arg () then do;
 	     call ioa_ (
-		"Usage:^a drive_name io_type -load n -response m -or-^/^a reset_max -or-^/^a reset_sys -or-^/^a stagnate seconds -or-^/^^a system io_type -max n -map io_type"
+		"Usage:^a drive_name io_type -load n -response m -or-^/^a reset_max -or-^/^a reset_sys -or-^/^a stagnate seconds -or-^/^a system io_type -max n -map io_type"
 		, MYNAME, MYNAME, MYNAME, MYNAME, MYNAME);
 
 	     call ioa_ ("     io_type is one of: ^(^a ^)", io_name);
@@ -232,6 +238,3 @@ get_io_type:
 
 %include disk_tune;
      end tune_disk;
-
-
-
