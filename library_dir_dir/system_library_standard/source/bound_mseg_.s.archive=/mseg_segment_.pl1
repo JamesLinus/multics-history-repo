@@ -1,8 +1,23 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1985 *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1992   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1985 *
+        *                                                         *
+        *********************************************************** */
+
+
+/****^  HISTORY COMMENTS:
+  1) change(92-09-03,WAAnderson), approve(92-09-03,MECR0016),
+     audit(92-09-17,Vu), install(92-09-24,MR12.5-1017):
+     During message segment compaction the message segment gets truncated to a
+     length of 0. This action overwrites the lockword held by the calling
+     process.  The fix ensures the lockword (which is the first word in the
+     segment) does not get set to 0.
+  2) change(92-10-02,WAAnderson), approve(92-10-02,MCR8271),
+     audit(92-10-13,Vu), install(92-10-21,MR12.5-1032):
+     This MCR closes MECR0016.
+                                                   END HISTORY COMMENTS */
 
 /* Message segment primitive operations (mseg_) which manipulate the entire message segment as a whole */
 
@@ -106,6 +121,8 @@ dcl	(source_max_length, target_max_length)
 			fixed binary (19);
 dcl	(n_new_blocks, n_new_header_blocks, n_virgin_blocks, n_used_or_wasted_blocks, n_wasted_blocks)
 			fixed binary (18);
+
+dcl       TRUNCATE_ALL_BUT_THE_LOCKWORD fixed bin (19) int static options (constant) init (1); 
 
 dcl	access_operations_$mseg_attr_mod
 			bit (36) aligned external;
@@ -270,7 +287,7 @@ mseg_segment_$compact_seg:
 
 	segment_in_error = SOURCE;
 
-	call hcs_$truncate_seg (source_mseg_ptr, 0, (0));
+	call hcs_$truncate_seg (source_mseg_ptr, TRUNCATE_ALL_BUT_THE_LOCKWORD, (0));
 
 	compacted_size =
 	     target_mseg_segment_header.block_size
