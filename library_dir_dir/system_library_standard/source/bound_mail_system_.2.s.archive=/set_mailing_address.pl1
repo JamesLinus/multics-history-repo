@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1989                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1983 *
@@ -14,6 +16,15 @@
      A. Return aliases for the specified name supplied to dsmla.
      B. Accept starnames as input to the dsmla command using case
         insensitivity.
+  2) change(90-03-26,Kallstrom), approve(90-03-26,MCR8168),
+     audit(90-04-16,Zimmerman), install(90-04-25,MR12.4-1008):
+     A.  Add a check for self-referencing addresses
+     B.  Fix the infinite loop which occurs when a control argument
+         directly follows the -entry control arg.
+  3) change(90-06-14,Zimmerman), approve(90-06-14,MCR8168),
+     audit(90-06-18,WAAnderson), install(90-06-26,MR12.4-1017):
+     PBF: Fix path thru code that tests improperly set variable.
+     (validate_mte_path)
                                                    END HISTORY COMMENTS */
 
 
@@ -97,7 +108,8 @@ smla:
 	        error_table_$no_record,
 	        error_table_$no_w_permission,
 	        error_table_$noarg,
-	        error_table_$too_many_args
+	        error_table_$too_many_args,
+                  mlsys_et_$circular_mtes
 	        )			fixed bin (35) ext static;
 	dcl     (addr, index, length, maxlength, null, rtrim, substr)
 				builtin;
@@ -107,6 +119,8 @@ smla:
 %include mlsys_parse_ca_options;
 %page;
 %include mail_table_entry;
+%page;
+%include mlsys_address_types;
 %page;
 
 	WHOAMI = "set_mailing_address";
@@ -136,8 +150,15 @@ smla:
 		if person_id_specified then
 		     call ssu_$abort_line (sci_ptr, error_table_$too_many_args, "-entry may only be specified once.");
 		person_id_specified = "1"b;
-		arg_idx = arg_idx + 1;
+
+/*** NO_NAME used to be immediately after 'arg_idx = arg_idx +1;' . ***/
+/*** This caused an infinite loop when '-entry' was followed by     ***/
+/*** a hyphen, as 'arg_idx' was never incremented to get by the     ***/
+/*** argument preceded by the hyphen. For example,                  ***/
+/***                smla -entry -bad                                ***/
+
 NO_NAME:
+		arg_idx = arg_idx + 1;
 		if arg_idx > arg_count then
 		     call ssu_$abort_line (sci_ptr, error_table_$noarg,
 			"-entry must be followed by a Mail Table entry name.");
@@ -164,6 +185,7 @@ NO_NAME:
 		end;
 		arg_idx = arg_idx - 1;		/* will be incremented by do loop */
 		address_ptr = ca_address_ptr;
+		
 	     end;
 
 	end;
@@ -173,6 +195,13 @@ NO_NAME:
 	if ^default_project & address_ptr = null () then
 	     call ssu_$abort_line (sci_ptr, error_table_$noarg,
 		"Either an address or -default_project must be specified.");
+          call validate_mte_path (person_id, address_ptr, code);
+          if code ^= 0 then do;
+  	     call ssu_$abort_line (sci_ptr, code, "");
+               call cleanup_smla();
+               return; 
+	   end;
+
 	call mail_table_$set (person_id, address_ptr, code);
 	if code ^= 0 then do;
 	     if code = error_table_$action_not_performed then
@@ -203,6 +232,118 @@ NO_NAME:
 	call cleanup_smla ();
 RETURN_FROM_SMLA:
 	return;
+
+validate_mte_path:
+	procedure (P_name, P_address_ptr, P_code);
+
+/*** parameters ***/
+	
+dcl P_name        parameter char (*) var;
+dcl P_address_ptr parameter pointer;
+dcl P_code        parameter fixed bin (35);
+	
+/*** automatics ***/
+
+dcl src_person_id              char (32) varying;
+dcl tgt_person_id              char (32) varying;
+dcl last_mte_name              char (32) varying;
+dcl code                       fixed bin (35);
+dcl mail_table_address_ptr     pointer;
+
+/*** based values ***/
+
+dcl 01 address_header aligned based (mail_table_address_ptr),
+       02 version         char (8) unaligned,
+       02 type            fixed bin,
+       02 reference_count fixed bin,
+       02 name,
+          03 name_ptr     ptr,
+          03 name_lth     fixed bin (21),
+       02 comment,
+          03 comment_ptr  ptr,
+          03 comment_lth  fixed bin (21),
+       02 flags,
+          03 never_free   bit (1) unaligned,
+          03 free_name    bit (1) unaligned,
+          03 free_comment bit (1) unaligned,
+          03 pad          bit (33) unaligned;
+
+dcl 01 mail_table_address aligned based (mail_table_address_ptr),
+       02 header          aligned like address_header,
+       02 mte_name        char (32) var;
+
+
+/*** internal procedure ***/
+
+expand_mail_table_entry:
+	proc (mail_table_name, expanded_name, code);
+	
+/* parameters */
+
+dcl mail_table_name parameter char (*) varying;
+dcl expanded_name   parameter char (*) varying;
+dcl code            parameter fixed bin (35);
+
+/* automatics */
+
+dcl next_mte_name              char (32) varying;
+	
+/* begin code */ 
+
+code = 0;
+
+call mail_table_$get (mail_table_name, mail_table_address_ptr, ((168) " "), code);
+if (code ^= 0) then do;
+    expanded_name = "";
+    return;
+  end;
+  
+if (address_header.type ^= MAIL_TABLE_ADDRESS) then do;
+    if address_header.type = FOREIGN_ADDRESS then expanded_name = "..Foreign Address..";
+    else expanded_name = mail_table_address.mte_name;
+    call mail_system_$free_address (mail_table_address_ptr, code);
+    return;
+  end;
+
+if (last_mte_name = mail_table_address.mte_name) then do;
+    expanded_name = "";
+    call mail_system_$free_address (mail_table_address_ptr, code);
+    return;
+  end;
+
+last_mte_name, next_mte_name = mail_table_address.mte_name;
+
+call mail_system_$free_address (mail_table_address_ptr, code);
+
+call expand_mail_table_entry (next_mte_name, expanded_name, code);
+
+end expand_mail_table_entry;
+
+
+/*** BEGIN MAIN ROUTINE ***/
+
+code = 0;
+
+/* Only set when a potential self reference is encountered */
+
+P_code = 0;
+
+mail_table_address_ptr = null;
+
+call expand_mail_table_entry (P_name, src_person_id, code);
+
+if (code = 0 & P_address_ptr ^= null) then do;
+    if (P_address_ptr->address_header.type = MAIL_TABLE_ADDRESS) then do;
+        call expand_mail_table_entry (P_address_ptr->mail_table_address.mte_name, tgt_person_id, code);
+        if (code ^= 0) then return;
+
+        if (src_person_id = tgt_person_id | tgt_person_id = "") then
+	   P_code = mlsys_et_$circular_mtes;
+   end;
+           
+  end;
+
+end validate_mte_path;
 
 cleanup_smla:
      proc ();
