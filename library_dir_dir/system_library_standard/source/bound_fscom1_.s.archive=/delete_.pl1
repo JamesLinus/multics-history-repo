@@ -12,8 +12,9 @@
   1) change(90-07-30,Bubric), approve(90-07-30,MCR8185), audit(90-09-12,Vu),
      install(90-09-20,MR12.4-1026):
      Fix delete_$path to handle extended objects which are directories.
-     [Reconstructed by ATS 2017 - I suspect this is wrong since it just removes
-     a blank line; need to check the binary from MR12.3 vs. MR12.4.]
+  2) change(92-09-24,Vu), approve(92-09-24,MCR8266), audit(92-09-24,Zimmerman),
+     install(92-10-06,MR12.5-1025):
+     Fixed dl command for deleting forum.
                                                    END HISTORY COMMENTS */
 
 
@@ -219,9 +220,10 @@ check_type:
 		then do;				/* - at beginning implies standard object, but */
 						/* this program treats DM files as extended */
 						/* rather than standard objects */
-			if ^delete_options.segment
-			then goto is_segment;
-			goto call_delete;		/* if extended object, don't try to initiate */
+            		/* if extended object, don't try to initiate */
+		          if type = 1 & ^delete_options.segment
+                              then goto is_segment;
+                              goto call_delete;
 		     end;
 	     end;
 

@@ -1,13 +1,25 @@
-/* **************************************************************
-   *                                                            *
-   * Copyright, (C) Massachusetts Institute of Technology, 1983 *
-   *                                                            *
-   * Copyright, (C) Honeywell Information Systems Inc., 1983    *
-   *                                                            *
-   ************************************************************** */
+/****^  **************************************************************
+        *                                                            *
+        * Copyright, (C) BULL HN Information Systems Inc., 1992      *
+        *                                                            *
+        * Copyright, (C) Honeywell Information Systems Inc., 1983    *
+        *                                                            *
+        * Copyright, (C) Massachusetts Institute of Technology, 1983 *
+        *                                                            *
+        ************************************************************** */
 
 
 
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(92-09-24,Vu), approve(92-09-24,MCR8266), audit(92-09-24,Zimmerman),
+     install(92-10-06,MR12.5-1025):
+     Fix bug for add_name when adding a name to a forum meeting which is the
+     only remaining name of another forum.
+                                                   END HISTORY COMMENTS */
 
 
 /* format: style2 */
@@ -61,6 +73,7 @@ nd_handler_:
                   bit                    fixed bin (24);
           dcl     (link_msg, query_msg)  char (256);
           dcl     buff                   char (132) varying;
+          dcl     fs_util_type           char (32);
           dcl     target_path            char (target_len) based (target_ptr);
           dcl     target_ptr             ptr init (null);
           dcl     target_len             fixed bin;
@@ -75,7 +88,7 @@ nd_handler_:
                   )                      fixed bin int static options (constant);
 %page;
 %include nd_handler_options;
-
+%page;
 %include delete_options;
 %page;
 %include query_info;
@@ -121,7 +134,8 @@ nd_handler_:
                                          entry (char (*), char (*), char (*), char (*), fixed bin (35)),
                   fs_util_$chname_file   entry (char (*), char (*), char (*), char (*), fixed bin (35));
 
-          dcl     (addr, fixed, length, min, null, ptr, rtrim, string, substr)
+	dcl     fs_util_$get_type      entry (character (*), character (*), character (*), fixed binary (35));
+          dcl     (addr, fixed, null, ptr, rtrim, string, substr, unspec)
                                          builtin;
 
           dcl     cleanup                condition;
@@ -277,7 +291,11 @@ DELETE:
                     else do;                                /* it is a directory */
                               verb = "delete";
                               noun = "directory";
-                              delete_options.directory = "1"b;
+                              call fs_util_$get_type (pname,ename,fs_util_type,code);
+                              if code ^= 0 then return;
+                              if substr (fs_util_type, 1, 1) ^= "-" then
+                                 delete_options.segment = "1"b;
+                              else delete_options.directory = "1"b;
                          end;
                end;
 
