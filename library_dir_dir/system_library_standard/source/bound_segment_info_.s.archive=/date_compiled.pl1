@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
         *                                                         *
         * Copyright (c) 1972 by Massachusetts Institute of        *
@@ -37,6 +39,9 @@ date_compiled: dtc: proc;
   5) change(86-08-06,Elhard), approve(86-08-06,MCR7457),
      audit(86-08-21,DGHowe), install(86-11-20,MR12.0-1222):
      Modified to extract dates from all components of an object MSF.
+  6) change(90-04-20,Vu), approve(90-04-20,MCR8172), audit(90-06-04,Blackmore),
+     install(90-07-17,MR12.4-1021):
+     date_compiled prints more than what is asked for.
                                                    END HISTORY COMMENTS */
 
 
@@ -80,6 +85,7 @@ date_compiled: dtc: proc;
 	        cu_$arg_count	 entry (fixed bin, fixed bin (35)),
 	        cu_$af_return_arg	 entry (fixed bin, ptr, fixed bin, fixed bin (35)),
 	        decode_definition_	 entry (ptr, ptr) returns(bit(1) aligned),
+                  decode_definition_$full entry (ptr, ptr, ptr) returns (bit (1) aligned),
 	        expand_pathname_$component entry (char (*), char (*), char (*), char (*), fixed bin (35)),
 	        ioa_		 entry options (variable),
 	        date_time_		 entry (fixed bin (71), char (*)),
@@ -261,7 +267,7 @@ date_compiled_: proc (seg_ptr, bitc, ename, code);
 	dcl     name		 char (comp_name_len) based (comp_name_ptr);
 	dcl     cname		 char (kk) based (qq);
 	dcl     kk		 fixed bin, qq ptr;
-	dcl     1 dd		 like decode_definition_str aligned;
+	dcl     1 dd		 like decode_definition_full aligned;
 	dcl     1 oi		 like object_info aligned;
 
 /* include files at end */
@@ -301,16 +307,16 @@ date_compiled_: proc (seg_ptr, bitc, ename, code);
 		     comp_name_len = fixed (component (idx).name_lng, 18);
 		     jdx = fixed (component (idx).symb_start, 18);
 		     if nsr > 0 then do;
-			     do kdx = 1 to nsr;
-				if name = search.name (kdx) then go to doit1;
-			     end;
-			     eof = decode_definition_ (seg_ptr, addr (dd));
-			     eof = decode_definition_ (addrel (oi.defp, bindmap.component(idx).defblock_ptr), addr (dd));
-			     do while (^eof & (dd.section = "segn"));
+			          do kdx = 1 to nsr;
+				     if name = search.name (kdx) then goto doit1;
+                                             end;
+
+			     eof = decode_definition_$full (addrel (oi.defp, bindmap.component(idx).defblock_ptr), addr (dd), addr (oi));
+			     do while (^eof & (dd.section = "segn") & ^dd.flags.ignore);
 				do kdx = 1 to nsr;
-				     if dd.symbol = search.name (kdx) then go to doit1;
-				     end;		/* do kdx */
-				eof = decode_definition_ (dd.next_def, addr (dd));
+				     if dd.symbol = search.name (kdx) then goto doit1;
+           			     end;		/* do kdx */
+				eof = decode_definition_$full (dd.next_def, addr (dd), addr (oi));
 				end;		/* do while */
 			     go to skp1;
 			end;
