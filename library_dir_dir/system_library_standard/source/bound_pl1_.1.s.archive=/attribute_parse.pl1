@@ -28,6 +28,10 @@
   4) change(89-09-27,RWaters), approve(89-09-27,MCR8068), audit(89-09-27,Vu),
      install(89-10-02,MR12.3-1080):
      Fixed so that it doesn't flag duplicate attributes as fatal errors.
+  5) change(91-01-18,Blackmore), approve(91-01-18,MCR8234),
+     audit(91-12-05,Huen), install(92-04-24,MR12.5-1011):
+     Change dcls of 'constant_token' and 'defer_constant_token_list' entries
+     for the constant reference resolution fix.
                                                    END HISTORY COMMENTS */
 
 
@@ -164,8 +168,8 @@ dcl      action_index (82) fixed bin (8) unal internal static initial (0,
 	    0,					/* variable */
 	    0 /* varying */);
 
-dcl      constant_token entry (ptr, bit (9) aligned, bit (9) aligned) returns (bit (9));
-dcl      defer_constant_token_list entry (fixed bin, bit (9) aligned);
+dcl      constant_token entry (ptr, ptr, bit (9) aligned, bit (9) aligned) returns (bit (9));
+dcl      defer_constant_token_list entry (ptr, fixed bin, bit (9) aligned);
 
 /* program */
 
@@ -230,7 +234,7 @@ action (3):					/* get arithmetic precision */
 	     go to test;
 	p -> symbol.precision = "1"b;
 	k = k + 1;
-	if constant_token (token_list (k), "777"b3, dec_integer) ^= dec_integer then
+	if constant_token (cblock, token_list (k), "777"b3, dec_integer) ^= dec_integer then
 	     call print (15);
 	p -> symbol.c_dcl_size = token_to_binary (token_list (k));
 	if p -> symbol.c_dcl_size = 0 then
@@ -239,7 +243,7 @@ action (3):					/* get arithmetic precision */
 	if in_generic then
 	     if t_table.type = colon then do;
 		k = k + 1;
-		if constant_token (token_list (k), "777"b3, dec_integer) ^= dec_integer then
+		if constant_token (cblock, token_list (k), "777"b3, dec_integer) ^= dec_integer then
 		     call print (15);
 		p -> symbol.pic_size = token_to_binary (token_list (k));
 		k = k + 1;
@@ -477,7 +481,7 @@ get_scale:
 dcl      temp fixed bin;
 
 	k = k + 1;
-	call defer_constant_token_list ((k), right_parn);
+	call defer_constant_token_list (cblock, (k), right_parn);
 	p1 = expression_parse (k, cblock);
 	if p1 = null then
 	     call print (15);
@@ -515,7 +519,7 @@ dcl      (p1, p2) ptr;
 	     k = k + 1;
 	     go to exit;
 	end;
-	call defer_constant_token_list ((k), right_parn);
+	call defer_constant_token_list (cblock, (k), right_parn);
 	p1 = expression_parse (k, cblock);
 	if p1 = null then
 	     go to fail;
@@ -570,7 +574,7 @@ dcl      sym_ptr ptr;
 		k = k + 1;
 		if ^(sym_ptr -> symbol.ptr | sym_ptr -> symbol.offset | sym_ptr -> symbol.area
 		     | sym_ptr -> symbol.label | sym_ptr -> symbol.entry | sym_ptr -> symbol.file) then
-		     call defer_constant_token_list ((k), right_parn);
+		     call defer_constant_token_list (cblock, (k), right_parn);
 		factor = expression_parse (k, cblock);
 		if factor = null then
 		     go to fail;
@@ -589,7 +593,7 @@ dcl      sym_ptr ptr;
 		if t_table.type = left_parn then do;
 		     if ^(sym_ptr -> symbol.ptr | sym_ptr -> symbol.offset | sym_ptr -> symbol.area
 			| sym_ptr -> symbol.label | sym_ptr -> symbol.entry | sym_ptr -> symbol.file) then
-			call defer_constant_token_list ((k), right_parn);
+			call defer_constant_token_list (cblock, (k), right_parn);
 		     value = initial_list (sym_ptr);
 		     if value = null then
 			go to fail;
@@ -601,7 +605,7 @@ dcl      sym_ptr ptr;
 		else do;
 		     if ^(sym_ptr -> symbol.ptr | sym_ptr -> symbol.offset | sym_ptr -> symbol.area
 			| sym_ptr -> symbol.label | sym_ptr -> symbol.entry | sym_ptr -> symbol.file) then
-			call defer_constant_token_list ((k), right_parn);
+			call defer_constant_token_list (cblock, (k), right_parn);
 		     value = expression_parse (k, cblock);
 		     if value = null then
 			go to fail;
@@ -652,3 +656,6 @@ dcl      m fixed bin (15);
 %include token_list;
 %include token_types;
      end /* attribute_parse */;
+
+
+

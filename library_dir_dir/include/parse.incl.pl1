@@ -1,3 +1,13 @@
+/* BEGIN INCLUDE FILE parse.incl.pl1 */
+
+
+/****^  HISTORY COMMENTS:
+  1) change(91-01-09,Blackmore), approve(91-01-09,MCR8234),
+     audit(91-12-05,Huen), install(92-04-24,MR12.5-1011):
+     Change entry points for 'lex', 'lex$write_last_line', and
+     'statement_type', for constant reference resolution fix.
+                                                   END HISTORY COMMENTS */
+
 declare	attribute_parse	entry(ptr,ptr,fixed bin(15),bit(1) aligned);
 			/* parameter 1:	(input)	block node ptr		*/
 			/* parameter 2:	(input)	symbol node ptr		*/
@@ -93,9 +103,11 @@ declare	io_statement_parse	entry(fixed bin(15),ptr,bit(12) aligned,ptr,ptr,
 			/* parameter 6:	(output)	valid parse bit		*/
 			/* parameter 7:	(output)	statement type		*/
 
-declare	lex		entry();
+declare	lex		entry(ptr);
+			/* parameter 1:	(input)	block node ptr		*/
 
-declare	lex$write_last_line	entry();
+declare	lex$write_last_line	entry(ptr);
+			/* parameter 1:	(input)	block node ptr		*/
 
 declare	lex$initialize_lex	entry(ptr,fixed bin(15));
 			/* parameter 1:	(input)	ptr to source		*/
@@ -152,11 +164,13 @@ declare	statement_parse	entry(fixed bin(15),ptr,bit(12) aligned,ptr,fixed bin(15
 			/* parameter 4:	(input)	block node ptr		*/
 			/* parameter 5:	(input)	statement type		*/
 
-declare	statement_type	entry(fixed bin(15),ptr,bit(12) aligned)
+declare	statement_type	entry(ptr,fixed bin(15),ptr,bit(12) aligned)
 			returns(fixed bin(15));
-			/* parameter 1:	(in/out)	token index		*/
-			/* parameter 2:	(output)	label list ptr or null	*/
-			/* parameter 3:	(output)	conditions		*/
+			/* parameter 1:	(input)	block node ptr		*/
+			/* parameter 2:	(in/out)	token index		*/
+			/* parameter 3:	(output)	label list ptr or null	*/
+			/* parameter 4:	(output)	conditions		*/
 			/* return:	(output)	statement type		*/
 
 %include language_utility;
+/* END INCLUDE FILE parse.incl.pl1 */

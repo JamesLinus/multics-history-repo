@@ -56,6 +56,13 @@
      audit(90-10-03,Zimmerman), install(90-10-17,MR12.4-1046):
      version (33b) is also for fixing PL1 to not complain about constant
      symbols that are actually legal.
+ 14) change(90-10-17,Gray), approve(90-10-17,MCR8160), audit(90-10-19,Schroth),
+     install(90-10-25,MR12.4-1049):
+     Modified to 33c to only validate constants for syms dcled by dcl
+     statement.
+ 15) change(91-01-09,Blackmore), approve(91-01-09,MCR8234),
+     audit(91-12-05,Huen), install(92-04-24,MR12.5-1011):
+     Change version to 33d, with constant reference resolution fix.
                                                    END HISTORY COMMENTS */
 
 
@@ -100,7 +107,7 @@ dcl	(stringsize, error) condition;
 /* RELEASE = "" for the >experimental_library compiler,
 	 = <release_number> for the >system_standard_library compiler */
 
-dcl	RELEASE		character (3) varying init ("33b");
+dcl	RELEASE		character (3) varying init ("33d");
 dcl	(clock_reading, microsecond)
 			fixed bin (71);
 dcl	(month, day_of_month, year, day_of_week, hour, minute, second)

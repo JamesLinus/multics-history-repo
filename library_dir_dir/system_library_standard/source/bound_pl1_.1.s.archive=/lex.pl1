@@ -25,6 +25,10 @@
   4) change(89-10-03,Vu), approve(89-10-03,MCR8139), audit(89-10-04,Blackmore),
      install(89-10-09,MR12.3-1086):
      Allow the use of named constants as replication factors.
+  5) change(91-01-18,Blackmore), approve(91-01-18,MCR8234),
+     audit(91-12-05,Huen), install(92-04-24,MR12.5-1011):
+     Change entry pts. and dcl of 'constant_token' entry to allow passing a ptr
+     to the current block, for the constant reference resolution fix.
                                                    END HISTORY COMMENTS */
 
 
@@ -60,7 +64,11 @@
 */
 /* format: style3,^indattr,ifthendo,ifthen,^indnoniterdo,indproc,^elsestmt,dclind9 */
 lex:
-     procedure ();
+     procedure (cblock);
+
+/* parameter */
+
+declare	cblock pointer parameter;			/* pointer to current block */
 
 /* automatic */
 
@@ -124,7 +132,7 @@ declare	(addr, addrel, binary, bit, char, copy, divide, hbound, index, lbound, l
 /* entries */
 
 declare	com_err_ entry options (variable);
-declare   constant_token entry (ptr, bit(9) aligned, bit(9) aligned) returns (bit(9));
+declare   constant_token entry (ptr, ptr, bit(9) aligned, bit(9) aligned) returns (bit(9));
 declare	date_time_ entry (fixed bin (71), char (*));
 declare	find_include_file_$initiate_count entry (char (*), ptr, char (*), fixed bin (24), ptr, fixed bin (35));
 declare	hcs_$terminate_noname entry (ptr, fixed bin (35));
@@ -394,7 +402,7 @@ rescan:
 		& token_list (token_index) -> token.type = right_parn then do;
 		token_index = token_index - 3;	/* wipe out rep factor and parens */
 
-                    if constant_token (token_list (token_index + 2), "777"b3, dec_integer) ^= dec_integer then
+                    if constant_token (cblock, token_list (token_index + 2), "777"b3, dec_integer) ^= dec_integer then
 		     call lex_error (110, token_list (token_index + 2));
 						/* rep factor is not a decimal integer */
 		else do;
@@ -1160,7 +1168,7 @@ terminate_source:
 /* Entry to write the last line and check for text after the end statement. */
 
 write_last_line:
-     entry;
+     entry (cblock);
 
 declare	1 source_info aligned,
 	  2 line_id char (9) unal,
@@ -1186,7 +1194,7 @@ LINE      NUMBER  DATE MODIFIED     NAME			PATHNAME");
 /* program */
 
 	lexing_after_end_stmt = "1"b;
-	call lex;					/* see if anything there besides white space & comments */
+	call lex (cblock);                                /* see if anything there besides white space & comments */
 
 	listing_on = pl1_stat_$listing_on;
 

@@ -26,11 +26,15 @@
   2) change(89-10-03,Vu), approve(89-10-03,MCR8139), audit(89-10-04,Blackmore),
      install(89-10-09,MR12.3-1086):
      PL1 confuses parameter variables with static constants.
+  3) change(91-01-18,Blackmore), approve(91-01-18,MCR8234),
+     audit(91-12-05,Huen), install(92-04-24,MR12.5-1011):
+     Change entry pt. and dcl of 'constant_token' entry to allow passing a ptr
+     to the current block, for the constant reference resolution fix.
                                                    END HISTORY COMMENTS */
 
 
 statement_type:
-	proc(index,label_ptr,conditions) returns(fixed bin(15));
+	proc(cblock,index,label_ptr,conditions) returns(fixed bin(15));
 
 /*	This function returns a bit string which identifies */
 /*	to the caller the kind of pl/1 statement currently contained */
@@ -58,7 +62,7 @@ statement_type:
 /* automatic */
 
 dcl	(index,j,k,ksaved,paren_count,n) fixed bin(15);
-dcl	(p,q,label_ptr,value_token) ptr;
+dcl	(cblock,p,q,label_ptr,value_token) ptr;
 dcl	(assumed_s_type,next_type) bit(9) aligned;
 dcl	unknown_key_word char(12) aligned;
 dcl	condition_value bit(1) aligned;
@@ -164,7 +168,7 @@ dcl	parn_not_allowed(0:33) bit(1) internal static aligned
 %include token_types;
 %include statement_types;
 
-dcl constant_token entry (ptr, bit(9) aligned, bit(9) aligned) returns(bit(9));
+dcl constant_token entry (ptr, ptr, bit(9) aligned, bit(9) aligned) returns(bit(9));
 
 
 /* program */
@@ -247,7 +251,7 @@ check_label:
 
 	/* get ptr to value token */
 	value_token = token_list (k);		/* constant_token fixes this if named constant */
-	if constant_token (value_token, "777"b3, dec_integer) ^= dec_integer then go to not_label;
+	if constant_token (cblock, value_token, "777"b3, dec_integer) ^= dec_integer then go to not_label;
 
 	p = token_list(k);
 	k = k+1;

@@ -1,11 +1,23 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   * Copyright (c) 1972 by Massachusetts Institute of        *
-   * Technology and Honeywell Information Systems, Inc.      *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(91-01-18,Blackmore), approve(91-01-18,MCR8234),
+     audit(91-12-05,Huen), install(92-04-24,MR12.5-1011):
+     Change calls to 'lex' and 'statement_type', for constant reference
+     resolution fix.
+                                                   END HISTORY COMMENTS */
 
 
 /*	This procedure parses all statements occuring in begin blocks and procedures.
@@ -99,13 +111,13 @@ dcl	action_index	(0:36) fixed bin (15) int static
 	     end;
 
 get_next_statement:
-	call lex;					/* places current statement in token_list(3000); */
+	call lex(cur_block);                              /* places current statement in token_list(3000); */
 
 get_statement_type:
 	conditions = cur_block -> block.prefix;
 
 	k = 1;					/* first token */
-	type = statement_type (k, label_ptr, conditions);
+	type = statement_type (cur_block, k, label_ptr, conditions);
 	go to action (action_index (type));
 
 /*	***************** Statements requiring individual parsing procedures. ******** */
@@ -256,6 +268,3 @@ begin_parse:
      end begin_parse;
 
      end procedure_parse;
-
-
-

@@ -1,11 +1,23 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   * Copyright (c) 1972 by Massachusetts Institute of        *
-   * Technology and Honeywell Information Systems, Inc.      *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(91-01-09,Blackmore), approve(91-01-09,MCR8234),
+     audit(91-12-05,Huen), install(92-04-24,MR12.5-1011):
+     Change calls to 'lex', 'lex$write_last_line', and 'statement_type', for
+     constant reference resolution fix.
+                                                   END HISTORY COMMENTS */
 
 
 /*	Modified on:	2 October 1970 by PG for Version II.
@@ -67,12 +79,12 @@ dcl       pl1_stat_$generate_symtab bit (1) aligned external static;
 
 	call lex$initialize_lex (addr (source_string), length (source_string));
 	pl1_stat_$one = create_token ("1", dec_integer);
-	call lex;
+	call lex(p);
 
 	index = 1;
 	entry_ptr, end_ptr = null;
 
-	if statement_type (index, entry_ptr, conditions) = binary (procedure_statement, 9)
+	if statement_type (p, index, entry_ptr, conditions) = binary (procedure_statement, 9)
 	then do;
 		call procedure_parse (index, entry_ptr, conditions, p, end_ptr, external_procedure, "0"b);
 		if end_ptr ^= null
@@ -80,8 +92,5 @@ dcl       pl1_stat_$generate_symtab bit (1) aligned external static;
 	     end;
 	else call parse_error (180, null);		/* no procedure statement */
 
-	call lex$write_last_line;
+	call lex$write_last_line(p);
      end parse;
-
-
-

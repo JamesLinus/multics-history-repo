@@ -1,11 +1,22 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   * Copyright (c) 1972 by Massachusetts Institute of        *
-   * Technology and Honeywell Information Systems, Inc.      *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(91-01-18,Blackmore), approve(91-01-18,MCR8234),
+     audit(91-12-05,Huen), install(92-04-24,MR12.5-1011):
+     Change call to 'statement_type', for constant reference resolution fix.
+                                                   END HISTORY COMMENTS */
 
 
 /*	This procedure parses on statements, and on units.  If the on unit
@@ -141,7 +152,7 @@ cond_loop:
 	     end;
 
 	conditions = father_block -> block.prefix;	/* default conditions for imbedded statement. */
-	type = statement_type (k, label_ptr, conditions);
+	type = statement_type (cblock, k, label_ptr, conditions);
 
 	q -> statement.prefix, cblock -> block.prefix = conditions;
 	if label_ptr ^= null
@@ -281,3 +292,6 @@ err420:
      end get_condition;
 
      end on_parse;
+
+
+

@@ -9,12 +9,16 @@
   1) change(88-01-26,RWaters), approve(88-01-26,MCR7724), audit(88-02-05,Huen),
      install(88-02-16,MR12.2-1024):
      Expand the uses of options (constant) variables.
+  2) change(91-01-18,Blackmore), approve(91-01-18,MCR8234),
+     audit(91-12-05,Huen), install(92-04-24,MR12.5-1011):
+     Add 'token_lookup' procedure to allow scoping rules to be followed during
+     resolution of references to constant values.
                                                    END HISTORY COMMENTS */
 
 constant_token:
-	proc (token_ptr, type_mask, desired_type) returns (bit (9));
+	proc (blk_ptr, token_ptr, type_mask, desired_type) returns (bit (9));
 
-dcl token_ptr pointer parameter;
+dcl (blk_ptr, token_ptr) pointer parameter;
 dcl desired_type bit (9) aligned parameter;
 dcl type_mask bit (9) aligned parameter;
 
@@ -32,14 +36,20 @@ dcl type_mask bit (9) aligned parameter;
 
 /* Modified: Jan 28,88 by RW to fix 1994 and 2186. */
 
+%page;
+%include block;
+%page;
 %include cross_reference;
 %include list;
 %include nodes;
+%page;
 %include symbol;
+%page;
 %include token;
 %include token_list;
+%page;
 %include token_types;
-
+%page;
 dcl 1 t like token based (token_ptr);
 
 dcl d ptr;
@@ -48,7 +58,7 @@ dcl 1 sym like symbol based (symp);
 
 declare   pl1_stat_$table bit (1) aligned external static;
 
-dcl string builtin;
+dcl (null, string) builtin;
 
 /* If it is a symbol which is
    static options (constant) initialized (), then we will return, not the
@@ -56,7 +66,7 @@ dcl string builtin;
    defines its value.  We will also cross-reference this reference, since
    we will no longer see the real token, only its value. */
 
-	     symp = t.declaration;
+	     symp = token_lookup (blk_ptr, token_ptr);
 	     if symp = null () then return (t.type);
 	     if  sym.node_type ^= symbol_node then
 		return (t.type);
@@ -89,8 +99,55 @@ dcl string builtin;
 		end;
 		return (t.type);
 %page;
+token_lookup: proc (blk, t_ptr) returns (ptr);
+/* Return a pointer to the symbol (or label) represented by the token referred
+   to by t_ptr, in the scope of the block pointed to by 'blk'. */
+
+dcl  (blk, t_ptr, sym_ptr, partial_ptr, b) ptr;
+dcl  num_partials	        fixed bin (15);
+
+/* search for an applicable declaration symbol for which this is a fully
+   qualified reference.  Remember any applicable declaration for which this is
+   a partially qualified reference.  If two or more applicable declarations can
+   be found and this is not a fully qualified reference to any of them, this is
+   an ambiguous reference.  If only one applicable declaration can be found,
+   this is a valid partially qualified reference to that declaration.
+   The search for an applicable declaration begins in the current block and
+   continues outward until the first applicable declaration is found.
+   After the first applicable declaration is found, all additional searching is
+   confined to the block in which the first applicable declaration was found. */
+
+    num_partials = 0;
+    partial_ptr = null;
+
+    b = blk;
+    do while (b ^= null);				/* While more blocks to search. */
+
+      sym_ptr = t_ptr -> token.declaration;
+      do while (sym_ptr ^= null);			/* While more symbols to look at. */
+
+        if sym_ptr -> symbol.block_node = b then
+	do;					/* In proper scope. */
+	if (sym_ptr -> node.type = label_node)            /* If we have a label or fully qualified */
+	     | ^(sym_ptr -> symbol.member) then return(sym_ptr);/* symbol, then we're successful. */
+	num_partials = num_partials + 1;		/* Otherwise reference is partially qualified. */
+	partial_ptr = sym_ptr;
+        end;					/* End: In proper scope. */
+
+        sym_ptr = sym_ptr -> symbol.multi_use;
+      end;					/* End: While more symbols to look at. */
+
+      if num_partials > 0 then b = null; else b = b -> block.father;
+    end;						/* End: While more blocks to search. */
+
+/* Here we either have a partially qualified reference, or no reference. */
+    if num_partials > 1 then partial_ptr = null;            /* Ambiguous reference */
+    return (partial_ptr);
+
+  end token_lookup;
+%page;
 defer_constant_token_list:
-	entry (index, stop_type);
+	entry (blk_ptr, index, stop_type);
 
 /* accept a list of tokens and defer all indentifiers which represent a
    static options (constant) to refer to the actual constant token, rather
@@ -105,7 +162,7 @@ dcl dummy_type bit (9) aligned;
 	k = index;
 	do while (t_table.type ^= semi_colon & t_table.type^=stop_type);
 	     if (t_table.type & is_identifier) = identifier then
-		dummy_type = constant_token (token_list (k), is_constant, dec_integer);
+		dummy_type = constant_token (blk_ptr, token_list (k), is_constant, dec_integer);
 	     if (t_table.type & is_delimiter) ^= is_delimiter &
 		(token_list (k+1) -> t_table.type & is_identifier) =
 		identifier then return;

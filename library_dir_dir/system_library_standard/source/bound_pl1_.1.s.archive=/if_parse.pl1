@@ -1,11 +1,23 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   * Copyright (c) 1972 by Massachusetts Institute of        *
-   * Technology and Honeywell Information Systems, Inc.      *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(91-01-18,Blackmore), approve(91-01-18,MCR8234),
+     audit(91-12-05,Huen), install(92-04-24,MR12.5-1011):
+     Change calls to 'lex' and 'statement_type', for constant reference
+     resolution fix.
+                                                   END HISTORY COMMENTS */
 
 
 if_parse:
@@ -156,7 +168,7 @@ dcl	action_index	(0:36) fixed bin (15) int static
 
 get_statement_type:
 	conditions = cblock -> block.prefix;
-	then_type, type = statement_type (k, label_ptr, conditions);
+	then_type, type = statement_type (cblock, k, label_ptr, conditions);
 	go to action (action_index (type));
 
 /* 	***************** Statements requiring individual parsing procedures. ******** */
@@ -230,7 +242,7 @@ action (7):
 
 end_up:
 	if end_ptr = null
-	then call lex;				/* ^=null ==> end of block */
+	then call lex(cblock);			/* ^=null ==> end of block */
 
 /* If the statement following the if statement has a label on it, e.g.
    	if e1 then label: ....
@@ -308,7 +320,7 @@ call_st1:
 	k = 1;
 call_st:
 	conditions = cblock -> block.prefix;
-	type = statement_type (k, label_ptr, conditions);
+	type = statement_type (cblock, k, label_ptr, conditions);
 
 	if type = binary (else_clause, 9)
 	then do;
@@ -356,7 +368,7 @@ call_st:
 	loc -> label.statement = null;
 
 	if end_ptr = null
-	then call lex;
+	then call lex(cblock);
 
 	goto exit;
 
@@ -469,3 +481,6 @@ dcl	m		fixed bin (15);
      end print;
 
      end /* if_parse */;
+
+
+
