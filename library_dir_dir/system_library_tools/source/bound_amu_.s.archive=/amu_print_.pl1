@@ -3,6 +3,12 @@
    * Copyright, (C) Honeywell Information Systems Inc., 1983 *
    *                                                         *
    *********************************************************** */
+
+/****^  HISTORY COMMENTS:
+  1) change(99-06-23,Haggett):
+     Y2K
+                                                   END HISTORY COMMENTS */
+
 amu_print_: proc;
 	return;
 
@@ -320,9 +326,9 @@ dcl not_dumped bit(1);
 	   call ioa_("^a: While getting time for apte # ^o.", rtrim(longinfo),P_apte_idx);
              end;
 	else do;
-	   yr_char = convert(yr_char, year);
+	   /*** yr_char = convert(yr_char, year);*/
 	   call ioa_ ("State:^-  ^a at ^d/^d/^a ^d:^d:^d.^d", process_st (fixed (apte.state, 3)), 
-                          month,dom,after(yr_char, "19"),hour,min,sec,msec);
+                          month,dom,mod(year,100),hour,min,sec,msec);
 	   end;
 
 revert:
@@ -485,3 +491,6 @@ dcl  last_ascii char (1) aligned internal static options (constant) initial (""
 %include iocb;
 
      end amu_print_;
+
+
+
