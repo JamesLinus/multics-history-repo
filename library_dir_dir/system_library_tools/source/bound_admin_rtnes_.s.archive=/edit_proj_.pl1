@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1992   *
+        *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
         *                                                         *
         * Copyright (c) 1972 by Massachusetts Institute of        *
@@ -15,6 +17,9 @@
      audit(86-04-30,GDixon), install(86-05-01,MR12.0-1050):
      Fix transfer request to work again when changing requisition or account
      number.
+  2) change(92-09-23,Zimmerman), approve(92-09-23,MCR8268), audit(92-10-13,Vu),
+     install(92-10-21,MR12.5-1034):
+     edit_proj changed to allow deletion of project alias from SAT (phx21304)
                                                    END HISTORY COMMENTS */
 
 
@@ -44,7 +49,6 @@ edit_proj_:
 	dcl     printed_projname	 bit (1) aligned;
 	dcl     rs_name		 char (32);
 	dcl     rs_number		 fixed bin;
-	dcl     atp		 ptr;
 	dcl     (set_attr, reset_attr) bit (36);
 
 
@@ -686,9 +690,13 @@ item (18):
 	end;
 	else do;
 	     char_32 = Nsate.alias;		/* will need this to see if it changed */
+	     call ioa_ ("Project Alias: type ""."" to delete current alias from SAT.");
 	     call simple_string ("Alias", Nsate.alias);
 	     if Nsate.alias ^= char_32
-	     then edit_proj_arg.changes.alias = "1"b;
+	     then do;
+		edit_proj_arg.changes.alias = "1"b;
+		if Nsate.alias = "." then Nsate.alias = "";
+	     end;
 	end;
 
 	return;
@@ -1360,6 +1368,3 @@ RETURN:
 
      end process_one_item;
      end edit_proj_;
-
-
-

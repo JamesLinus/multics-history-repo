@@ -1,11 +1,22 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   * Copyright (c) 1972 by Massachusetts Institute of        *
-   * Technology and Honeywell Information Systems, Inc.      *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1992   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(92-09-23,Zimmerman), approve(92-09-23,MCR8268), audit(92-10-13,Vu),
+     install(92-10-21,MR12.5-1034):
+     edit_proj changed to allow deletion of project alias from SAT (phx21304)
+                                                   END HISTORY COMMENTS */
 
 
 /* format: style2 */
@@ -79,22 +90,17 @@ edit_proj:
 	dcl     expand_pathname_	 entry (character (*), character (*), character (*), fixed binary (35));
 	dcl     find_condition_info_	 entry (pointer, pointer, fixed binary (35));
 	dcl     get_group_id_	 entry () returns (char (32));
-	dcl     get_process_authorization_
-				 entry () returns (bit (72) aligned);
 	dcl     get_wdir_		 entry () returns (character (168));
 	dcl     hcs_$add_acl_entries	 entry (char (*), char (*), ptr, fixed bin, fixed bin (35));
 	dcl     hcs_$add_dir_acl_entries
 				 entry (char (*), char (*), ptr, fixed bin, fixed bin (35));
 	dcl     hcs_$add_dir_inacl_entries
 				 entry (char (*), char (*), ptr, fixed bin, fixed bin (3), fixed bin (35));
-	dcl     hcs_$add_inacl_entries entry (char (*), char (*), ptr, fixed bin, fixed bin (3), fixed bin (35));
 	dcl     hcs_$delete_acl_entries
 				 entry (char (*), char (*), ptr, fixed bin, fixed bin (35));
 	dcl     hcs_$delete_dir_acl_entries
 				 entry (char (*), char (*), ptr, fixed bin, fixed bin (35));
 	dcl     hcs_$delete_dir_inacl_entries
-				 entry (char (*), char (*), ptr, fixed bin, fixed bin (3), fixed bin (35));
-	dcl     hcs_$delete_inacl_entries
 				 entry (char (*), char (*), ptr, fixed bin, fixed bin (3), fixed bin (35));
 	dcl     hcs_$chname_file	 entry (char (*), char (*), char (*), char (*), fixed bin (35));
 	dcl     hcs_$get_access_class	 entry (char (*), char (*), bit (72) aligned, fixed bin (35));
@@ -144,12 +150,7 @@ edit_proj:
 	dcl     1 Nsate		 aligned like project;
 	dcl     1 Nprojfile		 aligned like projfile.projfiletab;
 	dcl     1 Nreqfile		 aligned like reqfile.reqfiletab;
-
-	dcl     LEGAL		 char (71) int static options (constant)
-				 init
-				 /* Legal chars for project ID. */ (
-				 "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'_`^~/-abcdefghijklmnopqrstuvwxyz ");
-
+          dcl     (addr, hbound, index, null, rtrim, unspec) builtin;
 	dcl     (cleanup, sub_error_)	 condition;
 
 
@@ -433,7 +434,7 @@ edit_one_project:
 
 	if EPA.changes.acls
 	then call CHANGE_ACLS;
-	if EPA.changes.alias
+	if EPA.changes.alias & Nsate.alias ^= ""  /* If null then alias deleted from SAT */
 	then call CHANGE_ALIAS;
 	if EPA.changes.seg_quota
 	then call CHANGE_SEG_QUOTA;
@@ -555,7 +556,7 @@ CHANGE_ALIAS:
      procedure;
 
 /* Fix the alias if it changed. */
-
+	
 	call SET_DIR_PRIVILEGE_AS_NEEDED;
 
 	call hcs_$chname_file (udd, (Nsate.project_id), "", (Nsate.alias), code);
@@ -563,6 +564,7 @@ CHANGE_ALIAS:
 	if code ^= 0
 	then call com_err_ (code, me, "Warning: Could not add new name ^a to ^a>^a.", Nsate.alias, udd,
 		Nsate.project_id);
+
 	return;
      end CHANGE_ALIAS;
 
