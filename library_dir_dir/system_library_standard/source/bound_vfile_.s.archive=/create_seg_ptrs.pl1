@@ -1,11 +1,25 @@
-/* ******************************************************
-   *                                                    *
-   *                                                    *
-   * Copyright (c) 1972 by Massachusetts Institute of   *
-   * Technology and Honeywell Information Systems, Inc. *
-   *                                                    *
-   *                                                    *
-   ****************************************************** */
+/****^  *********************************************************
+        *                                                       *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990 *
+        *                                                       *
+        * Copyright (c) 1972 by Massachusetts Institute of      *
+        * Technology and Honeywell Information Systems, Inc.    *
+        *                                                       *
+        ********************************************************* */
+
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(90-10-12,Zimmerman), approve(90-10-12,MCR8216),
+     audit(90-10-15,Zwick), install(90-10-16,MR12.4-1043):
+     Data_Mgt 63 (phx21194): Raise the max number of components in an MSF to
+     1250.
+                                                   END HISTORY COMMENTS */
+
+
+
 
 /* Changed 6/13/77 for even-word aligned allocations to have
    correct max_record_size */
@@ -107,7 +121,9 @@ get_new_seg:
 						/* else */
       do;						/* create new component */
          if comp_num >= max_comp_num
-         then go to abort_exit;
+         then if max_comp_num < true_max_comp_num
+              then max_comp_num = true_max_comp_num;
+              else go to abort_exit;
          if comp_num >= seg_ptr_array_limit
          then call extend_seg_ptr_array (1);
          last_comp_num = comp_num;
@@ -185,4 +201,111 @@ set_bitcounts:
 	     then seg_limit (i) = -seg_limit (i);
 	  end;
       end;
-      return;					/* end set_`
+      return;					/* end set_bitcounts code */
+
+get_seg_ptr:
+   entry (iocb_ptr, comp_num) returns (ptr);
+      indx_cb_ptr = iocb_ptr -> iocb.open_data_ptr;
+      if comp_num >= seg_ptr_array_limit
+      then call extend_seg_ptr_array (comp_num - seg_ptr_array_limit + 1);
+      if seg_ptr_array (comp_num) = null
+      then
+         do;
+	  call msf_manager_$get_ptr (fcb_ptr, comp_num, "0"b, p, foo24, foo);
+	  if p = null				/* unexpected failure */
+	  then if atb.shared			/* maybe due to an asynch change */
+	       then
+		do;				/* in case msf_manager_ bug has struck */
+		   call msf_manager_$close (indx_cb.fcb_ptr);
+						/*
+						   try closing and reopening msf */
+		   call
+		      msf_manager_$open (substr (attach_descrip_string, 8, dname_len),
+		      substr (attach_descrip_string, 9 + dname_len, ename_len), indx_cb.fcb_ptr, foo);
+		   iocb_ptr -> iocb.attach_data_ptr -> atb.fcbp = indx_cb.fcb_ptr;
+						/* The fcb may have moved */
+						/* between closing and opening,*/
+						/* so the attach_block ptr must be updated.*/
+		   seg_ptr_array (*) = null;		/* reinitialize file info */
+		   call msf_manager_$get_ptr (indx_cb.fcb_ptr, 0, "0"b, seg_ptr_array (0), foo24, foo);
+		   indx_cb.file_base_ptr = seg_ptr_array (0);
+		   iocb_ptr -> iocb.attach_data_ptr -> atb.fsp = seg_ptr_array (0);
+
+		   call msf_manager_$get_ptr (indx_cb.fcb_ptr, comp_num, "0"b, p, foo24, foo);
+						/* try one more time */
+		end;
+	  if (p = null) & (foo ^= 0) then do;
+	       if (true_max_comp_num > comp_num) & (foo = error_table_$noentry) then;   /* Do nothing: this file has hit limit before, */
+	       else                                                                     /* but can now be extended.  */
+		  call sub_err_ (foo, "vfile_", "c", null, foo, "Can't get a pointer to this msf component.");
+	  end;
+	  
+	  else seg_ptr_array (comp_num) = p;
+         end;
+      return (seg_ptr_array (comp_num));		/* end get_seg_ptr */
+
+make_designator:
+   entry (comp_num, offset, designator);
+      designator_struct.comp_num = comp_num;
+      designator_struct.offset = bit (offset);
+      return;					/* end make designator */
+
+extend_seg_ptr_array:
+   proc (p_number_of_new_components);
+      dcl	    p_number_of_new_components
+			       fixed bin;
+      dcl	    comp_idx	       fixed bin;
+      old_array_limit = seg_ptr_array_limit;
+      old_array_ptr = seg_ptr_array_ptr;
+      seg_ptr_array_limit = seg_ptr_array_limit + p_number_of_new_components;
+      call alloc_cb_file (size (seg_ptr_array), seg_ptr_array_ptr);
+      do comp_idx = 0 to old_array_limit;
+         seg_ptr_array (comp_idx) = old_array (comp_idx);
+      end;
+      do comp_idx = old_array_limit + 1 to seg_ptr_array_limit;
+         seg_ptr_array (comp_idx) = null;
+      end;
+      call free_cb_file (size (old_array), old_array_ptr);
+      return;
+
+      dcl	    old_array_limit	       fixed;
+      dcl	    old_array_ptr	       ptr;
+      dcl	    old_array	       (0:old_array_limit) ptr based (old_array_ptr);
+   end;						/* end extend_seg_ptrs */
+
+      dcl	    substate_arg	       fixed;
+      dcl	    (comp_num, comp_number)
+			       fixed;
+      dcl	    p		       ptr;
+      dcl	    i		       fixed;
+      dcl	    foo		       fixed (35);
+      dcl	    foo24		       fixed (24);
+      dcl	    offset	       fixed (18);
+      dcl	    abort_exit	       label;
+
+      dcl	    pos_ptr	       ptr defined (file_position_ptr);
+						/* not used in this module */
+
+      dcl	    hcs_$set_bc_seg	       entry (ptr,		/* pointer to seg, input */
+			       fixed bin (24),	/* bit count to be set */
+			       fixed bin (35));	/* status code */
+      dcl	    sub_err_	       entry options (variable);
+      dcl	    msf_manager_$close     entry (ptr);
+      dcl	    msf_manager_$open      entry (char (*), char (*), ptr, fixed (35));
+      dcl	    msf_manager_$get_ptr   entry (ptr,		/* fcb_ptr */
+			       fixed bin,		/* component number of desired segment */
+			       bit (1),		/* create switch */
+			       ptr,		/* ptr to seg or null if error, output */
+			       fixed bin (24),	/* bitcount of segment, output */
+			       fixed bin (35));	/* status code */
+      dcl	    msf_manager_$adjust    entry (ptr, fixed, fixed (24), bit (3), fixed (35));
+      dcl     error_table_$noentry  fixed bin(35) ext static;
+   
+%include vfile_indx;
+%include iocb;
+%include vf_attach_block;
+      dcl	    iocb_ptr	       ptr;
+   end /* end create_seg_ptrs */;
+
+
+

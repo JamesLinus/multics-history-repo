@@ -1,11 +1,27 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   * Copyright (c) 1972 by Massachusetts Institute of        *
-   * Technology and Honeywell Information Systems, Inc.      *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(90-10-12,Zimmerman), approve(90-10-12,MCR8216),
+     audit(90-10-15,Zwick), install(90-10-16,MR12.4-1043):
+     Data_Mgt 63 (phx21194): Raise the max number of components in an MSF to
+     1250.
+                                                   END HISTORY COMMENTS */
+
+
 
 
 /* The initial design and implementation of this program was by M. D. MacLaren (1974) */
@@ -1730,7 +1746,6 @@ get_pointer:
       return (get_ptr (descrip));
       dcl	    p		       ptr;
       dcl	    descrip	       fixed (35);
-      dcl	    foo		       fixed (35);
       dcl	    1 desc	       aligned based (addr (descrip)),
 	      2 comp_num	       fixed (17) unal,
 	      2 offset	       bit (18) unal;
@@ -2408,7 +2423,7 @@ find_entry:
 abort_exit:
       code = error_table_$file_is_full;
       aborting = "1"b;
-      file_base_ptr -> file_base.max_comp_num = max_comp_num_val + 2;
+      file_base_ptr -> file_base.max_comp_num = true_max_comp_num + 2;
       go to unlock_exit;
 
 switch_file_state:
@@ -4787,7 +4802,7 @@ initialize_new_file:
       do foo = 0, 1;
          addr (index_state_blocks (foo)) -> new_key_pos = node_head_length + branch_and_descrip_length + 1;
       end;
-      max_comp_num = max_comp_num_val;
+      max_comp_num = true_max_comp_num;
       seg_limit (0) = node_size * (1 + divide (size (file_base) + node_size - 1, node_size, 17, 0));
       call hcs_$set_bc_seg (file_base_ptr, 36 * size (file_base), foo);
       file_version = current_file_version;		/* creation is thus atomic */
@@ -4865,7 +4880,7 @@ check_code:
       dcl	    get_system_free_area_  entry returns (ptr);
       dcl	    delete_old_subsets     entry (ptr);
       dcl	    rec_deleted	       bit (1) aligned;
-      dcl	    (stacq, string, copy, clock)
+      dcl	    (stacq, string, clock, addrel, hbound,index,lbound,stac)
 			       builtin;
       dcl	    len		       fixed;
       dcl	    1 saved_state	       like indx_cb.state_vars;
@@ -4882,7 +4897,6 @@ check_code:
       dcl	    chunk_size	       fixed (34);
       dcl	    first_code	       fixed (35);
       dcl	    key_is_dup	       bit (1) aligned;
-      dcl	    no_current_pos	       bit (1) aligned;
       dcl	    passive_op	       bit (1) aligned;
       dcl	    del_cur	       bit (1) aligned;
       dcl	    fault_ok	       bit (1) aligned;
@@ -4924,13 +4938,12 @@ check_code:
       dcl	    rec_len	       fixed (21);
 
 /* Local Variables */
-      dcl	    1 record_des	       like designator_struct aligned based (addr (record_designator (branch_num)));
+
       dcl	    1 current_des	       like designator_struct aligned based (addr (indx_cb.current_descrip));
       dcl	    record_action	       fixed;
       dcl	    record_len	       fixed (21);
       dcl	    record_ptr	       ptr;
       dcl	    foo		       fixed (35);
-      dcl	    foo24		       fixed (24);
       dcl	    pos_ptr	       ptr;
       dcl	    buffer	       char (record_len) based (buff_ptr);
       dcl	    block_ptr	       ptr;
@@ -4970,7 +4983,6 @@ check_code:
 			       static options (constant) fixed init (33);
       dcl	    node_size_val	       static options (constant) fixed init (1024);
       dcl	    minimum_block_size_val static options (constant) fixed init (8);
-      dcl	    max_comp_num_val       static options (constant) fixed init (900);
       dcl	    msf_manager_$get_ptr   entry (ptr, fixed, bit (1), ptr, fixed (24), fixed (35));
       dcl	    1 record_block	       like record_block_structure based (block_ptr);
       dcl	    1 stat_struct	       like stat_structure based (block_ptr);

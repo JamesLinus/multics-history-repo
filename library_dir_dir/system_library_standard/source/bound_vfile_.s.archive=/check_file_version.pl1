@@ -1,11 +1,26 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   * Copyright (c) 1972 by Massachusetts Institute of        *
-   * Technology and Honeywell Information Systems, Inc.      *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(90-10-15,Zimmerman), approve(90-10-15,MCR8216),
+     audit(90-10-15,Zwick), install(90-10-16,MR12.4-1043):
+     Increase maximum number of components in MSF to 1250.
+                                                   END HISTORY COMMENTS */
+
+
 
 
 check_file_version:
@@ -106,7 +121,7 @@ move_comp_info:
 
 	file_base.first_free_comp_num = 0;
 	file_base.last_comp_num = comp_info.last_comp_num;
-	file_base.max_comp_num = max_comp_num_val;
+	file_base.max_comp_num = true_max_comp_num;
      end move_comp_info;
 
 move_file_statis:
@@ -160,13 +175,10 @@ set_default_stats:
 	dcl     file_version_MR2	 static internal options (constant) init (10);
 	dcl     file_version_MR3	 static internal options (constant) init (20);
 	dcl     file_version_MR6	 static internal options (constant) init (30);
-	dcl     current_program_version
-				 static fixed init (31);
 	dcl     node_head_length	 static fixed init (16);
 	dcl     branch_and_descrip_length
 				 static fixed init (12);
 	dcl     n			 fixed;
-	dcl     max_comp_num_val	 static fixed init (998);
 	dcl     1 v20_file_header	 based (f_b_ptr),	/* MR3.0 version header */
 		2 words		 (62) fixed,
 		2 v20_fs_blocks	 (0:1),		/* file state blocks */

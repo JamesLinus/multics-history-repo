@@ -1,11 +1,27 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   * Copyright (c) 1972 by Massachusetts Institute of        *
-   * Technology and Honeywell Information Systems, Inc.      *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(90-10-12,Zimmerman), approve(90-10-12,MCR8216),
+     audit(90-10-15,Zwick), install(90-10-16,MR12.4-1043):
+     Data_Mgt 63 (phx21194): Raise the max number of components in an MSF to
+     1250.
+                                                   END HISTORY COMMENTS */
+
+
 
 
 restart:
@@ -102,7 +118,7 @@ restore_restart_proc_info:
 	is_ks_out = was_ks_out;
 	indx_cb.min_res = my_min_res;
 	indx_cb.min_cap = my_min_cap;
-	file_base.max_comp_num = max_comp_num_val;
+	file_base.max_comp_num = true_max_comp_num;
 	indx_cb.pos_incorrect = "1"b;
 	indx_cb.stat = was_stat;
 	indx_cb.dup_ok = was_dup_ok;
@@ -343,7 +359,6 @@ abort_exit:
 exit:
 	return;					/* abort with error code set */
 
-	dcl     max_comp_num_val	 static options (constant) init (900);
 	dcl     current_program_version
 				 static options (constant) internal fixed init (31);
 	dcl     block_ptr		 ptr;
@@ -362,7 +377,6 @@ exit:
 	dcl     1 ak_inf		 based (addr (rk_inf)),
 		2 header		 like ak_header;
 	dcl     1 rs_inf		 like rs_info;
-	dcl     info_ptr		 ptr;
 	dcl     sub_err_		 entry options (variable);
 %include vfile_error_codes;
 	dcl     pos_ptr		 ptr defined (file_position_ptr);
@@ -394,4 +408,9 @@ exit:
 %include vfile_indx;
 	dcl     cleanup		 condition;
 	dcl     set_lock_$lock	 entry (bit (36) aligned, fixed, fixed (35));
+          dcl     (addrel, stacq, string) builtin;
+
      end restart;
+
+
+
