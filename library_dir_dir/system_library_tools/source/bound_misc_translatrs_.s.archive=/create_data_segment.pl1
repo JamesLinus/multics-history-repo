@@ -1,11 +1,29 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   * Copyright (c) 1972 by Massachusetts Institute of        *
-   * Technology and Honeywell Information Systems, Inc.      *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(90-04-23,Huen), approve(90-04-23,MCR8156), audit(90-04-27,Gray),
+     install(90-05-17,MR12.4-1009):
+     lang_11: Use cv_entry to find the segment so that cds will work even when
+     the working dir is not in the search rules.
+  2) change(90-05-18,Huen), approve(90-05-18,MCR8156), audit(90-05-18,Gray),
+     install(90-05-18,MR12.4-1010):
+     Post bug fix (lang_11) : to avoid passing an entryname to pathname_ that
+     exceeds 32 characters.
+                                                   END HISTORY COMMENTS */
+
 
 
 /* This program is a command interface to the create_data_segment_ subroutine.
@@ -87,6 +105,7 @@ cds:
 	dcl     com_err_$suppress_name entry options (variable);
 	dcl     cu_$arg_count	 entry (fixed bin, fixed bin (35));
 	dcl     cu_$arg_ptr		 entry (fixed bin, ptr, fixed bin (21), fixed bin (35));
+	dcl     cv_entry_		 entry (char (*), ptr, fixed bin (35)) returns (entry);
 	dcl     expand_pathname_$add_suffix
 				 entry (char (*), char (*), char (*), char (*), fixed bin (35));
 	dcl     form_link_info_	 entry (ptr, fixed bin (35));
@@ -99,8 +118,8 @@ cds:
 				 fixed bin (35));
 	dcl     hcs_$initiate_count	 entry (char (*), char (*), char (*), fixed bin (24), fixed bin (2), ptr,
 				 fixed bin (35));
-	dcl     hcs_$make_entry	 entry (ptr, char (*), char (*), entry, fixed bin (35));
 	dcl     ioa_$nnl		 entry options (variable);
+	dcl     pathname_		 entry (char (*), char (*)) returns (char (168));
 	dcl     pl1		 entry options (variable);
 	dcl     terminate_file_	 entry (ptr, fixed bin (24), bit (*), fixed bin (35));
 	dcl     unique_chars_	 entry (bit (*)) returns (char (15));
@@ -213,8 +232,7 @@ translate_cds_source_segment:
 
 	else begin;
 		dcl     entry_var		 entry variable;
-
-		call hcs_$make_entry (null, unique, source, entry_var, code);
+		entry_var = cv_entry_ ((pathname_ (wdir, unique) || "$" || source), null, code);
 		if code ^= 0
 		then do;
 			call com_err_ (code, command, "^a$^a", unique, source);
@@ -294,3 +312,6 @@ clean_up_segs:
      end clean_up_segs;
 
      end create_data_segment;
+
+
+
