@@ -41,6 +41,9 @@
   8) change(00-01-26,Schroth), approve(00-01-26,MECR-Y2K):
      Changed expiry date checking to use new pfm_utils_$label_unexpired to
      verify if a file has expired.
+  9) change(00-03-10,Schroth), approve(00-03-10,MECR-MTAPE-LBLS):
+     Added code to decode_file_labels to properly process pre-mtape_
+     ANSI HDR2 labels.
                                                    END HISTORY COMMENTS */
 
 ansi_tape_io_: procedure;
@@ -572,9 +575,16 @@ for file ^a.  Read continues using:
 	     if mtape_vol_set.volume_check < NON_MULT_VOLUME then do; /* check Multics specific stuff */
 		mtape_file_info.hdw_mode = MTAPE_HWM_NINE; /* set nine mode, as default */
 		mtape_file_info.conversion = MTAPE_NO_CONVERSION; /* set no conversion as default */
-		if ansi_hdr2.system_use.blocked = "1" then /* check blocking attribute */
-		     temp_fmt = rtrim (temp_fmt) || "B";
-		go to set_mode (binary (ansi_hdr2.system_use.mode, 17)); /* set HDW and conversion modes */
+		if ansi_hdr2.system_use.blocked ^= " " then do;	/* this field moved with mtape_, allow old ones */
+		     if ansi_hdr2.system_use.blocked = "1" then	/* check blocking attribute */
+			temp_fmt = rtrim (temp_fmt) || "B";
+		     go to set_mode (binary (ansi_hdr2.system_use.mode, 17)); /* set HDW and conversion modes */
+		end;
+		else do;				/* handle the pre-mtape_ system_use blocking and format */
+		     if old_ansi_hdr2_system_use.blocked = "1" then	/* check blocking attribute */
+			temp_fmt = rtrim (temp_fmt) || "B";
+		     go to set_mode (binary (old_ansi_hdr2_system_use.mode, 17)); /* set HDW and conversion modes */
+		end;
 
 set_mode (3):					/* ASCII, binary mode */
 		mtape_file_info.hdw_mode = MTAPE_HWM_BIN;
