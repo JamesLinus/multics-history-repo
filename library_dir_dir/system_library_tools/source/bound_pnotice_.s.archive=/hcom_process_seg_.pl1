@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1985 *
@@ -82,6 +84,11 @@
      audit(87-12-04,RBarstad), install(88-01-12,MR12.2-1012):
      If a history comment exceeded the maximum length the error message was
      printing the error code instead of the length of the comment in error.
+ 14) change(90-07-23,Itani), approve(90-07-23,MCR8186), audit(90-07-30,Vu),
+     install(90-08-21,MR12.4-1027):
+     Change history_comment so that when it is invoked as an active function,
+     it returns all the values requested for the get operation when a star name
+     is specified for the pathname.
                                                    END HISTORY COMMENTS */
 
 /* format: off */
@@ -1791,7 +1798,6 @@ end format_comment$fdoc;
 GET_fields:
    proc;
 
-call set_return_arg("");
 call form_string$init();
 call form_string$fixed_line(".inl 3");
 
