@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -70,7 +72,7 @@ enter_abs_request: ear: procedure options (separate_static, variable);
    .                . tabs.)  STR must represent an authorization that is less
    .                . than or equal to the maximum authorization of Person_id
    .                . on the Project_id.  If -authorization is omitted, your
-   .                . registered default login authorization is used.  (See the
+   .                . current login authorization is used.  (See the
    .                . Programmer's Reference Manual for more information about
    .                . process authorizations.)
    -home_dir PATH, -hd PATH
@@ -154,6 +156,10 @@ enter_abs_request: ear: procedure options (separate_static, variable);
   8) change(88-08-16,Parisek), approve(88-09-22,MCR7991),
      audit(88-09-26,Fawcett), install(88-09-30,MR12.2-1124):
      Inhibit printing of messages if -brief given.
+  9) change(90-06-06,Vu), approve(90-06-06,MCR8177), audit(90-06-20,Schroth),
+     install(90-07-17,MR12.4-1020):
+     Users with minimum authorization greater than system_low are unable to
+     submit absentee requests unless they state the authorization level.
                                                    END HISTORY COMMENTS */
 
 
@@ -167,6 +173,7 @@ dcl  cu_$level_get entry (fixed bin);
 dcl  cv_dec_check_ entry (char (*), fixed bin (35)) returns (fixed bin (35));
 dcl  enter_abs_request_ entry (ptr, ptr, fixed bin (35));
 dcl  expand_pathname_$add_suffix entry (char(*), char(*), char(*), char(*), fixed bin(35));
+dcl  get_authorization_ entry returns (bit (72) aligned);
 dcl  get_group_id_$tag_star entry returns (char (32));
 dcl  get_temp_segment_ entry (char (*), ptr, fixed bin (35));
 dcl  ioa_ entry options (variable);
@@ -314,6 +321,7 @@ dcl  maxlim fixed bin (35);
 	abs_request_info.resource = "";
 	abs_request_info.comment = "";
 	abs_request_info.arguments (*) = "";
+          abs_request_info.requested_authorization = get_authorization_ ();
 
 	input_sw,					/* initialize several variables */
 	     output_sw,
