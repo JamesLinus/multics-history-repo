@@ -30,6 +30,10 @@
   7) change(88-02-03,GWMay), approve(88-02-03,MCR7837), audit(88-04-12,Farley),
      install(88-04-19,MR12.2-1039):
      Fixed bug to allow unlabeled tapes to be read.
+  8) change(00-01-26,Schroth), approve(00-01-26,MECR-Y2K):
+     Change julian_date to use "0" prefix for dates after 1999-12-31.
+     Added label_unexpired entry to check if a date recorded in a label
+     has expired.
                                                    END HISTORY COMMENTS */
 
 
@@ -90,7 +94,7 @@ dcl  error_table_$no_next_volume fixed bin (35) ext static;
 
 /*		BUILTIN FUNCTIONS		*/
 
-dcl  (clock, null, substr, translate) builtin;
+dcl  (clock, mod, null, substr, translate) builtin;
 
 /*		EXTERNAL ENTRIES		*/
 
@@ -140,14 +144,45 @@ dcl  ddd picture "999";				/* day of year */
 dcl  yy picture "99";				/* year */
 dcl  temp fixed bin;				/* temporary */
 
+	/* This entry formats a date string into julian date suitable for use in a tape label.
+	   The format of the label date is "cyyddd", where:
+	     c is a century indicator
+	      - " " --> 1900's
+	      - "0" --> 2000's.  (We don't care about other centuries!)
+	   A label of "x99365" is a special flag date meaning forever. */
+
 	clock_value = clock ();			/* Use todays date as default */
 	if date_time ^= "" then			/* if date time given. */
 	     call convert_date_to_binary_ (date_time, clock_value, code); /* Use that instead of today */
 	call datebin_$dayr_clk (clock_value, temp);	/* get day of year */
 	ddd = temp;				/* convert to characters */
 	call datebin_ (clock_value, 0, 0, 0, temp, 0, 0, 0, 0, 0); /* get year */
-	yy = temp - 1900;				/* drop century and convert to characters */
-	return (" " || yy || ddd);			/* return formatted date */
+	yy = mod (temp, 100);			/* drop century and convert to characters */
+	if temp < 2000 then
+	     return (" " || yy || ddd);		/* return formatted date */
+	else return ("0" || yy || ddd);		/* return formatted date in 21st century */
+
+
+/* label_unexpired - entry to check if expiry date still holds */
+
+label_unexpired: entry (label_date) returns (bit (1) aligned);
+
+dcl  label_date char (*);
+dcl  today char (6);
+dcl  EXPIRED bit (1) internal static options (constant) init ("0"b);
+dcl  UNEXPIRED bit (1) internal static options (constant) init ("1"b);
+
+	if label_date = " 00000" then			/* " 00000" means no expiry set, i.e. expired */
+	     return (EXPIRED);
+	else if substr (label_date, 2, 5) = "99365" then	/* "99365" is a keep forever date */
+	     return (UNEXPIRED);
+	else do;
+	     today = julian_date ("");
+	     if label_date > today then		/* not expired yet */
+		return (UNEXPIRED);
+	     else return (EXPIRED);
+         end;
+
 %page;
 /* position_in_file - entry to position tape to indicated position within file */
 

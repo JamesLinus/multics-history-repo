@@ -15,6 +15,9 @@
      Correct a problem of getting a hardware status of "Transmission parity
      alert" when writing the data to tape in ascii mode.  This requires the
      zeroing of the reserved fields in the RDW, SDW and BDW structures.
+  2) change(00-01-26,Schroth), approve(00-01-26,MECR-Y2K):
+     Changed expiry date checking to use new pfm_utils_$label_unexpired to
+     verify if a file has expired.
                                                    END HISTORY COMMENTS */
 
 
@@ -855,11 +858,7 @@ dcl  ridx fixed bin;
 		if ridx = NON_MULT_VOLUME then	/* check if recorded by tape_ibm_ */
 		     if substr (ibm_hdr1.system, 1, 12) = substr (IBM_SYS_CODE, 1, 12) then
 			ridx = MULT_PRIOR_VOLUME;	/* yes, tape recorded by tape_ibm_ */
-		if ibm_hdr1.expiration ^= " 00000" then do; /* if a date exists, check it */
-		     today = pfm_utils_$julian_date (""); /* get todays date in proper form */
-		     if substr (ibm_hdr1.expiration, 2) > substr (today, 2) then
-			mtape_vol_set.first_file_unexpired = "1"b; /* set the flag */
-		end;
+		mtape_vol_set.first_file_unexpired = pfm_utils_$label_unexpired (ibm_hdr1.expiration);	/* check the label date and set the flag */
 	     end;
 	     if ^term then do;			/* link in this label  (if not HDR1) */
 		if nlp = null then do;		/* if no label record structure exists.. */
@@ -1272,16 +1271,14 @@ SETUP_NEW_FILE: proc;
 
 	if fi_ptr ^= null then			/* if replacing existing file */
 	     if ^mtape_open_info.force then		/* and not ignoring expiration dates */
-		if mtape_file_info.expiration_date ^= " 00000" then /* and expiration date exists */
-		     if substr (mtape_file_info.expiration_date, 2) > /* if expiration date is in future */
-			substr (pfm_utils_$julian_date (""), 2) then do; /* from today */
-			call mtape_$user_query (mtdp, Q_UNEXPIRED_FILE, code); /* ask user what to do */
-			if code ^= 0 then return;	/* abort file opening on "no" answer */
-			if mtape_file_info.position_within_file ^= AT_BOFH then do;
-			     call pfm_utils_$position_in_file (mtdp, fi_ptr, vs_ptr, AT_BOFH, code);
-			     if code ^= 0 then return;
-			end;
+		if pfm_utils_$label_unexpired ((mtape_file_info.expiration_date)) then do;	/* if expiration date is in future */
+		     call mtape_$user_query (mtdp, Q_UNEXPIRED_FILE, code); /* ask user what to do */
+		     if code ^= 0 then return;	/* abort file opening on "no" answer */
+		     if mtape_file_info.position_within_file ^= AT_BOFH then do;
+			call pfm_utils_$position_in_file (mtdp, fi_ptr, vs_ptr, AT_BOFH, code);
+			if code ^= 0 then return;
 		     end;
+		end;
 	call pfm_utils_$setup_file (mtdp, fi_ptr, "0"b);	/* do the common stuff first */
 	call SET_FILE_FORMAT;			/* set the file format in file info structure */
 	call SET_RECORDING_MODE;			/* set the recording mode */
@@ -1348,3 +1345,6 @@ WRITE_BLOCK: proc;
 %include iox_modes;
 
      end ibm_tape_io_;
+
+
+

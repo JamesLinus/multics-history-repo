@@ -22,6 +22,8 @@
      print_message_summary_header to drop subject and lines fields if
      necessary to properly handle short lines; it fixes out_of_bounds
      condition for line_lengths less than 15.
+  4) change(99-12-31,Schroth), approve(99-12-31,MECR-Y2K):
+     Correct size condition in year formating for message list.
                                                    END HISTORY COMMENTS */
 
 
@@ -665,7 +667,7 @@ print_message_summary:
 		(0), (0), (0), ((3)" "), (0));
 	     date_string =
 		convert (two_digits_picture, month) || "/" || convert (two_digits_picture, day_of_month) || "/"
-		|| convert (two_digits_picture, (year - 1900));
+		|| convert (two_digits_picture, mod(year, 100));
 	     time_string = convert (two_digits_picture, hour) || ":" || convert (two_digits_picture, minute);
 	end;
 
@@ -2085,3 +2087,6 @@ dcl  WHITESPACE character (5) static options (constant) initial ("
  ");						/* HT NL VT FF SP */
 
      end mlsys_misc_utils_;
+
+
+
