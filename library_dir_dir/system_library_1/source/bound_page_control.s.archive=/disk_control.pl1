@@ -106,6 +106,9 @@
      seperate FIPS disk statuses from all others by checking the pvte.is_sv
      flag and using new fields in disk_error_data.  Also changed printerr to
      check the new "just_log" flag in disk_error_data.
+ 13) change(90-06-27,WAAnderson), approve(90-08-28,MCR8188),
+     audit(90-09-21,Schroth), install(90-10-01,MR12.4-1035):
+     Fix bug in esd_reset_locks and handle_error that caused ESD to fail.
                                                    END HISTORY COMMENTS */
 
 /*
@@ -582,15 +585,11 @@ esd_reset_locks:
 						/* Mark as operative */
 		cp -> disk_channel_table (i).broken = "0"b;
 						/* Mark as not broken */
-		cp -> disk_channel_table (i).ioi_use = "0"b;
-						/* WE own it */
-		if ^(cp -> disk_channel_table (i).in_use) then do;
-		     call io_manager$assign_add (cp -> disk_channel_table (i).chx,
-			cp -> disk_channel_table (i).chanid, dctl$disk_inter, sx * dskdcl_chans_per_subsys + i - 1,
-			cp -> disk_channel_table (i).statusp, errcd);
-		     if errcd = 0 then
-			cp -> disk_channel_table (i).in_use = "1"b;
-		end;				/* Available */
+                    if ^(cp -> disk_channel_table (i).ioi_use) &
+                       ^(cp -> disk_channel_table (i).in_use) then do;
+                        cp -> disk_channel_table (i).in_use = "1"b;
+                        disktab.channels_online = disktab.channels_online+1;
+		  end;     
 		cp -> disk_channel_table (i).erct = 0;	/* clear error count */
 	     end;
 
@@ -1378,6 +1377,13 @@ handle_error:
 		     end;
 		     else if io_type = TEST then do;
 			call set_pvte_inop (ON);	/* effectively inop */
+                              if (tc_data$system_shutdown ^= 0) then do;
+                                  post_sw = "1"b;
+                                  errflags.device_inoperative = "1"b;
+                                  errflags.all_paths_bad = "1"b;
+                                  return;
+                              end;
+
 		     end;
 		     else if tc_data$system_shutdown ^= 0 then do;
 			errflags.device_inoperative = "1"b;
@@ -2434,6 +2440,3 @@ dcl	pvte_ptr		   ptr;
    END MESSAGE DOCUMENTATION */
 
      end disk_control;
-
-
-

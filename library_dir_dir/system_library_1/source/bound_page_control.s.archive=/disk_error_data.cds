@@ -26,6 +26,9 @@
      audit(89-09-11,WAAnderson), install(89-09-22,MR12.3-1072):
      Added functionality to seperate some of the FIPS status interpretations,
      while still keeping the space required to a minimum.
+  4) change(90-06-27,WAAnderson), approve(90-08-28,MCR8188),
+     audit(90-09-21,Schroth), install(90-10-01,MR12.4-1035):
+     Added substat 'count field uncorrectable'.
                                                    END HISTORY COMMENTS */
 
 
@@ -176,6 +179,7 @@ dcl (addr, addrel, bin, bit, divide, hbound, index, length, rel, size, translate
 	call set_substat ("000010",     ONCE, "inconsistent command",           "bad_path,rsr");
 	call set_substat ("000011",     ONCE, "sum check err",                  "bad_path,rsr");
 	call set_substat ("000100",     ONCE, "byte locked out",                "bad_path,rsr");
+          call set_substat ("001010", NRETRIES, "count field uncorrectable",      "bad_addr,rsr");
 	call set_substat ("001110", NRETRIES, "EDAC parity err",                "bad_addr,rsr");
 	call set_substat ("010001", NRETRIES, "sect size err",                  "bad_addr,rsr");
 	call set_substat ("010010", NRETRIES, "nonstandard sect size",          "bad_addr,rsr");
