@@ -1,8 +1,21 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1984 *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1991   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1984 *
+        *                                                         *
+        *********************************************************** */
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(91-01-07,Vu), approve(91-01-07,MCR8233), audit(91-12-06,Zimmerman),
+     install(91-12-12,MR12.5-1006):
+     Correct error code returned for PNT extended object type.
+                                                   END HISTORY COMMENTS */
+
+
+
 /* format: style2 */
 
 /* PNT_FS_UTIL_: This program supports the file-system interfaces for
@@ -61,7 +74,8 @@ pnt_fs_util_:
 
 /* External Static */
 
-	dcl     error_table_$badstar	 fixed bin (35) external static;
+          dcl     error_table_$bad_file_name
+                                         fixed bin (35) external static;
 	dcl     error_table_$not_seg_type
 				 external static fixed bin (35);
 
@@ -286,7 +300,7 @@ CHECK_SUFFIX_DONT_ADD:
 	dcl     en		 char (*) parameter;
 
 	if substr (en, length (rtrim (en)) - 3, 4) ^= ".pnt"
-	then code = error_table_$badstar;		/* Illegal entry name */
+	then code = error_table_$bad_file_name;		/* Illegal entry name */
 
 	return;
      end CHECK_SUFFIX_DONT_ADD;
@@ -347,3 +361,6 @@ CREATE_PNT:
 /* format: on */
 
      end pnt_fs_util_;
+
+
+
