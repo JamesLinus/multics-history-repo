@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1992   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -167,6 +169,11 @@ act_ctl_: proc (p);
      audit(87-08-12,GDixon), install(87-08-13,MR12.1-1085):
      Correct call to as_meter_$exit with NETUP_METER when no equivalent call
      to as_meter_$enter has occurred.
+ 22) change(92-08-28,Schroth), approve(92-10-14,MCR8263), audit(92-10-15,Vu),
+     install(92-10-21,MR12.5-1038):
+     Correctly update whotab.next_shift_change_time when a manually set shift
+     crosses a defined shift boundary into the same shift as that set by the
+     operator shift command.  phx21344.
                                                    END HISTORY COMMENTS */
 
 /* parameters */
@@ -890,6 +897,8 @@ skip_abs:	     static_label = updret1;
 	     call load_ctl_$set_maxunits (i);		/* The rules may have changed */
 	     go to rescan;				/* Catch users with zero shift limit on new shift */
 	end;
+	else if anstbl.current_time >= whotab.next_shift_change_time then
+	     call datebin_$next_shift_change (anstbl.current_time, whotab.next_shift_change_time, (0), (0));
 
 	call load_ctl_$load_level (binary (mqu * 1e1), (mui * 1e1) / mtc);
 updret1:	static_label = updret2;
@@ -2114,6 +2123,3 @@ INIT_NET_DEVICE_INDICES: proc;
    END MESSAGE DOCUMENTATION */
 
      end act_ctl_;
-
-
-
