@@ -16,6 +16,8 @@
   1) change(85-11-27,Herbst), approve(87-07-20,MCR7697),
      audit(87-07-20,GDixon), install(87-08-04,MR12.1-1055):
      Added system_message_ IPS signal.
+  2) change(99-06-23,Haggett):
+     Y2K
                                                    END HISTORY COMMENTS */
 
 
@@ -164,7 +166,7 @@ dcl  create_data_segment_ entry (pointer, fixed bin (35));
 
 	call set_time ("02/24/73 14:00 est Saturday", sys_info.first_reasonable_time);
 						/* The invention of NSS, roughly */
-	call set_time ("12/31/99 23:59:59", sys_info.last_reasonable_time);
+	call set_time ("09/10/2040 0400.", sys_info.last_reasonable_time);
 
 
 	sys_info.hfp_exponent_available = "0"b;		/* we're all L68s on this bus */
@@ -270,3 +272,4 @@ dcl  (
 %include system_types;
 
      end sys_info;
+                                    
