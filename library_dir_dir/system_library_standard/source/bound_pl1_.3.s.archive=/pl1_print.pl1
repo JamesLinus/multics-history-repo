@@ -1,11 +1,22 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1982 *
-   *                                                         *
-   * Copyright (c) 1972 by Massachusetts Institute of        *
-   * Technology and Honeywell Information Systems, Inc.      *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1992   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1982 *
+        *                                                         *
+        * Copyright (c) 1972 by Massachusetts Institute of        *
+        * Technology and Honeywell Information Systems, Inc.      *
+        *                                                         *
+        *********************************************************** */
+
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(92-09-10,Zimmerman), approve(92-09-10,MCR8257), audit(92-09-18,Vu),
+     install(92-10-06,MR12.5-1023):
+     Fix segment overflow in source section of listing.
+                                                   END HISTORY COMMENTS */
 
 
 /*	print routines for use by the PL/1 compiler in writing into the listing */
@@ -158,12 +169,30 @@ declare	line_number_string picture "zzzzzzzz9";
 
 declare	pl1_stat_$source_seg fixed bin (8) external static;
 
+/* internal static */
+
+declare SPACE_FOR_LINE_NUMBERS_PLUS_ONE_BLANK fixed bin internal static options (constant) init (10);
+	
 /* program */
+
+/* A source program cannot be more than a single segment in length, but the
+   LISTING (including headers, incl. files, etc.) of the source can exceed
+   a single segment. Thus this check. We could do it in two parts (one for
+   the line number field, if we're not supressing them) and the other for
+   the actual line... but it's more efficient to only do the check once.
+   If we're going msf on the listing (which is guaranteed if we approach 
+   msf in this phase) doing it a few characters early won't hurt.  phx21284 */
+
+	if pl1_stat_$char_pos + SPACE_FOR_LINE_NUMBERS_PLUS_ONE_BLANK
+	     + bv_line_length >= pl1_stat_$max_list_size
+	     then signal condition(listing_overflow);
+	
 
 	if ^bv_suppress_line_numbers
 	then do;
 		line_number_string = bv_line_number;
-		substr (string, pl1_stat_$char_pos, 10) = line_number_string;  /* move in digits + 1 blank */
+		substr (string, pl1_stat_$char_pos,
+		     SPACE_FOR_LINE_NUMBERS_PLUS_ONE_BLANK) = line_number_string;  /* move in digits + 1 blank */
 
 		if pl1_stat_$source_seg > 0
 		then do;
@@ -171,7 +200,7 @@ declare	pl1_stat_$source_seg fixed bin (8) external static;
 			substr (string, pl1_stat_$char_pos, 3) = substr (line_number_string, 7, 3);
 		     end;
 
-		pl1_stat_$char_pos = pl1_stat_$char_pos + 10;
+		pl1_stat_$char_pos = pl1_stat_$char_pos + SPACE_FOR_LINE_NUMBERS_PLUS_ONE_BLANK;
 
 		if bv_line_begins_in_comment
 		then substr (string, pl1_stat_$char_pos - 1, 1) = "*";
@@ -200,3 +229,6 @@ dcl	unal_string char(*) unaligned;
 	l_suff = 1;
 	goto done;
 	end;
+
+
+

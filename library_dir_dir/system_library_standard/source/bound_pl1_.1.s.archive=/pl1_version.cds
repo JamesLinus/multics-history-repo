@@ -63,6 +63,10 @@
  15) change(91-01-09,Blackmore), approve(91-01-09,MCR8234),
      audit(91-12-05,Huen), install(92-04-24,MR12.5-1011):
      Change version to 33d, with constant reference resolution fix.
+ 16) change(92-09-17,Zimmerman), approve(92-09-17,MCR8257), audit(92-09-18,Vu),
+     install(92-10-06,MR12.5-1023):
+     Updated version number to 33e (MR 12.5). Fix source listing
+     overflow problem. (PL1 error list entry 2212).
                                                    END HISTORY COMMENTS */
 
 
@@ -107,7 +111,7 @@ dcl	(stringsize, error) condition;
 /* RELEASE = "" for the >experimental_library compiler,
 	 = <release_number> for the >system_standard_library compiler */
 
-dcl	RELEASE		character (3) varying init ("33d");
+dcl	RELEASE		character (3) varying init ("33e");
 dcl	(clock_reading, microsecond)
 			fixed bin (71);
 dcl	(month, day_of_month, year, day_of_week, hour, minute, second)
