@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -109,6 +111,9 @@
      
      - Clear out errors found at run time after compiled with
        -prefix size,strg,strz,subrg.
+  9) change(90-03-15,Vu), approve(90-03-15,MCR8161), audit(90-03-19,Kallstrom),
+     install(90-04-12,MR12.4-1002):
+     The abbrev command .lx should not limit its argument's length.
                                                    END HISTORY COMMENTS */
 
 /*  Note: In order to insure that the main path through the command/request line expander does not entail the overhead of
@@ -1802,7 +1807,7 @@ dcl  emessage char (64);
 	     do token = get_token () repeat (get_token ()) while (token ^= "");
 		previous_n_abbrevs = list.n_abbrevs;
 		token_lth = length (rtrim (token));
-		if token_lth > length (ape.name) then
+		if (token_lth > length (ape.name)) & ^lx then
 		     call com_err_ (0, ABBREV, "Maximum length of an abbreviation name is ^d characters. ""^a""",
 			length (ape.name), token);
 		else do;
