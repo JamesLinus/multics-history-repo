@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1992   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -49,6 +51,10 @@ up_cdt_:
   1) change(87-04-28,GDixon), approve(87-07-13,MCR7741),
      audit(87-07-15,Hartogs), install(87-08-04,MR12.1-1055):
      Updated for change to user_table_entry.incl.pl1.
+  2) change(92-10-14,Schroth), approve(92-10-14,MCR8264),
+     audit(92-10-15,Zimmerman), install(92-10-21,MR12.5-1036):
+     Correct several potential null pointer faults when attempting to install a
+     new CDT.
                                                    END HISTORY COMMENTS */
 
 
@@ -140,7 +146,6 @@ up_cdt_:
 	dcl     acs_name		 char (32) int static options (constant) init ("cdt.install.acs");
 
 	dcl     (
-	        system_low		 bit (72) aligned initial (""b),
 	        LEGAL		 char (95)
 				 init
 				 /* Printables except PAD, semicolon, but with BS */ (
@@ -174,8 +179,7 @@ up_cdt_:
 
 /* builtin */
 
-	dcl     (addr, clock, hbound, null, size, string, verify, unspec, 
-	         wordno)
+	dcl     (addr, clock, hbound, null, size, string, verify, unspec, wordno)
 				 builtin;
 %page;
 /* ============================================ */
@@ -969,7 +973,7 @@ update_channel:
 						/* noone connected */
 			then do;			/* use old CDTE to get old CDTE.dim, etc */
 						/* stop listening so can reset old line type later */
-				call astty_$tty_order (p, "hangup", null, code);
+				call astty_$tty_order (addr (ocdte), "hangup", null, code);
 				ocdte.in_use = LISTEN_TO_THIS_CHANNEL;
 			     end;
 		     end;
@@ -999,8 +1003,8 @@ update_channel:
 				     old_auth_string = display_access_class_$range (ncdte.access_class);
 				     auth_string = display_access_class_ (ute.process_authorization);
 				     call sys_log_ (1,
-					"up_cdt_: bumping ^a.^a, channel ^a access class ^a no longer includes user authorization ^a."
-					, ute.person, ute.project, ocdte.name, old_auth_string, auth_string);
+					"up_cdt_: bumping ^a.^a, channel ^a access class ^a no longer includes user authorization ^a.",
+					ute.person, ute.project, ocdte.name, old_auth_string, auth_string);
 				     call asu_$bump_code (utep, as_error_table_$chn_auth_excludes, debg, code,
 					(0) /* NO GRACE ! */);
 				end;
@@ -1118,8 +1122,12 @@ init_mpxe:
 	declare nmpxep		 pointer;
 
 	nmpxep -> mpxe.current_service_type = INACTIVE;	/* The first load has to be explicit */
-	nmpxep -> mpxe.n_bootloads, mpxe.time_initial_load, mpxe.time_last_load, mpxe.time_last_crash,
-	     mpxe.time_load_start, mpxe.last_tbf = 0;
+	nmpxep -> mpxe.n_bootloads = 0;
+	nmpxep -> mpxe.time_initial_load = 0;
+	nmpxep -> mpxe.time_last_load = 0;
+	nmpxep -> mpxe.time_last_crash = 0;
+	nmpxep -> mpxe.time_load_start = 0;
+	nmpxep -> mpxe.last_tbf = 0;
 	return;
      end init_mpxe;
 
@@ -1269,6 +1277,3 @@ cleanup:
 %include user_table_entry;
 
      end up_cdt_;
-
-
-
