@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
         *                                                         *
         * Copyright (c) 1972 by Massachusetts Institute of        *
@@ -15,6 +17,10 @@
      audit(86-09-04,DGHowe), install(86-11-20,MR12.0-1222):
      Modified to fix definition threading to not thread definition header into
      backward definition thread and overwrite msf_map_relp value in def header.
+  2) change(90-04-23,Huen), approve(90-04-23,MCR8166), audit(90-04-27,Gray),
+     install(90-05-17,MR12.4-1009):
+     lang_13: Warn users if a level 2 element which is not aligned on a word
+     boundary is used.
                                                    END HISTORY COMMENTS */
 
 
@@ -115,15 +121,17 @@ create_data_segment_:
 	dcl     (tnode, lnode, snode)	 ptr;
 	dcl     cp		 ptr;
 	dcl     code		 fixed bin (35);
-	dcl     date_time_$format	 entry (char(*), fixed bin(71), char(*), char(*)) returns(char(250) var);
+	dcl     date_time_$format	 entry (char (*), fixed bin (71), char (*), char (*)) returns (char (250) var);
 
 	dcl     com_err_		 entry options (variable);
 	dcl     stu_$find_runtime_symbol
 				 entry (ptr, char (*) aligned, ptr, fixed bin) returns (ptr);
 	dcl     stu_$decode_runtime_value
-				 entry (fixed bin (35), ptr, ptr, ptr, ptr, ptr, fixed bin) returns (fixed bin (35));
-	dcl     (addr, addrel, bin, bit, clock, codeptr, divide, length, mod, null, ptr, rel, rtrim, size, stackframeptr,
-	        substr, unspec)	 builtin;
+				 entry (fixed bin (35), ptr, ptr, ptr, ptr, ptr, fixed bin)
+				 returns (fixed bin (35));
+	dcl     (addr, addrel, bin, bit, clock, codeptr, divide, fixed, length, mod, null, ptr, rel, rtrim, size,
+	        stackframeptr, substr, unspec)
+				 builtin;
 	dcl     (lsize, sysize, tsize, dsize, ssize)
 				 fixed bin (18);
 	dcl     (srel, lrel, drel, syrel)
@@ -263,7 +271,8 @@ hell:
 	prevdef = putp;
 	defp = putp;
 	rp = ptr (rlocp, next);
-	rp -> segname_def.forward, rp -> segname_def.backward, rp -> segname_def.symbol, rp -> segname_def.defblock = rc_dp;
+	rp -> segname_def.forward, rp -> segname_def.backward, rp -> segname_def.symbol, rp -> segname_def.defblock =
+	     rc_dp;
 	rp -> segname_def.next = rc_dp;
 	addr (rp -> segname_def.flags) -> b18u = rc_a;
 
@@ -332,6 +341,9 @@ generate_definitions:
 
 	dcl     v2		 fixed bin (35);
 	dcl     point		 ptr;
+	dcl     mod_tst		 (0:7) fixed bin internal static options (constant)
+				 init (1, 36, 4, 2, 1, 36, 4, 8);
+
 
 	do point = nptr repeat addrel (point, point -> runtime_symbol.brother);
 	     code = 1;
@@ -344,13 +356,22 @@ generate_definitions:
 	     then do;
 		     if point -> runtime_symbol.bits.simple
 		     then stucode, v2 = 0;
-		     else v2 = stu_$decode_runtime_value (point -> runtime_symbol.offset, block_ptr, sp, null, null,
-			     struc_ptr, stucode);
-		     if stucode ^= 0
-		     then do;
-			     call com_err_ (0, myname, "stu_$decode_runtime_value complains ^d on ^a", stucode,
-				addrel (point, point -> runtime_symbol.name) -> acc.accstr);
-			     go to hell;
+		     else do;
+			     v2 = stu_$decode_runtime_value (point -> runtime_symbol.offset, block_ptr, sp, null,
+				null, struc_ptr, stucode);
+			     if stucode ^= 0
+			     then do;
+				     call com_err_ (0, myname, "stu_$decode_runtime_value complains ^d on ^a",
+					stucode, addrel (point, point -> runtime_symbol.name) -> acc.accstr);
+				     go to hell;
+				end;
+			     if mod (v2, mod_tst (fixed (point -> runtime_symbol.units))) ^= 0
+			     then do;
+				     call com_err_ (0, myname,
+					"A level 2 element, ^a, is not word aligned and cannot be turned into an entrypoint.",
+					addrel (point, point -> runtime_symbol.name) -> acc.accstr);
+				     go to skip_def;
+				end;
 			end;
 
 		     if gen_class = 1
@@ -373,6 +394,7 @@ generate_definitions:
 		     prevdef -> definition.forward = rel (defp);
 		     defp -> definition.backward = rel (prevdef);
 		     prevdef = defp;
+skip_def:
 		end;
 
 	     if point -> runtime_symbol.brother = "0"b
@@ -503,8 +525,9 @@ alloc_acc:
 	hp -> std_symbol_header.generator = "cds";
 	next = size (std_symbol_header);
 	putp = addrel (hp, next);
-	call putstr ("create_data_segment_, Version II of " || date_time_$format ("^dn, ^mn ^dm, ^9999yc", dtmc, "", ""),
-	     hp -> std_symbol_header.gen_version, rlocp -> std_symbol_header.gen_version);
+	call putstr ("create_data_segment_, Version II of "
+	     || date_time_$format ("^dn, ^mn ^dm, ^9999yc", dtmc, "", ""), hp -> std_symbol_header.gen_version,
+	     rlocp -> std_symbol_header.gen_version);
 	call putstr (rtrim (get_group_id_ ()), hp -> std_symbol_header.userid, rlocp -> std_symbol_header.userid);
 
 putstr:
@@ -561,7 +584,8 @@ putstr:
 
 	rp = scrps (SYMR);
 	rp -> std_symbol_header.source_map, rp -> std_symbol_header.area_pointer, rp -> std_symbol_header.rel_text,
-	     rp -> std_symbol_header.rel_def, rp -> std_symbol_header.rel_symbol, rp -> std_symbol_header.rel_link = rc_s;
+	     rp -> std_symbol_header.rel_def, rp -> std_symbol_header.rel_symbol, rp -> std_symbol_header.rel_link =
+	     rc_s;
 
 	hp -> std_symbol_header.maxi_truncate, hp -> std_symbol_header.mini_truncate = bit (bin (next, 18), 18);
 	hp -> std_symbol_header.text_boundary, hp -> std_symbol_header.stat_boundary = bit (bin (2, 18), 18);
@@ -626,13 +650,14 @@ find_runtime_symbol_node:
 	dcl     node		 ptr;
 
 	dcl     stufail		 (-5:-1) char (32) internal static options (constant)
-				 initial ("Symbol reference is ambiguous", "No declaration found", "Name too long",
-				 "More than 64 structure levels", "Block pointer is null");
+				 initial ("Symbol reference is ambiguous", "No declaration found",
+				 "Name too long", "More than 64 structure levels", "Block pointer is null");
 
 	node = stu_$find_runtime_symbol (block_ptr, rtrim (structure_name), null, stucode);
 	if stucode < 0
 	then do;
-		call com_err_ (0, myname, "^a for ^a section structure ^a", stufail (stucode), section, structure_name);
+		call com_err_ (0, myname, "^a for ^a section structure ^a", stufail (stucode), section,
+		     structure_name);
 		goto tranfai;
 	     end;
 
