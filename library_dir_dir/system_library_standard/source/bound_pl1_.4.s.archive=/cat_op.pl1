@@ -16,6 +16,10 @@
   1) change(89-09-27,RWaters), approve(89-09-27,MCR8068), audit(89-09-27,Vu),
      install(89-10-02,MR12.3-1080):
      Fixed to remove duplicate declaration attributes.
+  2) change(90-05-03,Huen), approve(90-05-03,MCR8169), audit(90-05-18,Gray),
+     install(90-05-30,MR12.4-1012):
+     pl1_1885: Fix pl1 optimizer to handle the concatenation of a common string
+     expression correctly.
                                                    END HISTORY COMMENTS */
 
 
@@ -37,13 +41,12 @@ dcl	node_pts ptr,		/* points at operator node */
 dcl	node_pt ptr defined (node_pts),
 	ref(3) ptr defined (refs);
 
-dcl	(p1,p2,p3,p,q,q2,q3) ptr,
+dcl	(p1,p2,p3,p,q2,q3) ptr,
 	(dt,type,n,s2,size1,size2,size3) fixed bin,
 	macro fixed bin(15),
 	tag bit(4) aligned,
 	base bit(3) aligned,
 	(lunits,word_offset) fixed bin(15),
-	load entry(ptr,fixed bin),
 	string_temp entry(ptr,ptr,ptr) returns(ptr),
 	adjust_ref_count entry(ptr,fixed bin),
 	compile_exp entry(ptr),
@@ -58,7 +61,7 @@ dcl	(p1,p2,p3,p,q,q2,q3) ptr,
 	expmac$one entry(fixed bin(15),ptr,fixed bin),
 	expmac entry(fixed bin(15),ptr);
 
-dcl	(addr,fixed,max,mod,null,string) builtin;
+dcl	(addr,divide,fixed,mod,null) builtin;
 
 dcl	1 p1_address aligned based(addr(p1 -> reference.address)),
 	2 base bit(3) unal,
@@ -251,7 +254,8 @@ switch(1):
 ea:	if ^ p1 -> reference.long_ref
 	then do;
 	     if size2 ^= bits_per_word then goto ee1;
-	     call compile_exp(q2);
+	     if p2 -> reference.ref_count < 1 then call compile_exp(q2);
+	     else p2 = compile_exp$save(q2);	/* needed later */
 	     goto aa_2a;
 	     end;
 

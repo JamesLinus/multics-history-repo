@@ -45,6 +45,10 @@
  10) change(89-10-02,Vu), approve(89-10-02,MCR8139), audit(89-10-04,Blackmore),
      install(89-10-09,MR12.3-1086):
      Updated version to 32f for two named constant changes.
+ 11) change(90-05-03,Huen), approve(90-05-03,MCR8169), audit(90-05-18,Gray),
+     install(90-05-30,MR12.4-1012):
+     Updated version to 33a for pl1 opt concat of a common string exp bug
+     (pl1_1885)
                                                    END HISTORY COMMENTS */
 
 
@@ -68,7 +72,7 @@ dcl	decode_clock_value_$date_time
 
 /* builtins */
 
-dcl	(unspec, clock, addr, size)
+dcl	(addr, clock, ltrim, size, unspec)
 			builtin;
 
 /* internal static */
@@ -89,7 +93,7 @@ dcl	(stringsize, error) condition;
 /* RELEASE = "" for the >experimental_library compiler,
 	 = <release_number> for the >system_standard_library compiler */
 
-dcl	RELEASE		character (3) varying init ("32f");
+dcl	RELEASE		character (3) varying init ("33a");
 dcl	(clock_reading, microsecond)
 			fixed bin (71);
 dcl	(month, day_of_month, year, day_of_week, hour, minute, second)
