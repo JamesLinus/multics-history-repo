@@ -1,11 +1,11 @@
-03/19/85  window_io_
+04/26/90  window_io_
 
-
-The window_io_ I/O module supports I/O to a window.  In addition to the
-usual iox_ entries, the module provides terminal independent access to
-special video terminal features, such as a moveable cursor, selective
-erasure, and scrolling of regions.  The module provides a real-time
-input line editor and performs output conversion and "MORE" processing.
+Function:  The window_io_ I/O module supports I/O to a window.  In
+addition to the usual iox_ entries, the module provides terminal
+independent access to special video terminal features, such as a
+moveable cursor, selective erasure, and scrolling of regions.  The
+module provides a real-time input line editor and performs output
+conversion and "MORE" processing.
 
 Entry points in this module are not called directly by users; rather,
 this module is accessed through the I/O system interfaces iox_ and
@@ -54,17 +54,16 @@ Open Operation:
 The following opening mode is supported:  stream_input_output.
 
 
-Pur Chars Operation:
-This operation is used to output a character
-string to the window.  If rawo mode is disabled, the characters are
-processed according to the output conversions defined for the
-terminal.  If necessary, the string is continued on subsequent lines
-of the window.  If output passes the last line of the window, the
-placement of additional lines is controlled by the setting of the
-more_mode mode.  If an output line must be erased from the window to
-make room for this new output, and there has been no intervening input
-in this window, and more_mode is enabled, the user is queried for the
-disposition of this new output.
+Put Chars Operation:
+This operation is used to output a character string to the window.
+If rawo mode is disabled, the characters are processed according to the
+output conversions defined for the terminal.  If necessary, the string
+is continued on subsequent lines of the window.  If output passes the
+last line of the window, the placement of additional lines is
+controlled by the setting of the more_mode mode.  If an output line
+must be erased from the window to make room for this new output, and
+there has been no intervening input in this window, and more_mode is
+enabled, the user is queried for the disposition of this new output.
 
 In rawo mode, the characters are written directly to the terminal,
 without any of the above processing.
@@ -92,12 +91,14 @@ windows (set_window_info).  These relations are always true when
 obtaining information about a window (get_window_info):
 
       0 < column + width <= screen width
-      0 < line + height <= scrren height
+      0 < line + height <= screen height
 
 get_window_info
    returns information about the position and extent of the window.
-   The info ptr points to the following structure (declared in
-   window_control_info.incl.pl1).
+   The info ptr points to the 'window_position_info' structure,
+   declared in window_control_info.incl.pl1.
+
+
 set_window_info
    causes the window to be relocated or to change size (or both).
    The info ptr points to the same structure used in
@@ -110,10 +111,11 @@ get_window_status, set_window_status
    window status is set for a window, all calls to window_ will
    return video_et_$window_status_pending until the status is reset.
    To reset the status, make a get_window_status control order on the
-   switch.  The info pointer should point to the structure declared
-   in window_control_info.incl.pl1.
+   switch.  The info pointer should point to the 'window_status_info'
+   structure, declared in window_control_info.incl.pl1.
 
-Notes:  The get_window_status and get_window_status control orders are
+
+Notes:  The get_window_status and set_window_status control orders are
 available from command level and as active functions with the following
 io_call commands:
 
@@ -132,7 +134,8 @@ get_capabilities
    video system may simulate those that are lacking.  For example, the
    system simulates insert and delete characters, but does not simulate
    insert and delete lines.  The info ptr should point to the
-   structure (declared in terminal_capabilities.incl.pl1).
+   'capabilities_info' structure, declared in
+   terminal_capabilities.incl.pl1.
 reset_more
    causes MORE Processing to be reset.  All lines on the window may be
    freely discarded without querying the user.
@@ -146,14 +149,15 @@ Notes:  The get_editing_chars and set_editing_chars control orders are
 available from command level and as active functions with the following
 io_call commands:
 
- io_call window_switch get_editing_chars
+ io_call control window_switch get_editing_chars
  io_call control window_switch set_editing_chars erase_kill_characters
 
 
 get_more_responses
    returns information about the acceptable responses to MORE
-   processing.  The info pointer should point to the following
-   structure (declared in window_control_info.incl.pl1).
+   processing.  The info pointer should point to the
+   'more_responses_info' structure, declared in
+   window_control_info.incl.pl1.
 set_more_responses
    sets the responses.  The data structure is the same as the one used
    for the "get_more_responses" order except that all fields are Input.
@@ -186,7 +190,8 @@ get_more_prompt set_more_prompt
    more responses of carriage return for more and the delete for
    discard, the final string displayed is "More (RETURN for more; DEL
    to discard output.)."  The info pointer should point to the
-   structure (declared in window_control_info.incl.pl1).
+   'more_prompt_info' structure, declared in
+   window_control_info.incl.pl1.
 
 
 The get_more_prompt and set_more_prompt control orders are available
@@ -202,25 +207,25 @@ the ioa_ control string described above.
 
 get_more_handler set_more_handler
    Sets the handler for video system more breaks to the specified
-   routine.  The info pointer should point to the structure
-   (declared in window_control_io.incl.pl1).
+   routine.  The info pointer should point to the 'more_handler_info'
+   structure, declared in window_control_io.incl.pl1.
 
    The more handler routine is called with two arguments.  The first is
-   a pointer to a structure containing information of interest to a
-   more handler, and the second is a flag which the more
+   a pointer to a 'more_info' structure, containing information of
+   interest to a more handler.  The second is a flag which the more
    handler sets to indicate whether or not output should be flushed
    ("1"b to continue output, "0"b to flush output).
 
-   The structure can be found in the include file
-   window_more_handler.incl.pl1.
+   The 'more_info' structure can be found in the include file
+   window_more_info.incl.pl1.
 
 
 Notes:  The get_more_handler and set_more_handler control orders are
 available from command level and as active functions with the following
 io_call command:
 
-     io_call window_switch get_more_handler
-     io_call window_switch set_more_handler more_handler
+     io_call control window_switch get_more_handler
+     io_call control window_switch set_more_handler more_handler
 
 where more_handler is the entryname of the routine to be used as the
 more handler routine.  The name is converted to an entry using the
@@ -231,16 +236,17 @@ set_more_handler control order.
 get_break_table set_break_table
    break table determines action of the get_echoed_chars,
    get_unechoed_chars, and write_sync_read entry points of the window_
-   subroutine.  The array "breaks" has a 1 for each character that is
+   subroutine.  The array 'breaks' has a 1 for each character that is
    to be considered a break.  By default, the break table has "1"b for
    all the nonprintable characters, and "0"b elsewhere.  Applications
    that set the break table must be careful to reset it afterwards, and
-   establish an appropriate cleanup handler.
+   establish an appropriate cleanup handler.  The info pointer should
+   point to the 'break_table_info' structure, declared in
+   window_control_info.incl.pl1, which contains the array 'breaks'.
 reset_more_handler
    cancels the last user-defined more_handler.  The reset_more_handler
    control order is available from command level with the following
    io_call command:
-
         io_call control window_switch reset_more_handler
 
 
@@ -254,23 +260,26 @@ get_output_conversion
    error_table_$no_table is returned.
 set_output_conversion
    provides a table to be used in formatting output to identify certain
-   kinds of special characters.  The info_ptr points to the following
-   structure (declared in tty_convert.incl.pl1).  If the info_ptr is
-   null, no transaction is to be done.
+   kinds of special characters.  The info_ptr points to the
+   'cv_trans_struc' structure, declared in tty_convert.incl.pl1.  If
+   the info_ptr is null, no transaction is to be done.
 
 
 get_special
    is used to obtain the contents of the special_chars table currently
-   in use.  The info_ptr points to the following structure (defined in
-   tty_convert.incl.pl1).
+   in use.  The info_ptr points to the 'get_special_info_struc'
+   structure, defined in tty_convert.incl.pl1.
+
 set_special
    provides a table that specifies sequences to be substituted for
    certain output characters, and characters that are to be interpreted
-   as parts of escape sequences on input.  Output sequences are
-   defined in tty_convert.incl.pl1.
+   as parts of escape sequences on input.  Output sequences follow the
+   form of 'c_chars', defined in tty_convert.incl.pl1.  The info_ptr
+   points to the 'special_chars_struc' structure, also defined in
+   tty_convert.incl.pl1.
 
 
-Notes:  Video ignores cr_seg, bs_seg, tab_seg, vt_seg, ff_seg,
+Notes:  Video ignores cr_seq, bs_seq, tab_seq, vt_seq, ff_seq,
 printer_on, printer_off, end_of_page, input_escapes, and input results.
 
 
@@ -278,8 +287,9 @@ get_token_characters, set_token_characters
    changes the set of characters that are used by the video system
    input line editor to define a word for such requests as ESC DEL.
    The set of characters supplied in the structure replace the existing
-   set of characters.  The info_ptr points to the structure
-   (declared in window_control_info.incl.pl1).
+   set of characters.  The info_ptr points to the
+   'token_characters_info' structure, declared in
+   window_control_info.incl.pl1.
 
 
 Notes:  The set_token_characters and get_token_characters control
@@ -297,17 +307,15 @@ token characters.
 
 get_editor_key_bindings
    returns a pointer to the line_editor_key_binding structure
-   describing the key bindings.  io_call support points out the
+   describing the key bindings.  io_call support prints out the
    pathname of each editor routine, listing only the names of builtin
    requests in capital letters, with the word "builtin" in parentheses.
-   The control order prints or returns current information about the
-   key bindings.  Use the set_editor_key_bindings control order to
-   change the bindings.  This control order prints or returns current
-   information about the key_bindings.  Use the set_editor_key_bindings
-   control order to change the bindings.
+   This control order prints or returns current information about the
+   key_bindings.  Use the set_editor_key_bindings control order to
+   change the bindings.
 
-   The info_ptr points to the structure (declared in
-   window_control_info.incl.pl1).
+   The info_ptr points to the 'get_editor_key_bindings_info' structure,
+   declared in window_control_info.incl.pl1.
 
 
 Notes:  The get_editor_key_bindings control order is available from
@@ -323,7 +331,7 @@ set_editor_key_bindings control order.
 
 set_editor_key_bindings
    A line editor routine is bound to a sequence of keystrokes via the
-   set_editor_key bindings control order.  The sequence of characters
+   set_editor_key_bindings control order.  The sequence of characters
    that triggers an editor request may be of any length, with
    multiple-key sequences working like the Emacs prefix characters.
    This allows the use of terminal function keys (which often send
@@ -331,13 +339,17 @@ set_editor_key_bindings
    More than one binding can be set in one invocation of this control
    order.
 
-   The info_ptr points to the structure (declared in
-   window_control_info.incl.pl1).
+   The info_ptr points to the 'set_editor_key_bindings_info' structure,
+   declared in window_control_info.incl.pl1.
 
 
-Notes:  The set_editor_key_bindings control order is available from
-command level and as an active function with the following io_call
-command:
+Notes:
+The video system's internal data structures are freed at the following
+times: video system revocation, and when a set_editor_key_bindings
+control order with 'replace = "1"b' is done.
+
+The set_editor_key_bindings control order is available from command
+level and as an active function with the following io_call command:
 
    io_call control window_switch set_editor_key_bindings key_sequence1
       {user_routine1} {control_args1} ... key_sequenceN
@@ -355,7 +367,7 @@ Control args:
 At least one user_routine or one of -external/-builtin must be
 specified for each key sequence, with the rightmost editor request
 specifier taking precedence (for example, io control window_switch
-set_editor_key_binings foo -builtin FORWARD_word,) will bind control -a
+set_editor_key_bindings foo -builtin FORWARD_word,) will bind control-a
 to the forward word builtin, not the user routine foo.
 
 numarg_action_name
@@ -363,9 +375,9 @@ numarg_action_name
    routine is invoked, must be one of the following and can only be
    given for external editor routines
 REPEAT
-   (the default is PASS).  This can be entered in upper or lower case.
+   This can be entered in upper or lower case.
    Call the user routine n times, where n is the numeric argument
-   supplied by the user.
+   supplied by the user.  (The default is PASS).
 
 
 REJECT
@@ -437,14 +449,14 @@ more_mode = STR
       MORE response at the bottom of every window of output.  This is
       the default for all terminals that are incapable of scrolling or
       when using partial width windows.
-   vertsp, ^vertsp
+
+
+vertsp, ^vertsp
       is only effective when more mode is on.  When vertsp mode is on,
       output of a FF or VT will cause an immediate MORE query.  When
       you invoke the video system, it copies the current setting of
       this mode before attaching the window_io_ module.  The default is
       ^vertsp.
-
-
    rawo, ^rawo
       causes characters to be output with no processing whatsoever.
       The result of output in this mode is undefined.
@@ -453,6 +465,8 @@ more_mode = STR
       When you invoke the video system, it copies the current setting
       of this mode before attaching the window_io_ module.  The default
       is on.
+
+
    ctl_char, ^ctl_char
       specifies that ASCII control characters that do not cause newline
       or linefeed motion are to be accepted as input except for the NUL
@@ -460,8 +474,6 @@ more_mode = STR
       When you invoke the video system, it copies the current setting
       of this mode before attaching the window_io_ module.  The default
       is off.
-
-
    edited, ^edited
       suppresses printing of characters for which there is no defined
       Multics equivalent on the device referenced.  If edited mode is
@@ -469,14 +481,14 @@ more_mode = STR
       When you invoke the video system, it copies the current setting
       of this mode before attaching the window_io_ module.  The default
       is off.
+
+
    erkl, ^erkl
       controls the editing functions of get_line.  When you invoke the
       video system, it copies the current setting of this mode before
       attaching the window_io_ module.  The default is on, which allows
       erase and kill processing and the additional line editor
       functions.
-
-
    esc, ^esc
       controls input escape processing.  When you invoke the video
       system, it copies the current setting of this mode before
@@ -485,14 +497,14 @@ more_mode = STR
       acts as a master control for can, erkl, and esc.  If this mode is
       on, none of the input conventions are provided.  The default is
       on.
+
+
    ll = STR
       is the width of the window, in characters, and it can only be
       changed with the set_window_info control operation.
    pl = STR
       is the height of the window (i.e., number of lines), and it can
       only be changed with the set_window_info control operation.
-
-
    red, ^red
       controls interpretation of red shift and black shift characters
       on output.  When you invoke the video system, it copies the

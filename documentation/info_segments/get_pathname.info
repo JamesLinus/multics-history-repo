@@ -1,6 +1,10 @@
-09/15/80	get_pathname, gpn
+01/02/90	get_pathname, gpn
 
-Syntax:  gpn {-control_arg} arg
+
+Syntax as a command:  gpn {-control_arg} arg
+
+
+Syntax as an active function:  [gpn {-control_arg} arg]
 
 
 Function:	 returns the absolute pathname of the segment designated by a
@@ -22,4 +26,6 @@ Control arguments:
    name only if arg is not a valid octal number.
 
 
-Syntax as active function:  [gpn {-control_arg} arg]
+Notes:  Since the pathname is returned in quotes, the command processor
+treats it as a single argument regardless of special characters in the
+name.

@@ -1,4 +1,4 @@
-02/11/85  delete_name, dn
+07/09/90  delete_name, dn
 
 Syntax as a command:  dn {paths} {-control_args}
 
@@ -20,6 +20,10 @@ Control arguments:
 -brief, -bf
    suppresses error messages when entries are not found with specified
    pathnames.
+-interpret_as_extended_entry, -inaee
+   interpret the selected entry as an extended entry type.
+-interpret_as_standard_entry, -inase
+   interpret the selected entry as a standard entry type.
 -long, -lg
    prints error messages when entries are not found.  (Default)
 

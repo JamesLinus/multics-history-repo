@@ -1,6 +1,6 @@
-10/08/80	nothing, nt
+09/28/90	nothing, nt
 
-Syntax:  nt {optional_args}
+Syntax as a command:  nt {optional_args}
 
 
 Function:	 performs a return to its caller, and does nothing.
@@ -17,3 +17,7 @@ thus, it can be used as a "stub" procedure for development of programs.
 To do this, initiate it with the reference name of the program it is
 supposed to replace.  It cannot be used in this fashion if the
 entrypoint name is different from the reference name.
+
+When the functionality of the command 'nothing' is needed in a program,
+use the entrypoint 'null_entry_' (See AG93, Subroutines and I/O
+Modules).

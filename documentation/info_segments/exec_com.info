@@ -217,6 +217,9 @@ List of literals:
 
 &NL, &NL(N), &LF, &LF(N)
    expands to a single newline character (ASCII 012) or to N newlines.
+&CR, &CR(N)
+   expands to a single carriage return character (ASCII 015) or to N
+   carriage returns.
 &QT, &QT(N)
    expands to a single double-quote character (") or to N of them.
 &!

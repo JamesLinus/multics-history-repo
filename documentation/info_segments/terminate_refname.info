@@ -1,4 +1,4 @@
-07/25/86  terminate_refname, tmr
+03/21/90  terminate_refname, tmr
 
 Syntax as a command:  tmr ref_names
 
@@ -14,6 +14,9 @@ ref_names
 
 
 Control arguments:
+-brief, -bf
+   suppresses all error messages.
+
 -name STR, -nm STR
    specifies a reference name STR that begins with a minus sign, to
    distinguish it from a control argument.

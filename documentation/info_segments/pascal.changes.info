@@ -1,7 +1,50 @@
-08/04/86 pascal.changes.gi
+05/01/90  pascal.changes
 
-This info segment describes changes between Pascal 8.01 and experimental Pascal
-8.03.
+This infoseg describes differences between versions of the Pascal
+compiler.
+
+
+05/01/90:
+
+This section describes the changes between Pascal 8.03 and Pascal 8.04a .
+
+
+1 - Changes to Pascal IO implementation:
+
+1.1 - Pascal 8.3 would round a value of the form -x.5 to -x, rather
+      than -(x+1). Pascal 8.4 no longer deviates in this manner.
+
+
+Examples:
+
+!pr test.pascal
+		test.pascal	04/26/90  1756.7 mdt Thu
+
+program test (input, output);
+const	posval	=	3.5;
+	negval	=	-3.5;
+var	rounded	:	real;
+begin
+     rounded := round (posval);
+     writeln (rounded);
+     rounded := round (negval);
+     writeln (rounded);
+end.
+
+
+!test
+ 4.00000000000000000E+00
+-3.00000000000000000E+00
+
+!in exe>pascal_io_ -fc -a
+!test
+ 4.00000000000000000E+00
+-4.00000000000000000E+00
+
+
+08/04/86:
+
+This section describes changes between Pascal 8.01 and Pascal 8.03.
 
 
 1 - Changes to implemented language:
@@ -17,6 +60,7 @@ This info segment describes changes between Pascal 8.01 and experimental Pascal
 
 
 Examples:
+
 
    PROGRAM test_labels ;
        LABEL 1 ;
@@ -67,6 +111,7 @@ the text of the program.  }
 
 
 Examples: #2
+
 
    PROGRAM test_dcl_scope_2 ;
        CONST
@@ -138,6 +183,7 @@ Pascal constant.
 
 
 3 - Changes to Pascal IO implementation:
+
 
 3.1 - In interactive mode, when the file is attached via an IO module which is
 not "vfile_", physical output is performed after each write statement.
@@ -215,6 +261,7 @@ Examples:
  PASCAL 8.01
  !  caller
 
+
  Error:  Attempt by >udd>PASCAL>JMAthane>v8w>called$open|31
  to reference through null pointer
  !  rl
@@ -259,6 +306,8 @@ typed pointer,or probe pointer variable or pointer constant).
 
 is allowed for p1 and p2 being any kind of pointer value (Pascal typed pointer,
 pointer constant (p2 only!), probe pointer variable).
+
+
    These extensions have been implemented in order to give users the
 possibility of writing such probe statements:
 

@@ -1,4 +1,4 @@
-01/14/87  set_mailing_address, smla
+03/12/90  set_mailing_address, smla
 
 Syntax as a command:  smla {address} {-control_args}
 
@@ -22,12 +22,18 @@ address
 Control arguments:
 -default_project, -dp
    resets the mailing address using the default project.
--user name
+-entry name
    specifies the entry whose mailing address is to be updated.  Enclose
    the name in quotes if it contains white space.  If name is an alias,
-   its associated regular entry is updated.  You can use -user only if
+   its associated regular entry is updated.  You can use -entry only if
    you have rw access to the ACS segment associated with the entry.
    (Default:  your own entry)
+-user address
+   specifies the recipient address.  The address can be any address
+   accepted by send_mail.  You can specify only one address.  Use
+   -user in place of the address field if the address can be
+   interpreted as a control argument.  It is incompatible with the
+   -dp argument.
 
 
 Notes:  Don't use -dp if the entry is not associated with a registered

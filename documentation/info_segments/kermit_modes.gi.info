@@ -1,4 +1,4 @@
-03/08/88  Kermit modes
+08/23/90  Kermit modes
 
 The following list of modes are recognized by the kermit file transfer
 protocol, and the kermit requests: set and show.   The values
@@ -48,6 +48,7 @@ eight_bit_prefix CHR, ebp CHR
 
    N Characters with the 8th bit set will not be quoted.
 
+
    & or any character in the range "!" through ">" or "`" through
      "~".  Use the specified character for quoting characters with the
      8th bit set.  If the Multics-Kermit eight_bit_prefix character is
@@ -64,6 +65,8 @@ end_of_packet CHR, eop CHR
    octal) and US (037 octal) inclusive, and different from the
    start_of_packet character.  (Default is carriage return,
    015 octal)
+
+
 line_byte_size N
    indicates whether data is being transmitted via a 7-bit or 8-bit
    connection, where N may be one of 7 or 8.
@@ -76,14 +79,15 @@ line_byte_size N
    connection with the eight_bit_prefix mode enabled may be used to
    transfer binary files (See above).  (Default is 7)
 
-
 packet_length N, pl N
    maximum packet length Multics-Kermit will receive, where N is an
    integer between 20 and 94 (decimal).  (Default is 80)
 
+
    NOTE: Long packets can be selected when the user has explicitly
    selected N which is larger than 94 with a SET command.  The maximum
    length of long packets can be up to 1500 characters.
+
 parity STR
    used for communicating with systems or networks that require the
    8th bit for character parity.  The parity used must be the same
@@ -94,9 +98,10 @@ parity STR
                     one.
           "space"   seven data bits with the parity bit set to
                     zero.
+
+
           "even"    seven data bits with the parity bit set to
                     make the overall parity even.
-
           "odd"     seven data bits with the parity bit set to
                     one to make the overall parity odd.
 

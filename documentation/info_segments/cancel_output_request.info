@@ -1,4 +1,4 @@
-02/24/84  cancel_output_request, cor
+06/24/90  cancel_output_request, cor
 
 Syntax:  cor request_identifiers {-control_args}
 
@@ -65,15 +65,9 @@ cancel your own requests.  You must have r and d extended access
 to cancel a request entered by another user.
 
 
-Notes:  If the request is already running, the entry is still removed
-from the queue, but the running request is not stopped; however, you
-are given a message stating that the request is running.
-
-When a request has been removed from the queue after it has started
-running and before it has finished, your request for deletion of the
-segment (done with the -delete control argument to the dprint and
-enter_output_request commands) is ignored by the system.
-
+Notes:  If the request is already running, the running request will not
+be stopped and the request's entry will not be removed from the queue.
+A warning message will be displayed to warn the user of this action.
 
 Multiple -id ID identifiers can be specified in a single command
 invocation only if no path or entry request identifiers are given.

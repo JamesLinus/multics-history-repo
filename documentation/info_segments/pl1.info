@@ -1,4 +1,4 @@
-03/07/89  pl1
+11/08/90  pl1
 
 Syntax as a command:  pl1 path {-control_args}
 
@@ -158,6 +158,17 @@ Notes:
 listing  segment  named  path.list  in  the  working  directory.  If a
 control argument and an incompatible alternative are both given on the
 command line, the rightmost one is used.
+
+
+ If  the user  specifies the -optimize control argument, the compiler
+will invoke  an extra compiler phase   just before code generation to
+perform certain optimizations, and a different algorithm to keep track
+of the uses and references of variables. This algorithm  can warn the
+user about   unexpected programming practices     under more general
+conditions.   Some of which  may not be very obvious to users.   For
+example,   both optimized and non_optimized compilation    may  list
+different variables that have been referenced but never set.
+
 
 The  statistics  recorded  by  the  -profile and -long_profile control
 arguments  are  perprocess.   They  may  be  printed  with the profile

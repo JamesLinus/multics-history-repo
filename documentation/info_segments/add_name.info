@@ -1,4 +1,4 @@
-02/06/85  add_name, an
+07/09/90  add_name, an
 
 Syntax as a command:  an path names {-control_args}
 
@@ -22,6 +22,10 @@ names
 Control arguments:
 -brief, -bf
    suppresses the error message "Name already on entry".
+-interpret_as_extended_entry, -inaee
+   interpret the selected entry as an extended entry type.
+-interpret_as_standard_entry, -inase
+   interpret the selected entry as a standard entry type.
 -long, -lg
    does not suppress the error message "Name already on entry".
    (Default)

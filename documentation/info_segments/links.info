@@ -1,4 +1,4 @@
-01/14/87 links
+07/24/90 links
 
 Syntax as a command:  links star_names {-control_args}
 
@@ -18,17 +18,12 @@ star_names
 Control arguments:
 -absolute_pathname, -absp
    returns absolute pathnames rather than entrynames.
--chase
-   processes the targets of links when you specify a starname.
 -inhibit_error, -ihe
-   returns false if star_name is an invalid name or if access to tell
-   of an entry's existence is lacking.
--no_chase
-   does not process the targets of links when you specify a starname.
-   (Default)
+   ignore star_names if they are invalid or if access to tell of an 
+   entry's existence is lacking.
 -no_inhibit_error, -nihe
-   signals an error if star_name is an invalid name or if access to
-   tell of an entry's existence is lacking.  (Default)
+   prints an error message if given an invalid star_name or if
+   access to tell of an entry's existence is lacking.  (Default)
 
 
 Notes:  Only one name per link is returned; i.e., if a link has more

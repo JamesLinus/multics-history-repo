@@ -1,6 +1,6 @@
-03/27/85  set_system_console, ssc
+06/21/90  set_system_console
 
-Syntax as a command:  ssc {console_name} {-control_args}
+Syntax as a command:  set_system_console {console_name} {-control_args}
 
 
 Function:  controls the configuration of system consoles.

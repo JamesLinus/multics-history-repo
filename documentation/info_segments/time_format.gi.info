@@ -179,14 +179,14 @@ List of picture extensions: In addition to the normal picture
    characters, a selector has 3 additional ones.  Normally, pictures
    are of fixed length.  With the aid of these controls, SPACEs or
    ZEROs can be trimmed from a result.
-X  
+X
    This represents an output position just like an "x", but the
    character output into this position will be dropped if it is part of
    a string of rightmost SPACEs.
-O  
+O
    This represents an output position just like a "9", but the digit in
    the position will be unconditionally omitted.
-Z  
+Z
    This represents an output position just like a "9", but a ZERO in
    the position will be dropped (at either end) if it is not
    significant.

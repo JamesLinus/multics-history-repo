@@ -1,4 +1,4 @@
-02/10/86  library_cleanup, lcln
+07/24/90  library_cleanup, lcln
 
 Syntax as a command:  lcln {search_names} {-control_args}
 
@@ -6,8 +6,9 @@ Syntax as a command:  lcln {search_names} {-control_args}
 Function:  deletes library entries that are no longer needed.
 Segments, links, and multisegment files can be deleted in this manner.
 
-Library entries matching one or more search name arguments are selected
-as candidates for possible deletion.  If they have not been modified
+Library entries that have not been modified since the last bootload
+and that match one or more search name arguments are selected as
+candidates for possible deletion.  If they have also not been modified
 within a given grace period, then they are eligible for deletion.
 
 By default, library_cleanup only lists the entries eligible for
@@ -64,9 +65,11 @@ Control arguments:
    with the -search_name control argument.  One or more -search_name
    control arguments can be given in the command.
 -time days, -tm days
-   gives a grace period in days.  Matching library entries whose
-   date/time entry modified falls within this grace period are not
-   eligible for deletion.  The default grace period is seven days.
+   gives a minimum grace period in days.  The actual grace period is
+   determined by the greater of the time since the last bootload and
+   the specified value.  Matching library entries whose date/time
+   entry modified falls within this grace period are not eligible for
+   deletion.  The default grace period is seven days.
 
 
 Notes:  If -delete and -list are used together, then the library
