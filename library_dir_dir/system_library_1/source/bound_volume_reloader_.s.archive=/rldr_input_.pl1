@@ -1,5 +1,7 @@
 /****^  ***********************************************************
         *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1990   *
+        *                                                         *
         * Copyright, (C) Honeywell Bull Inc., 1987                *
         *                                                         *
         * Copyright, (C) Honeywell Information Systems Inc., 1982 *
@@ -47,6 +49,14 @@
      
      Installed a completely new read routine to handle tapes which contain
      incomplete data.
+  5) change(90-02-06,Farley), approve(90-05-09,MCR8174),
+     audit(90-04-02,WAAnderson), install(90-06-12,MR12.4-1014):
+     Modified skip_chars procedure to account for times when the data is
+     "DELIMITED", when calling the read procedure.
+  6) change(90-10-12,WAAnderson), approve(90-10-12,MCR8214),
+     audit(90-10-15,Schroth), install(90-10-17,MR12.4-1047):
+     The volume reloader may fail when skipping over segments not pertaining to
+     the physical volume being loaded.
                                                    END HISTORY COMMENTS */
 
 /* format: style1,ind2,^inddcls,ifthenstmt,dclind2,declareind2,ifthendo,ifthen*/
@@ -86,7 +96,7 @@ dcl collect_stats	     fixed bin static init (4) options (constant);
 dcl myname	     char (32) var int static init ("rldr_input_") options (constant);
 dcl DELIMITED	     bit (1) aligned internal static options (constant)
 		     init ("1"b);
-dcl FORWARD_CHAR_POSITIONING fixed bin int static init (3) options (constant);
+dcl DELIM_LEN	     fixed bin (21) internal static options (constant) init (8);
 dcl rldr_vtoc_buffer_$write entry (ptr, fixed bin (35));
 dcl hc_backup_$decode_uidpath entry ((0:15) bit (36) aligned, char (*), char (*), fixed bin (35));
 dcl get_group_id_	     entry returns (char (32));
@@ -522,7 +532,7 @@ skip_chars: proc;
 */
 
     nelt = nel;
-    call read (null, nel, nelt, ^DELIMITED, code);
+    call read (recordp, nel, nelt, (backup_volume_record.rec1_type = vtoce_type & backup_volume_record.version > backup_volume_record_version_1), code);
     call check_input_error;
     if entry = get_object & new_volume then goto search_loop;
 
@@ -1005,8 +1015,8 @@ dcl return_string	     char (Nrequested_chars)
 dcl Nassign_chars	     fixed bin (21),
   Nread_chars	     fixed bin (21),
   end_of_record	     fixed bin,
-  tape_check1 /* bit (72) */ char (8),
-  tape_check2 /* bit (72) */ char (8);
+  tape_check1 /* bit (72) */ char (DELIM_LEN),
+  tape_check2 /* bit (72) */ char (DELIM_LEN);
 
     Nreturned_chars, Nread_chars, code = 0;
 
@@ -1016,26 +1026,19 @@ dcl Nassign_chars	     fixed bin (21),
 
 	if Sdelimited & Nreturned_chars = 0 then do;
 	    call iox_$get_chars (rldr_data_.inputvol_iocbp,
-	         addr (tape_check1), length (tape_check1), Nread_chars, code);
+	         addr (tape_check1), DELIM_LEN, Nread_chars, code);
 	    if code ^= 0 then return;
 	  end;
 
-	if return_buffer_ptr = null then do;
-	    call iox_$position (rldr_data_.inputvol_iocbp, FORWARD_CHAR_POSITIONING,
-	         Nrequested_chars - Nreturned_chars, code);
-	    Nreturned_chars = Nreturned_chars + Nrequested_chars;
-	  end;
-	else do;
-	    call iox_$get_chars (rldr_data_.inputvol_iocbp,
-	         addcharno (return_buffer_ptr, Nreturned_chars),
-	         Nrequested_chars - Nreturned_chars, Nread_chars, code);
-	    Nreturned_chars = Nreturned_chars + Nread_chars;
-	  end;
+	call iox_$get_chars (rldr_data_.inputvol_iocbp,
+	     addcharno (return_buffer_ptr, Nreturned_chars),
+	     Nrequested_chars - Nreturned_chars, Nread_chars, code);
+	Nreturned_chars = Nreturned_chars + Nread_chars;
 	if code ^= 0 then return;
 
 	if Sdelimited then do;
 	    call iox_$get_chars (rldr_data_.inputvol_iocbp,
-	         addr (tape_check2), length (tape_check2), Nread_chars, code);
+	         addr (tape_check2), DELIM_LEN, Nread_chars, code);
 	    if code ^= 0 then
 	      return;
 
@@ -1043,9 +1046,9 @@ dcl Nassign_chars	     fixed bin (21),
 						/* found a short segment, move       */
 						/* return string into the temp input */
 						/* buffer and start parsing          */
-	        rldr_data_.input_buffer_len = Nreturned_chars;
-	        substr (input_buffer, 1, rldr_data_.input_buffer_len) =
-		   return_string;
+	        rldr_data_.input_buffer_len = Nreturned_chars + DELIM_LEN;
+	        substr (input_buffer, 1, Nreturned_chars) = return_string;
+	        substr (input_buffer, Nreturned_chars + 1, DELIM_LEN) = tape_check2;
 	      end;
 	  end;
         end;
@@ -1053,12 +1056,12 @@ dcl Nassign_chars	     fixed bin (21),
       else
 	 if Sdelimited then do;
 	tape_check1 = substr (input_buffer,
-	     rldr_data_.input_buffer_start, length (tape_check1));
+	     rldr_data_.input_buffer_start, DELIM_LEN);
 	tape_check2 = "";
 	rldr_data_.input_buffer_start =
-	     rldr_data_.input_buffer_start + length (tape_check1);
+	     rldr_data_.input_buffer_start + DELIM_LEN;
 	rldr_data_.input_buffer_len =
-	     rldr_data_.input_buffer_len - length (tape_check1);
+	     rldr_data_.input_buffer_len - DELIM_LEN;
         end;
 
       if rldr_data_.input_buffer_len > 0 then do;
@@ -1077,9 +1080,8 @@ dcl Nassign_chars	     fixed bin (21),
 	      end;
 	  end;
 
-	if return_buffer_ptr ^= null then
-	  return_string = substr (input_buffer,
-	       rldr_data_.input_buffer_start, Nassign_chars);
+	return_string = substr (input_buffer,
+	     rldr_data_.input_buffer_start, Nassign_chars);
 	Nreturned_chars = Nassign_chars;
 
 	rldr_data_.input_buffer_start =
@@ -1088,12 +1090,13 @@ dcl Nassign_chars	     fixed bin (21),
 	     rldr_data_.input_buffer_len - Nassign_chars;
 
 	if Sdelimited & rldr_data_.input_buffer_len > 0 then do;
-	    rldr_data_.input_buffer_start =
-	         rldr_data_.input_buffer_start + length (tape_check2);
+   	    rldr_data_.input_buffer_start =
+	          rldr_data_.input_buffer_start + DELIM_LEN;
+	    rldr_data_.input_buffer_len =
+	         rldr_data_.input_buffer_len - DELIM_LEN;
 	    substr (input_buffer, 1, rldr_data_.input_buffer_len) =
 	         substr (input_buffer, rldr_data_.input_buffer_start,
-	         rldr_data_.input_buffer_len - length (tape_check2))
-	         || tape_check2;
+	         rldr_data_.input_buffer_len);
 	    rldr_data_.input_buffer_start = 1;
 	  end;
         end;
