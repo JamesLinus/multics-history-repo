@@ -1,8 +1,19 @@
-/* ***********************************************************
-   *                                                         *
-   * Copyright, (C) Honeywell Information Systems Inc., 1985 *
-   *                                                         *
-   *********************************************************** */
+/****^  ***********************************************************
+        *                                                         *
+        * Copyright, (C) BULL HN Information Systems Inc., 1991   *
+        *                                                         *
+        * Copyright, (C) Honeywell Information Systems Inc., 1985 *
+        *                                                         *
+        *********************************************************** */
+
+
+
+/****^  HISTORY COMMENTS:
+  1) change(91-03-11,Vu), approve(91-03-11,MCR8242), audit(91-12-06,Zimmerman),
+     install(91-12-12,MR12.5-1008):
+     Confusing error message for the command send_daemon_command
+                                                   END HISTORY COMMENTS */
+
 
 /* format: style2 */
 
@@ -17,9 +28,7 @@ send_daemon_command:
 
 	dcl     com_err_		 entry () options (variable);
 	dcl     com_err_$suppress_name entry () options (variable);
-	dcl     command_query_$yes_no	 entry () options (variable);
 	dcl     cu_$arg_list_ptr	 entry returns (ptr);
-	dcl     requote_string_	 entry (character (*)) returns (character (*));
 	dcl     ssu_$abort_line	 entry () options (variable);
 	dcl     ssu_$standalone_invocation
 				 entry (ptr, char (*), char (*), ptr, entry, fixed bin (35));
@@ -27,9 +36,6 @@ send_daemon_command:
 				 entry (ptr);
 	dcl     ssu_$arg_ptr	 entry (ptr, fixed bin, ptr, fixed bin (21));
 	dcl     ssu_$arg_count	 entry (ptr, fixed bin);
-
-	dcl     ioa_		 entry () options (variable);
-	dcl     ioa_$nnl		 entry () options (variable);
 
 	dcl     send_as_request_$block entry (pointer, fixed binary, bit (72) aligned, bit (72) aligned,
 				 fixed binary (35));
@@ -42,7 +48,6 @@ send_daemon_command:
 	dcl     argx		 fixed bin;
 	dcl     arg_count		 fixed bin;
 	dcl     first_request_argument fixed bin;
-	dcl     login_seen		 bit (1) aligned;
 	dcl     reply_bits		 bit (72) aligned;
 	dcl     sci_ptr		 pointer;
 	dcl     stringx		 fixed bin (21);
@@ -51,7 +56,6 @@ send_daemon_command:
 	dcl     a_action		 fixed bin;
 	dcl     a_source_name	 char (32);
 	dcl     a_user_name		 char (32);
-	dcl     a_person_name	 char (32);
 	dcl     a_project_name	 char (32);
 	dcl     1 flags		 aligned,
 		2 brief		 bit;
@@ -63,7 +67,13 @@ send_daemon_command:
 
 /* Builtin */
 
-	dcl     unspec		 builtin;
+          dcl     addr                   builtin;
+          dcl     after                  builtin;
+          dcl     before                 builtin;
+          dcl     byte                   builtin;
+          dcl     currentsize            builtin;
+          dcl     index                  builtin;
+          dcl     max                    builtin;
 	dcl     null		 builtin;
 	dcl     substr		 builtin;
 
@@ -162,8 +172,8 @@ send_daemon_command:
 		     a_project_name = after (argument, ".");
 		     if a_user_name = "" | a_project_name = "" | index (a_user_name, ".") > 0
 			| index (a_project_name, ".") > 0
-		     then call ssu_$abort_line (sci_ptr, error_table_$noarg,
-			     "User.Project must be specified for ""login"" keyword.");
+		     then call ssu_$abort_line (sci_ptr, error_table_$badopt,
+			     "^/Usage: ^a login channel User.Project", ME);
 /**** The Personid.Projectid argument did not really count as a request
       argument.  Update things to reflect this. */
 
@@ -272,3 +282,6 @@ clean_up:
 %page; %include as_request_header;
 
      end send_daemon_command;
+
+
+
