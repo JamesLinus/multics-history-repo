@@ -20,6 +20,9 @@
      audit(88-03-03,Fawcett), install(88-03-15,MR12.2-1035):
      Changed early setting of sys_info$time_zone and constant to a default
      setting from the MST in sys_boot_info$default_time_zone and constant.
+  3) change(2015-11-26,Swenson), approve(2015-11-26,MCR10001):
+     Updated to warn, not crash, on startup if clock appears fast or slow, due to
+     emulator speed inconsistencies.
                                                    END HISTORY COMMENTS */
 
 
@@ -58,6 +61,7 @@ scs_and_clock_init:
 	dcl     interlace		 fixed bin (3);	/* memory interlace type */
 	dcl     lang_index		 fixed bin;	/* for looking up time zone */
 	dcl     malfunction		 char (40) varying; /* A complaint about the clock */
+          dcl     malfunction_syserr     fixed bin;         /* Whether to crash on clock malfunction */
 	dcl     max_scu		 fixed bin;	/* max number of SCUs - 1 -- depends on sys type */
 	dcl     new_scas_sdw	 fixed bin (71);
 	dcl     old_scas_sdw	 fixed bin (71);
@@ -271,10 +275,17 @@ FOUND_LOW_SCU:
 		time_later = clock ();
 
 		malfunction = "";			/* Figure out what to say about it */
+		malfunction_syserr = ANNOUNCE;	/* Assume no crash */
 		if time_later < time_now
-		then malfunction = "is running backwards!";
+		then do;
+		     malfunction = "is running backwards!";
+		     malfunction_syserr = CRASH;
+		end;
 		else if time_later = time_now
-		then malfunction = "is stopped.";
+		then do;
+		     malfunction = "is stopped.";
+		     malfunction_syserr = CRASH;
+		end;
 		else if time_later < (time_now + 10)
 		then /* Must take at least ten microseconds */
 		     malfunction = "is running too slowly.";
@@ -283,7 +294,7 @@ FOUND_LOW_SCU:
 		     malfunction = "is running too fast.";
 
 		if length (malfunction) > 0
-		then call syserr (CRASH, "^a: SCU clock on port ^o ^a.", WHOAMI, scs$interrupt_controller,
+		then call syserr (malfunction_syserr, "^a: SCU clock on port ^o ^a.", WHOAMI, scs$interrupt_controller,
 			malfunction);
 	     end;
 
@@ -358,7 +369,7 @@ and address switches.
 Message:
 scs_and_clock_init: SCU clock on port NUMBER MALFUNCTION.
 
-S:        $crash
+S:        $info
 
 T:        $init
 
@@ -400,3 +411,6 @@ time_info_.
 END MESSAGE DOCUMENTATION */
 
      end scs_and_clock_init;
+
+
+
