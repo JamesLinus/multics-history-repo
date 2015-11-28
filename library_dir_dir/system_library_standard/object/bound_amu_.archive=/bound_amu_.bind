@@ -1,0 +1,39 @@
+
+/* bind file for amu */
+/* Modified 09/16/83 by B. Braun */
+/* Modified 10/01/84 by B. Braun */
+
+Objectname:	bound_amu_;
+Addname:		amu_,amu_et_;
+
+Global:		retain;
+
+objectname:	amu_;
+objectname:	amu_et_;
+objectname:	amu_slt_search_;
+objectname:	amu_check_info_;
+objectname:	amu_definition_;
+objectname:	amu_do_translation_;
+objectname:	amu_error_;
+objectname:	amu_fdump_mgr_;
+objectname:	amu_fdump_mpt_;
+objectname:	amu_fdump_translate_;
+objectname:	amu_hardcore_info_;
+objectname:	amu_info_;
+objectname:	amu_kst_util_;
+objectname:	amu_print_;
+objectname:	amu_replace_trans_;
+objectname:	amu_return_val_;
+objectname:	amu_search_path_;
+objectname:	amu_search_seg_;
+objectname:	amu_tc_data_;
+objectname:	amu_temp_seg_;
+objectname:	amu_translate_;
+objectname:	arg_assign_;
+objectname:	amu_print_text_;
+objectname:	amu_deadproc_;
+objectname:	amu_get_name_;
+objectname:	amu_parse_ptr_args_;
+objectname:	amu_find_system_dump_;
+
+/* end bind file */

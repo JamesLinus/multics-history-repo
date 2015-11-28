@@ -1,0 +1,103 @@
+
+
+/* HISTORY COMMENTS:
+  1) change(86-10-17,Margolin), approve(), audit(),
+     install(86-10-30,MR12.0-1203):
+     Pre-hcom comments:
+     created by M J Grady 8 September 1972
+     modified by C. L. Wong July 20, 1973
+     modified by John Gintell  Aug 1977
+     Modified by T. Casey, October 1979, for MR8.0, to support process preservation across hangups.
+     modified by John Gintell April 1981 to add name das
+     modified BIM 1/82 to remove install -- it is going to bound_install_table_
+     modified 10 Feb 1984 J A Falksen move datebin_ to bound_time_rtns_
+  2) change(86-10-17,Margolin), approve(86-10-17,MCR7549),
+     audit(86-10-21,Lippard), install(86-10-30,MR12.0-1203):
+     Removed get_temp_seg_ (it has been moved to bound_teco_).
+                                                   END HISTORY COMMENTS */
+
+
+Objectname:	bound_proj_admin_;
+ Global:		delete;
+
+Order:		proj_usage_report,
+		flt_bin_sort_,
+		idsort_,
+		cv_pmf,
+		lex_string_,
+		lex_error_,
+		translator_temp_,
+		print_pdt,
+		display_account_status,
+		not_ascii_,
+		adjust_cutoff_,
+                    format_attributes_,
+		pdt_counter_check;
+
+ Addname:		proj_usage_report, pur,
+		flt_bin_sort_,
+		idsort_,
+		cv_pmf,
+		lex_string_,
+		lex_error_,
+		translator_temp_,
+		print_pdt,
+		display_account_status, das,
+		lookup_attribute_,
+		not_ascii_,
+		adjust_cutoff_,
+                    format_attributes_,
+		pdt_counter_check;
+
+objectname:	proj_usage_report;
+ retain:		proj_usage_report,
+		pur;
+
+objectname:	flt_bin_sort_;
+ retain:		flt_bin_sort_;
+
+objectname:	idsort_;
+ retain:		idsort_;
+
+objectname:	cv_pmf;
+ retain:		cv_pmf;
+
+objectname:	lex_string_;
+ retain:		init_lex_delims,
+		lex;
+
+objectname:	lex_error_;
+ retain:		lex_error_;
+
+objectname:	translator_temp_;
+ retain:		allocate,
+		get_segment,
+		get_next_segment,
+		release_segment,
+		release_all_segments;
+
+objectname:	print_pdt;
+ retain:		print_pdt;
+
+objectname:	display_account_status;
+retain:		display_account_status,
+                    das;
+
+objectname:	not_ascii_;
+ retain:		not_ascii_;
+
+objectname:	adjust_cutoff_;
+ retain:		adjust_cutoff_;
+
+objectname:         format_attributes_;
+ synonym:		lookup_attribute_;
+ retain:            format_attributes_, lookup_attribute_;
+
+objectname:	pdt_counter_check;
+ retain:		pdt_counter_check;
+
+
+/*  end */
+
+
+
