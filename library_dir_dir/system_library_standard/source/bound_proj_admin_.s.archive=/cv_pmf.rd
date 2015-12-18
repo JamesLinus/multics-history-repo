@@ -540,8 +540,7 @@ dcl  ON fixed bin initial (0) internal static;
 dcl  OFF fixed bin initial (1) internal static;
 dcl  first bit (1) initial ("1"b) internal static;
 dcl  BIGFLO float bin init (1e37) internal static;
-dcl  NEVER fixed bin (71) init			/* This date is 12/31/99 2359. */
-	(1011000110010110011001001110100110111010100100000000b) internal static; /* .. if Multics last this long we will have to fix */
+dcl  NEVER fixed bin (71) init (4418064000000000) static options (constant);
 dcl  LEGAL char (70) aligned init
 	("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'_-^`~ ") internal static;
 dcl  my_name char (6) initial ("cv_pmf") internal static;

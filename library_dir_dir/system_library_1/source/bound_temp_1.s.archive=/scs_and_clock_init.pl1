@@ -293,9 +293,11 @@ FOUND_LOW_SCU:
 		then /* And not more than 1000 */
 		     malfunction = "is running too fast.";
 
+/*
 		if length (malfunction) > 0
 		then call syserr (malfunction_syserr, "^a: SCU clock on port ^o ^a.", WHOAMI, scs$interrupt_controller,
 			malfunction);
+*/
 	     end;
 
 /* Set up the clock with default data.  The correct time zone gets set later. */
@@ -411,6 +413,3 @@ time_info_.
 END MESSAGE DOCUMENTATION */
 
      end scs_and_clock_init;
-
-
-
