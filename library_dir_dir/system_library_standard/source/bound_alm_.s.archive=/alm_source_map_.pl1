@@ -16,6 +16,9 @@
   1) change(87-04-28,JRGray), approve(87-07-03,MCR7689),
      audit(87-07-09,RWaters), install(87-11-02,MR12.2-1001):
      Updated to use the latest source_info structure (alm 19).
+  2) change(2016-01-05,Swenson), approve(2016-01-05,MCR10002):
+     Fixed ALM buffer overrun error (ticket #89) that occurs on long source
+     pathnames.
                                                    END HISTORY COMMENTS */
 
 
@@ -115,7 +118,7 @@ alm_source_map_$put_out_map: entry (ispc);
 
 	temp = include_name_list_base;
 	do while (temp ^= null ());
-		acc_temp.count = bit (fixed (min (temp -> source_info.source_map_length, 68), 9));
+		acc_temp.count = bit (fixed (min (temp -> source_info.source_map_length, 680), 9));
 		acc_temp.string = temp -> source_info.pathname;
 		call prnam_$prnam_ (addr (acc_temp));
 		call putout_$putblk (ispc, addr (temp -> source_info.pathname), i66, divide (temp -> source_info.source_map_length + 3, 4, 26, 0), null ());
@@ -123,3 +126,6 @@ alm_source_map_$put_out_map: entry (ispc);
 		end;
 
 	end;
+
+
+

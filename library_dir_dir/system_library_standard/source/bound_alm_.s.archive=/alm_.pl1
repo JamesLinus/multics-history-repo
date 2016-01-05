@@ -13,6 +13,9 @@
   2) change(86-11-24,JRGray), approve(86-11-24,MCR7507),
      audit(86-11-25,RWaters), install(86-11-26,MR12.0-1228):
      Changed (PBF) to properly return error_codes for various error conditions.
+  3) change(2016-01-05,Swenson), approve(2016-01-05,MCR10002):
+     Fixed ALM buffer overrun error (ticket #89) that occurs on long source
+     pathnames.
                                                    END HISTORY COMMENTS */
 
 alm_:	proc(ALM_INFO_PTR, ALM_ARGS_PTR, severity, code);
@@ -86,7 +89,7 @@ dcl	eb_data_$lavptr ptr ext;	/* ptr to ALM's scratch segment of list structures 
 dcl	eb_data_$list_component external fixed bin;
 dcl	eb_data_$listing_max_length fixed bin(19) ext;
 dcl	eb_data_$mexp_argno fixed bin ext;
-dcl	1 eb_data_$oulst external, 2 oulst char(68) aligned;
+dcl	1 eb_data_$oulst external, 2 oulst char(680) aligned;
 dcl	eb_data_$per_process_static_sw fixed bin ext;
 dcl	eb_data_$varcom_size external fixed bin(17);
 dcl	eb_data_$who_am_I char(12) external;
@@ -279,7 +282,7 @@ on        cleanup call cleanup_handler;
 
 	tpass2 = 0;
 	tpostp = 1;
-	source = addr(oulst); begin_line = 1; srclen = 68;	/*fudge the source pointer for prnam*/
+	source = addr(oulst); begin_line = 1; srclen = 680;	/*fudge the source pointer for prnam*/
 	call postp2_$postp2_;
 
 	tpostp = 0;
@@ -333,3 +336,6 @@ dcl	message char(*);
 end complain;
 
 end alm_;
+
+
+

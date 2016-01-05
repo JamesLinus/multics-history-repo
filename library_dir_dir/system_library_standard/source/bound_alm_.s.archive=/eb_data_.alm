@@ -14,6 +14,9 @@
 "     audit(86-10-27,RWaters), install(86-11-12,MR12.0-1202):
 "     Modified to allow for *heap links, joining to definition section,
 "     and to store the list_component number.
+"  2) change(2016-01-05,Swenson), approve(2016-01-05,MCR10002):
+"     Fixed ALM buffer overrun error (ticket #89) that occurs on long source
+"     pathnames.
 "                                                      END HISTORY COMMENTS
 
 
@@ -861,7 +864,7 @@ curlc:	null
 	bss	clruc,1
 
 	segdef	oulst
-oulst:	bss	oulst,17
+oulst:	bss	oulst,170
 
 	use	impure
 	use	impure
