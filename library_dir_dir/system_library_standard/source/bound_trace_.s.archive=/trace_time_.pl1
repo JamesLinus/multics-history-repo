@@ -4,6 +4,12 @@
    *                                                         *
    *********************************************************** */
 
+
+/****^  HISTORY COMMENTS:
+  1) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
+                                                   END HISTORY COMMENTS */
+
 /*
    This program is called by trace_print_ to get a formatted clock reading.
    The format is HH:MM:SS.FFF.
@@ -50,7 +56,7 @@ trace_time_:
 
     dcl  code			 fixed bin (35);
     dcl  dec3			 fixed dec (3) aligned;
-    dcl  zone			 char (3);
+    dcl  zone			 char (4);
 
     dcl  1 de			 aligned,		/* Read de as decoded.			*/
 	 2 month			 fixed bin,
@@ -86,7 +92,7 @@ trace_time_:
 
 /* External Entries */
 
-    dcl  decode_clock_value_$date_time	 entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin (71), fixed bin, char (3), fixed bin (35));
+    dcl  decode_clock_value_$date_time	 entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin (71), fixed bin, char (4), fixed bin (35));
 
 
 /* format: insnl,delnl */

@@ -9,7 +9,7 @@
 
 
 /****^  HISTORY COMMENTS:
-  1) change(83-07-01,Palter), approve(), audit(), install():
+  1) change(1983-07-01,Palter), approve(), audit(), install():
      Pre-hcom comments:
      Created:  July 1983 by G. Palter from mlsys_cv_old_r1_msg_ and mlsys_parse_
      Modified: March 1984 by G. Palter to fix the following mail system errors:
@@ -28,13 +28,15 @@
               (eg: mail_system_$replace_from, mail_system_$replace_user_field) should not make the user's copy of the address
               list read-only.  Instead, they should copy the user's list to allow the user to continue to modify the list if
               desired for later additional use
-  2) change(87-04-09,Lippard), approve(86-11-24,MCR7576),
-     audit(87-04-21,Dickson), install(87-04-26,MR12.1-1026):
+  2) change(1987-04-09,Lippard), approve(1986-11-24,MCR7576),
+     audit(1987-04-21,Dickson), install(1987-04-26,MR12.1-1026):
      Modified to use time_names.incl.pl1 instead of time_zones_.incl.pl1.
-  3) change(88-05-16,Blair), approve(88-05-16,MCR7842),
-     audit(88-06-30,Lippard), install(88-07-26,MR12.2-1069):
+  3) change(1988-05-16,Blair), approve(1988-05-16,MCR7842),
+     audit(1988-06-30,Lippard), install(1988-07-26,MR12.2-1069):
      Update parse_address to use the new search path mechanism so that
      unexpanded mailbox pathnames of the form {keyword PATH} can be located.
+  4) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
                                                    END HISTORY COMMENTS */
 
 
@@ -223,7 +225,7 @@ dcl  cu_$shrink_stack_frame entry (pointer, fixed binary (35));
 dcl  cv_dec_check_ entry (character (*), fixed binary (35)) returns (fixed binary (35));
 dcl  encode_clock_value_
 	entry (fixed binary, fixed binary, fixed binary, fixed binary, fixed binary, fixed binary, fixed binary (71),
-	fixed binary, character (3), fixed binary (71), fixed binary (35));
+	fixed binary, character (4), fixed binary (71), fixed binary (35));
 dcl  expand_pathname_ entry (character (*), character (*), character (*), fixed binary (35));
 dcl  expand_pathname_$add_suffix entry (character (*), character (*), character (*), character (*), fixed binary (35));
 dcl  expand_pathname_$component_add_suffix
@@ -3954,7 +3956,7 @@ dcl  p_code fixed binary (35) parameter;
 
 dcl  date_time fixed binary (71);
 
-dcl  zone_name character (3);
+dcl  zone_name character (4);
 dcl  zone_offset fixed binary (71);
 dcl  (recognized_zone, standard_multics_zone, negative_offset) bit (1) aligned;
 
@@ -4089,7 +4091,7 @@ dcl  (day_of_week, day_of_month, month, year, hour, minute, second, hour_offset,
 
 	if current.type = WORD_TOKEN then do;		/* must be a time zone */
 TRY_AS_TIME_ZONE_NAME:
-	     if current.token_lth > 3 then		/* ... too long to be a time zone name */
+	     if current.token_lth > 4 then		/* ... too long to be a time zone name */
 		go to TRY_CONVERT_DATE_TO_BINARY;
 	     zone_name = translate (current_token, UPPERCASE, LOWERCASE);
 	     recognized_zone, standard_multics_zone = "0"b;
@@ -5064,3 +5066,6 @@ dcl  (p_date_time_1, p_date_time_2) fixed binary (71) parameter;
 %include mlsys_special_chars;
 
      end mlsys_parse_text_;
+
+
+

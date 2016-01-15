@@ -8,6 +8,12 @@
    *********************************************************** */
 
 
+
+/****^  HISTORY COMMENTS:
+  1) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
+                                                   END HISTORY COMMENTS */
+
 datebin_:
      procedure (Clock, Absda, Mo, Da, Yr, Hr, Min, Sec, Wkday, S) options (separate_static);
 
@@ -44,15 +50,15 @@ dcl (Shift1, Shift2, Dayr_clk) fixed bin,		/* parameters */
 dcl sub_err_ entry options (variable);
 dcl decode_clock_value_$all
          entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin (71),
-         fixed bin, char (3), fixed bin, fixed bin, fixed bin (35));
+         fixed bin, char (4), fixed bin, fixed bin, fixed bin (35));
 dcl encode_clock_value_
-         entry (fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin (71), fixed bin, char (3),
+         entry (fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin (71), fixed bin, char (4),
          fixed bin (71), fixed bin (35));
 dcl encode_clock_value_$offsets
          entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin (71),
-         fixed bin, char (3), fixed bin (71), fixed bin (35));
+         fixed bin, char (4), fixed bin (71), fixed bin (35));
 dcl hcs_$initiate entry (char (*), char (*), char (*), fixed bin, fixed bin, ptr, fixed bin (35));
-dcl sys_info$time_zone ext char (3);
+dcl sys_info$time_zone ext char (4);
 
 dcl (ip, whoptr) ptr int static init (null);
 dcl sysdir char (168) int static init (">system_control_dir");
@@ -401,3 +407,6 @@ dcl test_sysdir char (*);
 %include whotab;
 
      end datebin_;
+
+
+

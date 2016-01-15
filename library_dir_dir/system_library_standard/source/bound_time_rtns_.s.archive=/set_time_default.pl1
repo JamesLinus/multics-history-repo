@@ -76,9 +76,11 @@ std: set_time_default: set_time_defaults: proc;
 
 
 /****^  HISTORY COMMENTS:
-  1) change(86-07-18,GDixon), approve(86-07-25,MCR7495),
-     audit(86-07-25,Martinson), install(86-08-19,MR12.0-1120):
+  1) change(1986-07-18,GDixon), approve(1986-07-25,MCR7495),
+     audit(1986-07-25,Martinson), install(1986-08-19,MR12.0-1120):
      Add the debug keyword, with values of "off" or "on".
+  2) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
                                                    END HISTORY COMMENTS */
 
 
@@ -671,7 +673,7 @@ dcl ret		char (ret_l) var based (ret_p);
 dcl ret_l		fixed bin (21);
 dcl ret_p		ptr;
 dcl ret_temp	char (128)var;
-dcl sys_info$time_zone  char (3) aligned ext static;
+dcl sys_info$time_zone  char (4) aligned ext static;
 dcl sys_sw	bit (1);
 dcl value		char (64)var;
 dcl zone_index	fixed bin;

@@ -14,15 +14,17 @@ adjust_cutoff_:
 /* ADJUST_CUTOFF_ - program to fix up absolute cutoff. */
 
 /****^  HISTORY COMMENTS:
-  1) change(86-02-01,Gilcrease), approve(86-03-27,MCR7369),
-     audit(86-06-20,LJAdams), install(86-06-30,MR12.0-1081):
+  1) change(1986-02-01,Gilcrease), approve(1986-03-27,MCR7369),
+     audit(1986-06-20,LJAdams), install(1986-06-30,MR12.0-1081):
      Dummy hcom for first comment. Modified 750702 by PG to correct operation
      when called more than once with same time.
-  2) change(86-03-27,Gilcrease), approve(86-03-27,MCR7369),
-     audit(86-06-20,LJAdams), install(86-06-30,MR12.0-1081):
+  2) change(1986-03-27,Gilcrease), approve(1986-03-27,MCR7369),
+     audit(1986-06-20,LJAdams), install(1986-06-30,MR12.0-1081):
         Add increment of one week for weekly cutoffs SCP 6250.
-  3) change(99-06-23,Haggett):
+  3) change(1999-06-23,Haggett):
      Y2K
+  4) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
                                                    END HISTORY COMMENTS */
 
 
@@ -37,7 +39,7 @@ dcl (pdtep, pdtp) ptr,
     (mm, dd, yy) fixed bin,
      time_of_day fixed bin (71),			/* placeholder only */
      day_of_week fixed bin,				/* .. */
-     time_zone char (3) aligned,			/* .. */
+     time_zone char (4) aligned,			/* .. */
      time_now fixed bin (71);
 
 /* internal static */
@@ -51,7 +53,7 @@ dcl (static_mm, static_dd, static_yy) fixed bin int static,
 /* entries */
 
 dcl  decode_clock_value_ entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin (71),
-     fixed bin, char (3) aligned),
+     fixed bin, char (4) aligned),
      datebin_$revert entry (fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin (71));
 
 /* include files */

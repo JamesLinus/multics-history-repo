@@ -11,11 +11,11 @@
 
 
 /****^  HISTORY COMMENTS:
-  1) change(86-07-11,Rauschelbach), approve(86-07-11,MCR7450),
-     audit(86-08-05,GJohnson), install(86-08-08,MR12.0-1122):
+  1) change(1986-07-11,Rauschelbach), approve(1986-07-11,MCR7450),
+     audit(1986-08-05,GJohnson), install(1986-08-08,MR12.0-1122):
      Changed argument processing to accept short name -dft for -default.
-  2) change(86-07-15,Rauschelbach), approve(86-07-15,MCR7472),
-     audit(86-08-05,GJohnson), install(86-08-08,MR12.0-1122):
+  2) change(1986-07-15,Rauschelbach), approve(1986-07-15,MCR7472),
+     audit(1986-08-05,GJohnson), install(1986-08-08,MR12.0-1122):
      Write access checking and error handling were changed to fix an endless
      loop.  Argument processing was changed to handle null or zero secondary
      arguments.  The expiration_string variable was changed to a based type to
@@ -24,13 +24,15 @@
      static_project>static_person. Non error messages were changed to use ioa_
      instead of com_err_. Moved and added initialized of variables to
      initialize_memo.
-  3) change(86-08-25,Lippard), approve(86-07-15,PBF7472),
-     audit(86-09-10,GWMay), install(86-09-11,MR12.0-1152):
+  3) change(1986-08-25,Lippard), approve(1986-07-15,PBF7472),
+     audit(1986-09-10,GWMay), install(1986-09-11,MR12.0-1152):
      Fix bug with checking write access.
-  4) change(88-09-20,Flegel), approve(88-12-07,MCR8021), audit(88-12-14,Lee),
-     install(89-01-23,MR12.3-1010):
+  4) change(1988-09-20,Flegel), approve(1988-12-07,MCR8021),
+     audit(1988-12-14,Lee), install(1989-01-23,MR12.3-1010):
      phx21142 - included "-match" in the option_count calculation so that an
                      action_arg is required.
+  5) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
                                                    END HISTORY COMMENTS */
 
 
@@ -57,7 +59,7 @@ dcl  temp1 fixed bin;
 dcl  idx fixed bin;
 dcl  temp_date fixed bin (71);
 dcl (month_value, day_of_month, year_value) fixed bin;
-dcl  zone_value char (3) aligned;
+dcl  zone_value char (4) aligned;
 dcl  fs_mode fixed bin (5);
 
 
@@ -135,9 +137,9 @@ dcl  cu_$arg_list_ptr entry (ptr);
 dcl  cu_$af_return_arg_rel entry (fixed bin, ptr, fixed bin(21), fixed bin(35), ptr);
 dcl  cu_$arg_ptr_rel entry (fixed bin, ptr, fixed bin(21), fixed bin(35), ptr);
 dcl  decode_clock_value_ entry (fixed bin (71), fixed bin, fixed bin, fixed bin,
-     fixed bin (71), fixed bin, char (3) aligned);
+     fixed bin (71), fixed bin, char (4) aligned);
 dcl  encode_clock_value_ entry (fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin,
-     fixed bin (71), fixed bin, char (3) aligned, fixed bin (71), fixed bin (35));
+     fixed bin (71), fixed bin, char (4) aligned, fixed bin (71), fixed bin (35));
 dcl  expand_pathname_$add_suffix entry (char (*), char (*), char (*), char (*), fixed bin (35));
 dcl  hcs_$fs_get_mode entry (pointer, fixed bin (5), fixed bin (35));
 dcl  hcs_$get_uid_seg entry (pointer, bit (36) aligned, fixed bin (35));

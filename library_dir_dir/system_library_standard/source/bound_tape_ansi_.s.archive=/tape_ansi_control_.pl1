@@ -11,6 +11,12 @@
 
 
 
+
+/****^  HISTORY COMMENTS:
+  1) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
+                                                   END HISTORY COMMENTS */
+
 tape_ansi_control_: procedure (iocbP, order, infoP, code);	/* performs iox_$control function for tape_ansi_ */
 
 
@@ -626,9 +632,9 @@ cv_date: proc (julian) returns (char (10) aligned);
 	        code		 fixed bin (35);
 
 	dcl     decode_clock_value_$date_time entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin, fixed bin,
-				 fixed bin, fixed bin (71), fixed bin, char (3), fixed bin (35)),
+				 fixed bin, fixed bin (71), fixed bin, char (4), fixed bin (35)),
 	        encode_clock_value_$offsets entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin, fixed bin,
-				 fixed bin, fixed bin (71), fixed bin, char (3), fixed bin (71), fixed bin (35));
+				 fixed bin, fixed bin (71), fixed bin, char (4), fixed bin (71), fixed bin (35));
 
 	year = convert (year, substr (julian, 1, 2));
 	day = convert (day, substr (julian, 3, 3));

@@ -5,8 +5,10 @@
    *********************************************************** */
 
 /****^  HISTORY COMMENTS:
-  1) change(99-06-23,Haggett):
+  1) change(1999-06-23,Haggett):
      Y2K
+  2) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
                                                    END HISTORY COMMENTS */
 
 amu_print_: proc;
@@ -41,7 +43,7 @@ dcl  amu_$return_val_idx_from_dbr entry (ptr, fixed bin (24)) returns (fixed bin
 dcl  convert_status_code_	entry (fixed bin(35), char(8) aligned, char(100) aligned);
 dcl  get_line_length_$switch entry (ptr, fixed bin (35)) returns (fixed bin);
 dcl  decode_clock_value_$date_time	entry (fixed bin(71), fixed bin, fixed bin, fixed bin, fixed bin,
-				     fixed bin, fixed bin, fixed bin(71), fixed bin, char(3),
+				     fixed bin, fixed bin, fixed bin(71), fixed bin, char(4),
 				     fixed bin(35));
 dcl  (
      ioa_,
@@ -99,7 +101,7 @@ dcl  w (0:7) fixed bin based (pp);
 dcl  wait_type char (40) var;
 dcl  year fixed bin;
 dcl  yr_char char(10);
-dcl  zone char(3);
+dcl  zone char(4);
 
 /* Based */
 
@@ -491,6 +493,3 @@ dcl  last_ascii char (1) aligned internal static options (constant) initial (""
 %include iocb;
 
      end amu_print_;
-
-
-

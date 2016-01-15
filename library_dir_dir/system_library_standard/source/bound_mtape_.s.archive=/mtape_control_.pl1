@@ -3,6 +3,12 @@
    * Copyright, (C) Honeywell Information Systems Inc., 1983 *
    *                                                         *
    *********************************************************** */
+
+/****^  HISTORY COMMENTS:
+  1) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
+                                                   END HISTORY COMMENTS */
+
 mtape_control_: procedure;
 
 /* format: style4 */
@@ -596,9 +602,9 @@ dcl  clock fixed bin (71),
      code fixed bin (35);
 
 dcl  decode_clock_value_$date_time entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin, fixed bin,
-	fixed bin, fixed bin (71), fixed bin, char (3), fixed bin (35)),
+	fixed bin, fixed bin (71), fixed bin, char (4), fixed bin (35)),
      encode_clock_value_$offsets entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin, fixed bin,
-	fixed bin, fixed bin (71), fixed bin, char (3), fixed bin (71), fixed bin (35));
+	fixed bin, fixed bin (71), fixed bin, char (4), fixed bin (71), fixed bin (35));
 
 	year = convert (year, substr (julian, 2, 2));
 	day = convert (day, substr (julian, 4, 3));

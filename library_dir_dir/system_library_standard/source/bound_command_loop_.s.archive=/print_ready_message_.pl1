@@ -8,6 +8,12 @@
    *********************************************************** */
 
 
+
+/****^  HISTORY COMMENTS:
+  1) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
+                                                   END HISTORY COMMENTS */
+
 /* format: style4,delnl,insnl,ifthenstmt,indnoniterend */
 print_ready_message_:
      procedure (flags) options (separate_static);
@@ -53,7 +59,7 @@ dcl  iox_$user_output ptr ext;
 dcl  (addr, addrel, clock, length, ltrim, string) builtin;
 
 dcl  decode_clock_value_$time
-	entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin (71), char (3), fixed bin (35));
+	entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin (71), char (4), fixed bin (35));
 dcl  hcs_$get_process_usage entry (ptr, fixed bin (35));
 dcl  iox_$put_chars entry (ptr, ptr, fixed bin, fixed bin (35));
 dcl  listen_$get_level entry (fixed bin, fixed bin);

@@ -10,12 +10,14 @@
 
 
 /****^  HISTORY COMMENTS:
-  1) change(89-04-06,Vu), approve(89-04-06,MCR8095), audit(89-04-25,Lee),
-     install(89-05-10,MR12.3-1040):
+  1) change(1989-04-06,Vu), approve(1989-04-06,MCR8095), audit(1989-04-25,Lee),
+     install(1989-05-10,MR12.3-1040):
      - output modes are returned even if the input modes string contains only
        audit modes (ie. audit_input).
      - The following builtin functions: after, before, empty, max, rtrim are
        now declared explicitly.
+  2) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
                                                    END HISTORY COMMENTS */
 
 
@@ -139,7 +141,7 @@ audit_attach:
       dcl	    get_temp_segment_      entry (char (*), ptr, fixed bin (35));
       dcl	    release_temp_segment_  entry (char (*), ptr, fixed bin (35));
       dcl	    decode_clock_value_    entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin (71), fixed bin,
-			       char (3) aligned);
+			       char (4) aligned);
       dcl	    audit_editor	       entry (ptr, fixed bin (21), fixed bin (21), ptr, fixed bin (35));
       dcl	    audit_editor$set_last_return_line_position
 			       entry (ptr);
@@ -1341,7 +1343,7 @@ insert:
       dcl	    day		       fixed bin;
       dcl	    year		       fixed bin;
       dcl	    dow		       fixed bin;
-      dcl	    zone		       char (3) aligned;
+      dcl	    zone		       char (4) aligned;
       dcl	    file_char_array	       (0:sys_info$max_seg_size * 4) char (1) unaligned based (blk.audit_ptr);
       position.aep = addr (file_char_array (audit_file_header.audit_index));
 

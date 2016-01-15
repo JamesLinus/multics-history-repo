@@ -9,22 +9,24 @@
 
 
 /****^  HISTORY COMMENTS:
-  1) change(88-09-13,Blair), approve(88-09-13,MCR7990), audit(88-09-21,Dupuis),
-     install(88-09-26,MR12.2-1121):
+  1) change(1988-09-13,Blair), approve(1988-09-13,MCR7990),
+     audit(1988-09-21,Dupuis), install(1988-09-26,MR12.2-1121):
      Change mail_table_priv_$salvage to unlock the original mail-table before
      it is closed and to base the like header for the new table on its ptr.
      Mail error_list #510.
-  2) change(88-12-14,Parisek), approve(89-01-11,MCR8044),
-     audit(89-01-16,Farley), install(89-01-19,MR12.3-1006):
+  2) change(1988-12-14,Parisek), approve(1989-01-11,MCR8044),
+     audit(1989-01-16,Farley), install(1989-01-19,MR12.3-1006):
      Added the get_name_by_index non privileged entry for returning the
      mail-table name based on an index into the mail-table.  Useful for
      scanning the mail-table while matching starnames (ie, dsmla <starname>).
-  3) change(89-08-02,Lee), approve(89-08-22,MCR8128),
-     audit(89-09-25,LZimmerman), install(89-10-02,MR12.3-1079):
+  3) change(1989-08-02,Lee), approve(1989-08-22,MCR8128),
+     audit(1989-09-25,LZimmerman), install(1989-10-02,MR12.3-1079):
      phx20967 (Mail 445) - added entry delete_alias_case_ins to allow the
      update_mail_table_entry command to delete alias entries
      case-insensitively; phx17774, phx21076 (Mail 445) - modified
      mail_table_mgr_$put to search for entries case-insensitively.
+  4) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
                                                    END HISTORY COMMENTS */
 
 
@@ -129,7 +131,7 @@ mail_table_mgr_:
 	        )			entry (fixed bin);
 	dcl     decode_clock_value_$date_time
 				entry (fixed bin (71), fixed bin, fixed bin, fixed bin (35), fixed bin, fixed bin,
-				fixed bin (35), fixed bin (35), fixed bin (35), char (3), fixed bin (35));
+				fixed bin (35), fixed bin (35), fixed bin (35), char (4), fixed bin (35));
 	dcl     get_ring_		entry () returns (fixed bin (3));
 	dcl     hcs_$chname_file	entry (char (*), char (*), char (*), char (*), fixed bin (35));
 	dcl     ms_table_mgr_$close	entry (ptr, fixed bin (35));

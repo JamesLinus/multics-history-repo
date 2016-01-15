@@ -9,9 +9,11 @@
 
 
 /****^  HISTORY COMMENTS:
-  1) change(85-09-09,Farley), approve(85-09-09,MCR6979),
-     audit(86-02-18,Coppola):
+  1) change(1985-09-09,Farley), approve(1985-09-09,MCR6979),
+     audit(1986-02-18,Coppola):
      Support FIPS.
+  2) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
                                                    END HISTORY COMMENTS */
 /* Modified 12/20/79 by R.L. Coppola and Paul Farley to add 6250 b.p.i. capability */
 /* Modified June 1980 by R.L. Coppola to clean up several bugs and provide detailed status
@@ -1586,7 +1588,7 @@ dcl  ec fixed bin (35);				/* use this, not "code" */
 dcl  (hour_bin, minute_bin, second) fixed bin;
 dcl  micro_second fixed bin (71);
 dcl  decode_clock_value_$time
-	entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin (71), char (3), fixed bin (35));
+	entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin (71), char (4), fixed bin (35));
 
 	call decode_clock_value_$time (clock (), hour_bin, minute_bin, second, micro_second, "", ec);
 	the_time.hour = hour_bin;

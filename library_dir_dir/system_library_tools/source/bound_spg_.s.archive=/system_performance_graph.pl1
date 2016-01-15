@@ -3,6 +3,12 @@
    * Copyright, (C) Honeywell Information Systems Inc., 1982 *
    *                                                         *
    *********************************************************** */
+
+/****^  HISTORY COMMENTS:
+  1) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
+                                                   END HISTORY COMMENTS */
+
 /* * meter plotting command
    f.j. corbat'o, Jan. 1970, modified April 1970, modified April 1971
    Last modified January 1981 by J. Bongiovanni to fix minor bugs
@@ -58,7 +64,7 @@ dcl  month fixed bin,
      dow fixed bin,
      hour fixed bin (35),
      minute float bin,
-     zone char (3) aligned;
+     zone char (4) aligned;
 
 dcl  iox_$user_output ptr ext,
      error_table_$badopt fixed bin (35) ext;
@@ -74,7 +80,7 @@ dcl  cu_$arg_count entry (fixed bin),
      ioa_$ioa_switch entry options (variable),
      date_time_ entry (fixed bin (52), char (*)),
      decode_clock_value_ entry (fixed bin (52), fixed bin, fixed bin, fixed bin, fixed bin (52),
-     fixed bin, char (3) aligned),
+     fixed bin, char (4) aligned),
      clock_ entry returns (fixed bin (52)),
      meter_util_$get_buffers entry (fixed bin, ptr, ptr, ptr, ptr, fixed bin (35)),
      meter_util_$fill_buffers entry (fixed bin),

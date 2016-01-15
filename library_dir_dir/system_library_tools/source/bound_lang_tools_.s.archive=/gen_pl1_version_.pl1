@@ -8,6 +8,12 @@
    *********************************************************** */
 
 
+
+/****^  HISTORY COMMENTS:
+  1) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
+                                                   END HISTORY COMMENTS */
+
 (stringsize):
 gen_pl1_version_:
 	procedure(pl1_version_struc,RELEASE,code);
@@ -30,7 +36,7 @@ dcl  code fixed bin(35);
 
 dcl  ioa_ entry options (variable);
 dcl  decode_clock_value_$date_time entry (fixed bin(71), fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, 
-	fixed bin, fixed bin(71), fixed bin, char(3), fixed bin(35));
+	fixed bin, fixed bin(71), fixed bin, char(4), fixed bin(35));
 
 /* builtins */
 
@@ -54,7 +60,7 @@ dcl  (stringsize,error) condition;
 
 dcl  (clock_reading,microsecond) fixed bin(71);
 dcl  (month,day_of_month,year,day_of_week,hour,minute,second) fixed bin;
-dcl  time_zone character(3) init("");
+dcl  time_zone character(4) init("");
 dcl  pl1_version_string character(256) varying;
 dcl  year_pic picture "9999";
 dcl  day_of_month_pic picture "zz";

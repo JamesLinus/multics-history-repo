@@ -13,31 +13,33 @@
 
 
 /****^  HISTORY COMMENTS:
-  1) change(86-06-09,Farley), approve(87-07-09,MCR7746),
-     audit(87-07-20,Fawcett), install(87-07-28,MR12.1-1049):
+  1) change(1986-06-09,Farley), approve(1987-07-09,MCR7746),
+     audit(1987-07-20,Fawcett), install(1987-07-28,MR12.1-1049):
      Corrected bug in setting exp_seg_name.
-  2) change(86-10-08,Farley), approve(87-07-09,MCR7746),
-     audit(87-07-20,Fawcett), install(87-07-28,MR12.1-1049):
+  2) change(1986-10-08,Farley), approve(1987-07-09,MCR7746),
+     audit(1987-07-20,Fawcett), install(1987-07-28,MR12.1-1049):
      Added quentry.used to diskq_data for flagging incomplete "(I)" I/O.
-  3) change(87-01-06,Parisek), approve(87-07-09,MCR7746),
-     audit(87-07-20,Fawcett), install(87-07-28,MR12.1-1049):
+  3) change(1987-01-06,Parisek), approve(1987-07-09,MCR7746),
+     audit(1987-07-20,Fawcett), install(1987-07-28,MR12.1-1049):
      Add functionality of matching and excluding strings on event strings.
-  4) change(87-01-09,Parisek), approve(87-07-09,MCR7746),
-     audit(87-07-20,Fawcett), install(87-07-28,MR12.1-1049):
+  4) change(1987-01-09,Parisek), approve(1987-07-09,MCR7746),
+     audit(1987-07-20,Fawcett), install(1987-07-28,MR12.1-1049):
      Check processor_tag value before referencing it in a function.  Previously
      too large a value would cause an OOB error.
-  5) change(87-01-21,Parisek), approve(87-07-09,MCR7746),
-     audit(87-07-20,Fawcett), install(87-07-28,MR12.1-1049):
+  5) change(1987-01-21,Parisek), approve(1987-07-09,MCR7746),
+     audit(1987-07-20,Fawcett), install(1987-07-28,MR12.1-1049):
      Check validity of disk device name and device number before assigning an
      auto variable to them, then displaying such.
-  6) change(87-07-09,Parisek), approve(87-07-09,MCR7746),
-     audit(87-07-20,Fawcett), install(87-07-28,MR12.1-1049):
+  6) change(1987-07-09,Parisek), approve(1987-07-09,MCR7746),
+     audit(1987-07-20,Fawcett), install(1987-07-28,MR12.1-1049):
      Changed declaration of proc_exists_mask from bit(36) to bit(8) to prevent
      stringsize conditions.
-  7) change(88-04-04,Parisek), approve(88-04-21,MCR7877),
-     audit(88-07-08,Farley), install(88-07-12,MR12.2-1055):
+  7) change(1988-04-04,Parisek), approve(1988-04-21,MCR7877),
+     audit(1988-07-08,Farley), install(1988-07-12,MR12.2-1055):
      Changed disk_queue event processing to only process events of interest
      when processing by time.
+  8) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
                                                    END HISTORY COMMENTS */
 
 
@@ -257,7 +259,7 @@ dcl  (
 dcl  sys_info$max_seg_size fixed bin (35) ext static;
 dcl  decode_clock_value_$date_time
 	entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin (71),
-	fixed bin, char (3), fixed bin (35));
+	fixed bin, char (4), fixed bin (35));
 
 /* Condition */
 

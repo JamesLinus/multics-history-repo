@@ -7,7 +7,7 @@
 
 
 /****^  HISTORY COMMENTS:
-  1) change(83-07-01,Palter), approve(), audit(), install():
+  1) change(1983-07-01,Palter), approve(), audit(), install():
      Pre-hcom comments:
      Created:  July 1983 by G. Palter
      Modified: March 1984 by G. Palter to fix the following mail system errors:
@@ -18,9 +18,11 @@
            making replies, etc. difficult
         #0436 -- if a forum meeting is not found in the "forum" search list, the mail system will treat it as a version 1
            forum in the working directory
-  2) change(87-04-09,Lippard), approve(86-11-24,MCR7576),
-     audit(87-04-21,Dickson), install(87-04-26,MR12.1-1026):
+  2) change(1987-04-09,Lippard), approve(1986-11-24,MCR7576),
+     audit(1987-04-21,Dickson), install(1987-04-26,MR12.1-1026):
      Modified to use time_names.incl.pl1 instead of time_zones_.incl.pl1.
+  3) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
                                                    END HISTORY COMMENTS */
 
 
@@ -246,7 +248,7 @@ dcl  convert_authorization_$to_string_short entry (bit (72) aligned, character (
 dcl  cu_$grow_stack_frame entry (fixed binary (18), pointer, fixed binary (35));
 dcl  decode_clock_value_$date_time
 	entry (fixed binary (71), fixed binary, fixed binary, fixed binary, fixed binary, fixed binary, fixed binary,
-	fixed binary (71), fixed binary, character (3), fixed binary (35));
+	fixed binary (71), fixed binary, character (4), fixed binary (35));
 dcl  get_authorization_ entry () returns (bit (72) aligned);
 dcl  get_line_length_$switch entry (pointer, fixed binary (35)) returns (fixed binary);
 dcl  ioa_$rsnnl entry () options (variable);
@@ -2869,7 +2871,7 @@ dcl  p_include_dow bit (1) aligned parameter;
 
 dcl  four_digits_picture picture "9999";
 dcl  two_digits_picture picture "99";
-dcl  time_zone character (3);
+dcl  time_zone character (4);
 dcl  recognized_zone bit (1) aligned;
 dcl  code fixed binary (35);
 dcl  (month, day_of_month, year, hour, minute, day_of_week, offset, hours, minutes, process_zone_offset, idx) fixed

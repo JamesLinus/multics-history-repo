@@ -8,6 +8,12 @@
    *********************************************************** */
 
 
+
+/****^  HISTORY COMMENTS:
+  1) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
+                                                   END HISTORY COMMENTS */
+
 /* format: style4,delnl,insnl,^ifthendo */
 meter_fnp_idle:
      procedure;
@@ -434,7 +440,7 @@ dcl  code fixed bin (35);
 
 dcl  decode_clock_value_$date_time
 	entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin (71),
-	fixed bin, char (3), fixed bin (35));
+	fixed bin, char (4), fixed bin (35));
 dcl  ioa_$rsnnl entry () options (variable);
 dcl  get_wdir_ entry () returns (char (168));
 dcl  hcs_$make_seg entry (char (*), char (*), char (*), fixed bin (5), ptr, fixed bin (35));
@@ -529,6 +535,3 @@ dcl  code fixed bin (35);
 %include event_call_info;
 
      end meter_fnp_idle;
-
-
-

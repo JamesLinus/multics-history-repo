@@ -4,6 +4,12 @@
    *                                                         *
    *********************************************************** */
 
+
+/****^  HISTORY COMMENTS:
+  1) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
+                                                   END HISTORY COMMENTS */
+
 vrm_meter: vrmm: proc;
 
 	if saved_meter_seg_ptr = null then do;
@@ -1360,14 +1366,14 @@ get_arg: proc (arg_num);
 	dcl     vrm_create_cursor$metering_on entry;
 	dcl     x			 fixed bin;
 	dcl     year		 fixed bin;
-	dcl     zone		 char (3);
+	dcl     zone		 char (4);
 
 
 	dcl     decode_clock_value_$date_time entry (fixed bin (71), fixed bin,
 				 fixed bin, fixed bin, fixed bin,
 				 fixed bin, fixed bin,
 				 fixed bin (71), fixed bin,
-				 char (3), fixed bin (35));
+				 char (4), fixed bin (35));
 
 
 

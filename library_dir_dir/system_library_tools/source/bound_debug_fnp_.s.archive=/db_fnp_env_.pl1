@@ -8,6 +8,12 @@
    *********************************************************** */
 
 
+
+/****^  HISTORY COMMENTS:
+  1) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
+                                                   END HISTORY COMMENTS */
+
 /* DB_FNP_ENV_ - Contains entries used by debug_fnp to maintain its environment.
    The selecting of dumps, core images, and live FNP's, and the switching between them is all done here */
 
@@ -134,7 +140,7 @@ dcl  db_fnp_sym_util_$get_value entry (char (*)) returns (fixed bin);
 dcl  db_fnp_util_$cv_chan_name entry (ptr, fixed bin, char (*), char (*), fixed bin, fixed bin (35));
 dcl  db_fnp_util_$get_chan_addrs entry (ptr, fixed bin, char (*), ptr, fixed bin (35));
 dcl  encode_clock_value_ entry (fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin (71),
-     fixed bin, char (3), fixed bin (71), fixed bin (35));
+     fixed bin, char (4), fixed bin (71), fixed bin (35));
 dcl  expand_pathname_ entry (char (*), char (*), char (*), fixed bin (35));
 dcl  get_system_free_area_ entry returns (ptr);
 dcl  get_wdir_ entry () returns (char (168));
@@ -767,7 +773,7 @@ set_dump_time: proc;
 
 	     on conversion go to return_no_time;
 	     call encode_clock_value_ (bin (dn.month), bin (dn.day), 1900 + bin (dn.year), bin (dn.hour),
-		bin (dn.min), 0, 0, 0, "   ", env.dump_time, code);
+		bin (dn.min), 0, 0, 0, "    ", env.dump_time, code);
 	     if code ^= 0 then env.dump_time = 0;
 	     return;
 return_no_time:

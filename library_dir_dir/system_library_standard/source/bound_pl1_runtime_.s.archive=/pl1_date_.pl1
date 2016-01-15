@@ -8,6 +8,12 @@
    *********************************************************** */
 
 
+
+/****^  HISTORY COMMENTS:
+  1) change(2016-01-15,Swenson), approve(2016-01-15,MCR10003):
+     Fix to support 4-character time zone abbreviations.
+                                                   END HISTORY COMMENTS */
+
 /* This procedure returns a string of form YYMMDD
    where	YY	is current year
    MM	is current month
@@ -18,7 +24,7 @@
 pl1_date_:
      procedure returns (char (6));
 
-dcl decode_clock_value_ entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin (71), fixed bin, char (3));
+dcl decode_clock_value_ entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin (71), fixed bin, char (4));
 
 dcl (year, month, day) fixed bin;
 
