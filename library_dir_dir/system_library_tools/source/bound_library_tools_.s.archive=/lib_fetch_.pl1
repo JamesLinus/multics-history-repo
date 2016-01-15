@@ -8,6 +8,13 @@
    *********************************************************** */
 
 
+
+/****^  HISTORY COMMENTS:
+  1) change(2016-01-15,Swenson), approve(2016-01-15,MCR10005):
+     Fix lib_fetch_.pl1 to terminate segments that it initiates so as not to
+     run out of KST entries.
+                                                   END HISTORY COMMENTS */
+
 /* Modified October 26, 1983 by Jim Lippard to fix bug in the call to get_equal_name_ and to properly handle	*/
 /*    name duplication									*/
 /* Modified June 13, 1984 by Jim Lippard to not sort found names					*/
@@ -311,6 +318,7 @@ COPY(6):						/*     archive component entries.		*/
   (^a>^a).", ent, into_dir, unique_name);
 		end;
 TERM_ENT:	     call hcs_$terminate_noname (Pent, code);
+	     call hcs_$terminate_noname (Pcopy, code);
 	     Pent = null;
 	     if S_.error then do;
 		S_.error = False;
