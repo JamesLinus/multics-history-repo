@@ -5,26 +5,30 @@
    *********************************************************** */
 
 /* HISTORY COMMENTS:
-  1) change(85-09-03,LJAdams), approve(85-11-06,MCR7278),
-     audit(86-02-19,Gilcrease), install(86-02-19,MR12.0-1021):
+  1) change(1985-09-03,LJAdams), approve(1985-11-06,MCR7278),
+     audit(1986-02-19,Gilcrease), install(1986-02-19,MR12.0-1021):
      Parses and validates the history comments.
-  2) change(86-04-17,LJAdams), approve(86-05-19,MCR7386),
-     audit(86-05-19,Gilcrease), install(86-06-05,MR12.0-1071):
+  2) change(1986-04-17,LJAdams), approve(1986-05-19,MCR7386),
+     audit(1986-05-19,Gilcrease), install(1986-06-05,MR12.0-1071):
      Added error message parameter for validate programs.  Changed so
      that only 1 error message is put out for all programs called.
-  3) change(86-08-28,LJAdams), approve(86-08-28,MCR7526),
-     audit(86-11-05,GDixon), install(86-11-12,MR12.0-1213):
+  3) change(1986-08-28,LJAdams), approve(1986-08-28,MCR7526),
+     audit(1986-11-05,GDixon), install(1986-11-12,MR12.0-1213):
      error_msg was not getting initialized  which resulted in garbage being
      displayed.  Set d.Scfix to True when first critical fix number is
      encountered; thereby preventing addition of non-critical fix numbers.
-  4) change(87-03-26,LJAdams), approve(87-03-26,MCR7653),
-     audit(87-04-22,Gilcrease), install(87-04-26,MR12.1-1026):
+  4) change(1987-03-26,LJAdams), approve(1987-03-26,MCR7653),
+     audit(1987-04-22,Gilcrease), install(1987-04-26,MR12.1-1026):
      If comment is greater than max length allowed put char value of
      comment length in src_array_comment.err_msg.
-  5) change(87-03-30,LJAdams), approve(87-03-30,MCR7653),
-     audit(87-04-22,Gilcrease), install(87-04-26,MR12.1-1026):
+  5) change(1987-03-30,LJAdams), approve(1987-03-30,MCR7653),
+     audit(1987-04-22,Gilcrease), install(1987-04-26,MR12.1-1026):
      Put in check for pre-b2 cmts must have null approve, null audit, and null
      install fields present.
+  6) change(2016-01-15,Swenson), approve(2016-01-15,MCR10006):
+     Fix history_comment to use 4-digit years and be able to handle current
+     date/times when there are existing history comments without thinking that
+     the new ones are in the past.
                                                    END HISTORY COMMENTS */
 
 hcom_parse_:
@@ -347,7 +351,7 @@ end JANITOR;
 /* RELATIVE SYNTAX FUNCTIONS  */
 
 dcl clock_time			fixed bin(71),
-      date_out			char(8) aligned;
+      date_out			char(10) aligned;
 
 date:
   proc () returns(bit(1) aligned);
@@ -358,7 +362,7 @@ date:
   if code ^= 0 then
      return(False);
 
-  date_out = date_time_$format("^yc-^my-^dm",clock_time,"","");
+  date_out = date_time_$format("^9999yc-^my-^dm",clock_time,"","");
   return(code=0);
   
 end date;

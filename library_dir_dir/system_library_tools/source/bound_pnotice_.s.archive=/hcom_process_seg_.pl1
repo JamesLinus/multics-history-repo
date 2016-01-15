@@ -9,25 +9,25 @@
         *********************************************************** */
 
 /****^  HISTORY COMMENTS:
-  1) change(85-09-03,LJAdams), approve(85-11-06,MCR7278),
-     audit(86-02-19,Gilcrease), install(86-03-06,MR12.0-1021):
+  1) change(1985-09-03,LJAdams), approve(1985-11-06,MCR7278),
+     audit(1986-02-19,Gilcrease), install(1986-03-06,MR12.0-1021):
      Program to process each individual segment to
      determine if there are or are not history comments present and update
      accordingly.
-  2) change(86-03-05,LJAdams), approve(86-03-05,MCR7278),
-     audit(86-03-05,Gilcrease), install(86-03-06,MR12.0-1029):
+  2) change(1986-03-05,LJAdams), approve(1986-03-05,MCR7278),
+     audit(1986-03-05,Gilcrease), install(1986-03-06,MR12.0-1029):
      Reformat summary when the format command is issued.
-  3) change(86-04-17,LJAdams), approve(86-04-17,MCR7386),
-     audit(86-05-27,Gilcrease), install(86-06-05,MR12.0-1071):
+  3) change(1986-04-17,LJAdams), approve(1986-04-17,MCR7386),
+     audit(1986-05-27,Gilcrease), install(1986-06-05,MR12.0-1071):
      Add an argument to indicated fill mode on (-fill, -fi) or fill mode off
      (-no_fill, -nfi) for the summary fields for the add operation.  The
      default will be fill mode.  Change the format operation to allow comment
      specification for reformatting.
-  4) change(86-05-05,LJAdams), approve(86-05-08,MCR7414),
-     audit(86-05-27,Gilcrease), install(86-06-05,MR12.0-1071):
+  4) change(1986-05-05,LJAdams), approve(1986-05-08,MCR7414),
+     audit(1986-05-27,Gilcrease), install(1986-06-05,MR12.0-1071):
      Moved the validation error reporting out of here and into hcom_parse_.rd.
-  5) change(86-05-21,LJAdams), approve(86-05-27,MCR7429),
-     audit(86-05-27,Gilcrease), install(86-06-05,MR12.0-1071):
+  5) change(1986-05-21,LJAdams), approve(1986-05-27,MCR7429),
+     audit(1986-05-27,Gilcrease), install(1986-06-05,MR12.0-1071):
      While doing the check option if no comments were found that met the check
      criteria all comments were being displayed as in error; rather than
      displaying all the comments an error message will be put out stating: No
@@ -35,16 +35,16 @@
      
      When doing the compare operation the NL was being included as part of the
      summary for the src_array but not the orig_array.
-  6) change(86-07-07,LJAdams), approve(86-07-07,MCR7429),
-     audit(86-07-07,Hartogs), install(86-07-07,MR12.0-1087):
+  6) change(1986-07-07,LJAdams), approve(1986-07-07,MCR7429),
+     audit(1986-07-07,Hartogs), install(1986-07-07,MR12.0-1087):
      PBF for ID 1021.  ck operation was erroneously passing comments missing
      the audit field; depending on their sequence in the history comment block.
      Dates greater than the current date were being accepted.
-  7) change(86-07-08,LJAdams), approve(86-07-08,MCR7429),
-     audit(86-07-08,Brunelle), install(86-07-08,MR12.0-1088):
+  7) change(1986-07-08,LJAdams), approve(1986-07-08,MCR7429),
+     audit(1986-07-08,Brunelle), install(1986-07-08,MR12.0-1088):
      PBF for ID 1021.  Change error message wording for ck failure.
-  8) change(86-08-08,LJAdams), approve(86-08-19,MCR7526),
-     audit(86-11-05,GDixon), install(86-11-12,MR12.0-1213):
+  8) change(1986-08-08,LJAdams), approve(1986-08-19,MCR7526),
+     audit(1986-11-05,GDixon), install(1986-11-12,MR12.0-1213):
      Change the method of determining the size of the copy of the comment to
      use the relative character offset and not the actual offset to determine
      the size of the length of the copy.
@@ -64,31 +64,35 @@
      are found in the source.
      
      phx20629:  Changed error_table_$badstar to error_table_$bad_file_name.
-  9) change(87-03-16,LJAdams), approve(87-04-22,MCR7653),
-     audit(87-04-02,Gilcrease), install(87-04-26,MR12.1-1026):
+  9) change(1987-03-16,LJAdams), approve(1987-04-22,MCR7653),
+     audit(1987-04-02,Gilcrease), install(1987-04-26,MR12.1-1026):
      Added support for C header (.h) files.  They are treated as type 1
      include files.  (phx20795)
- 10) change(87-03-26,LJAdams), approve(87-03-26,MCR7653),
-     audit(87-04-02,Gilcrease), install(87-04-26,MR12.1-1026):
+ 10) change(1987-03-26,LJAdams), approve(1987-03-26,MCR7653),
+     audit(1987-04-02,Gilcrease), install(1987-04-26,MR12.1-1026):
      If the comment length is greater than max length allowed display error
      message; for a display operation continue; for modify operation halt so as
      not to damage given segment."
- 11) change(87-03-30,LJAdams), approve(87-03-30,MCR7653),
-     audit(87-04-02,Gilcrease), install(87-04-26,MR12.1-1026):
+ 11) change(1987-03-30,LJAdams), approve(1987-03-30,MCR7653),
+     audit(1987-04-02,Gilcrease), install(1987-04-26,MR12.1-1026):
      Display error msg for old history comments that have a null approve, null
      audit, and/or are missing or have a non-null value for the install field.
- 12) change(87-04-28,LJAdams), approve(87-04-28,PBF7653),
-     audit(87-04-28,Farley), install(87-05-08,MR12.1-1031):
+ 12) change(1987-04-28,LJAdams), approve(1987-04-28,PBF7653),
+     audit(1987-04-28,Farley), install(1987-05-08,MR12.1-1031):
      Change checking for .h include files to exclude .header files.
- 13) change(87-11-09,LJAdams), approve(87-11-10,MCR7802),
-     audit(87-12-04,RBarstad), install(88-01-12,MR12.2-1012):
+ 13) change(1987-11-09,LJAdams), approve(1987-11-10,MCR7802),
+     audit(1987-12-04,RBarstad), install(1988-01-12,MR12.2-1012):
      If a history comment exceeded the maximum length the error message was
      printing the error code instead of the length of the comment in error.
- 14) change(90-07-23,Itani), approve(90-07-23,MCR8186), audit(90-07-30,Vu),
-     install(90-08-21,MR12.4-1027):
+ 14) change(1990-07-23,Itani), approve(1990-07-23,MCR8186),
+     audit(1990-07-30,Vu), install(1990-08-21,MR12.4-1027):
      Change history_comment so that when it is invoked as an active function,
      it returns all the values requested for the get operation when a star name
      is specified for the pathname.
+ 15) change(2016-01-15,Swenson), approve(2016-01-15,MCR10006):
+     Fix history_comment to use 4-digit years and be able to handle current
+     date/times when there are existing history comments without thinking that
+     the new ones are in the past.
                                                    END HISTORY COMMENTS */
 
 /* format: off */
@@ -137,7 +141,7 @@ dcl	Sany_found		bit(1),
           Sfirst_cmt		bit(1),
 	Sformat			bit(1),
 	code			fixed bin(35),
-	current_date		char(8),
+	current_date		char(10),
           error_msg			char (100) varying,
          (i, j, k)			fixed bin (24),
 	valid			bit(1);
@@ -152,9 +156,9 @@ dcl	cu_$generate_call		entry (entry, ptr),
 	hcom_cfix_validate_		entry (char(*) var, char(*) var, char(*) var, bit(1), char(*) var, 
                                               char(*) var, char(100) var),
 	hcom_parse_		entry (label, char(*), char(*), char(*), bit,  ptr, 1 aligned, 
-                                             2 char(8), 2 pic "9999", 2 bit(1), 2 bit(1), 2 fixed bin, 
-                                             2 fixed bin, 2 char(24) var, 2 char(8), 2 char(24) var,
-				     2 char(8), 2 char(24) var, 2 char(8),
+                                             2 char(10), 2 pic "9999", 2 bit(1), 2 bit(1), 2 fixed bin, 
+                                             2 fixed bin, 2 char(24) var, 2 char(10), 2 char(24) var,
+				     2 char(10), 2 char(24) var, 2 char(10),
 				     2 char(24) var, 2 char(2000) var, 
                                              2 (5) char(80) var, fixed bin(35)),
          (ioa_, ioa_$nnl)		     entry() options(variable),
@@ -199,7 +203,7 @@ dcl	Psegment			ptr,
 
    call init_structures$src_array;
    Porig_array = null;
-   current_date = date_time_$format("^yc-^my-^dm",clock(),"","");
+   current_date = date_time_$format("^9999yc-^my-^dm",clock(),"","");
    Sformat = FALSE;
    
 
@@ -1149,7 +1153,7 @@ end cfix_required;
 field_check:
    proc;
 
-dcl	date_ck			char(8),
+dcl	date_ck			char(10),
 	comment_ck		fixed bin;
 
    date_ck = com_array.comments(1).change_dt;

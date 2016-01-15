@@ -5,25 +5,29 @@
         *********************************************************** */
 
 /****^  HISTORY COMMENTS:
-  1) change(85-09-03,LJAdams), approve(85-11-06,MCR7278),
-     audit(86-02-19,Gilcrease), install(86-02-19,MR12.0-1021):
+  1) change(1985-09-03,LJAdams), approve(1985-11-06,MCR7278),
+     audit(1986-02-19,Gilcrease), install(1986-02-19,MR12.0-1021):
      This is the driver program for the history
      comment programs that provide tracking of software changes and ensure that
      the format and placement of software change notices are standard.
-  2) change(86-04-17,LJAdams), approve(86-04-17,MCR7386),
-     audit(86-05-19,Gilcrease), install(86-06-05,MR12.0-1071):
+  2) change(1986-04-17,LJAdams), approve(1986-04-17,MCR7386),
+     audit(1986-05-19,Gilcrease), install(1986-06-05,MR12.0-1071):
      When using an active function, if there is an invalid argument given set
      return string to false.  If there was an invalid argument do not take
      operand of argument as a comment spec for ADD, CHECK, or INSTALL.
-  3) change(86-05-05,LJAdams), approve(86-05-05,MCR7386),
-     audit(86-05-19,Gilcrease), install(86-06-05,MR12.0-1071):
+  3) change(1986-05-05,LJAdams), approve(1986-05-05,MCR7386),
+     audit(1986-05-19,Gilcrease), install(1986-06-05,MR12.0-1071):
      Added ability to fill or not fill comments using the -fill or -no_fill
      arguments.
-  4) change(86-09-02,LJAdams), approve(86-09-02,MCR7526),
-     audit(86-11-05,GDixon), install(86-11-12,MR12.0-1213):
+  4) change(1986-09-02,LJAdams), approve(1986-09-02,MCR7526),
+     audit(1986-11-05,GDixon), install(1986-11-12,MR12.0-1213):
      Reformatted error messages to be consistent.
      
      hcom get with no fields specified was not returning all fields available.
+  5) change(2016-01-15,Swenson), approve(2016-01-15,MCR10006):
+     Fix history_comment to use 4-digit years and be able to handle current
+     date/times when there are existing history comments without thinking that
+     the new ones are in the past.
                                                    END HISTORY COMMENTS */
 
 history_comment:
@@ -44,7 +48,7 @@ hcom:
 /*  A U T O M A T I C  */
 	dcl     code		 fixed bin (35),
 	        control		 fixed bin,
-	        current_date	 char (8),
+	        current_date	 char (10),
 	        error_msg		 char (100) varying,
 	        (i, j)		 fixed bin (24),
 	        operation		 fixed bin,	/* used to indicate if operation has been set	*/
@@ -1139,7 +1143,7 @@ hcom_janitor:
 init$args:
      proc;
 
-	current_date = date_time_$format ("^yc-^my-^dm", clock (), "", "");
+	current_date = date_time_$format ("^9999yc-^my-^dm", clock (), "", "");
 	call user_info_ (user_name, "", "");
 
 	d.ag.op.name = NOTSET;
@@ -1222,3 +1226,6 @@ CONTINUE:
 
 %include hcom_field_names;
      end history_comment;
+
+
+
