@@ -1,3 +1,11 @@
+
+/* HISTORY COMMENTS:
+  1) change(2016-01-15,Swenson), approve(2016-01-15,MCR10004):
+     Add dummy trace_error_halt_ to bound_trace_. There are external references
+     to this non-existent segment (addname on bound_trace_) which prevent
+     check_mst from successfully checking MSTs.
+                                                   END HISTORY COMMENTS */
+
 /*
   Bind file for bound_trace_
      written 12/74 by S.E. Barr
@@ -19,7 +27,8 @@ Addname:		trace,
 		trace_catch_,
 		trace_meters, tmt,
 		display_argument_list_,
-		watch;
+		watch,
+		trace_error_halt_;
 
 Order:		trace_,
 		trace_catch_,
@@ -39,7 +48,8 @@ Order:		trace_,
 		trace_time_,
 		trace_transactions_,
 		trace_version_,
-		watch;
+		watch,
+		trace_error_halt_;
 
 objectname:	trace_;
  retain:		add_specified_eps,
@@ -176,6 +186,5 @@ objectname:	trace_transactions_;
 objectname:	trace_version_;
 objectname:	watch;
  retain:		watch;
-
-
-
+objectname:	trace_error_halt_;
+ retain:		trace_error_halt_;
