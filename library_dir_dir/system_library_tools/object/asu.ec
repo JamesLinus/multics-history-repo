@@ -45,10 +45,16 @@
 &-
 &-
 &- HISTORY COMMENTS:
-&-  1) change(87-08-28,Lippard), approve(87-02-09,PBF7616),
-&-     audit(87-08-28,Farley), install(87-09-01,MR12.1-1095):
+&-  1) change(1987-08-28,Lippard), approve(1987-02-09,PBF7616),
+&-     audit(1987-08-28,Farley), install(1987-09-01,MR12.1-1095):
 &-     Modified to create and set_acl on set_proc_required.acs (in
 &-     >sc1>admin_acs).
+&-  2) change(2016-01-20,Swenson), approve(2016-01-20,MCR10007),
+&-     audit(2016-04-03,GDixon), install(2016-04-04,MR12.6e-10007):
+&-     Fixed acct_start_up.ec to give w access to >sc1>syserr_log>** and
+&-     >sc1>as_logs>** to *.SysAdmin and to set up IACLs on these directories
+&-     so that future log segments have the required access to allow
+&-     move_log_segments to work.
 &-                                                      END HISTORY COMMENTS
 &-
 &-
@@ -793,13 +799,13 @@ change_wdir &(SC1)
 set_acl rcp sma *.SysAdmin
 &-
 set_acl as_logs sma *.SysAdmin
-set_iacl_seg as_logs r *.SysAdmin
-set_acl as_logs>** r *.SysAdmin -brief
+set_iacl_seg as_logs rw *.SysAdmin
+set_acl as_logs>** rw *.SysAdmin -brief
 &-
 move_quota syserr_log 1000
 set_acl syserr_log sma *.SysAdmin
-set_iacl_seg syserr_log r *.SysAdmin
-set_acl syserr_log>** r *.SysAdmin -brief
+set_iacl_seg syserr_log rw *.SysAdmin
+set_acl syserr_log>** rw *.SysAdmin -brief
 &-
 set_acl admin_acs sma *.SysAdmin
 &-
