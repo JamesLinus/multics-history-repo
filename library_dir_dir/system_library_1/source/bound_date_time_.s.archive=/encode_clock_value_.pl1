@@ -42,7 +42,7 @@
 /* USAGE:                                                                    */
 /*    dcl encode_clock_value_ entry (fixed bin, fixed bin, fixed             */
 /*       bin, fixed bin, fixed bin, fixed bin, fixed bin(71), fixed          */
-/*       bin, char(3), fixed bin(71), fixed bin(35));                        */
+/*       bin, char(4), fixed bin(71), fixed bin(35));                        */
 /*    call encode_clock_value_ (month, dom, year, hour, minute, sec-         */
 /*       ond, microsecond, dow, zone, clock, code);                          */
 /*                                                                           */
@@ -59,7 +59,7 @@
 /* USAGE:                                                                    */
 /*    dcl encode_clock_value_$offsets entry (fixed bin(71), fixed            */
 /*       bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin,         */
-/*       fixed bin(71), fixed bin, char(3), fixed bin(71), fixed             */
+/*       fixed bin(71), fixed bin, char(4), fixed bin(71), fixed             */
 /*       bin(35));                                                           */
 /*    call encode_clock_value_$offsets (clock_in, month_off,                 */
 /*       day_off, year_off, hour_off, minute_off, second_off,                */
@@ -77,7 +77,7 @@ dcl (
     second	fixed bin,
     microsecond	fixed bin (71),
     dow		fixed bin,
-    zone		char (3),
+    zone		char (4),
     clock		fixed bin (71),
     code		fixed bin (35)
     )		parm;
@@ -111,7 +111,7 @@ dcl (
     second_off	fixed bin,
     microsec_off	fixed bin (71),
     dow_offset	fixed bin,
-/*  zone		char (3),					       */
+/*  zone		char (4),					       */
     clock_out	fixed bin (71)
 /*  code		fixed bin (35)				       */
     )		parm;
@@ -176,7 +176,7 @@ dcl (
 /*                                                                           */
 /* USAGE:                                                                    */
 /*    dcl decode_clock_value_ entry (fixed bin(71), fixed bin, fixed         */
-/*       bin, fixed bin, fixed bin(71), fixed bin, char(3));                 */
+/*       bin, fixed bin, fixed bin(71), fixed bin, char(4));                 */
 /*    call decode_clock_value_ (clock, month, dom, year, tod, dow,           */
 /*       zone);                                                              */
 /*                                                                           */
@@ -194,7 +194,7 @@ dcl (
 /* dow (Output)                                                              */
 /*    is the day of the week (Monday = 1, ..., Sunday = 7).                  */
 /* zone (Output)                                                             */
-/*    is a  three-character lowercase abbreviation of  the time zone         */
+/*    is a three- or four-character lowercase abbreviation of  the time zone */
 /*    currently used by this process (for example, mst, edt).                */
 /*                                                                           */
 /* NOTES:                                                                    */
@@ -213,7 +213,7 @@ dcl (
 /* USAGE:                                                                    */
 /*    dcl decode_clock_value_$date_time entry (fixed bin(71), fixed          */
 /*       bin, fixed bin, fixed bin, fixed bin, fixed bin, fixed bin,         */
-/*       fixed bin(71), fixed bin, char(3), fixed bin(35));                  */
+/*       fixed bin(71), fixed bin, char(4), fixed bin(35));                  */
 /*    call decode_clock_value_$date_time (clock, month, dom, year,           */
 /*       hour, minute, second, microsecond, dow, zone, code);                */
 
