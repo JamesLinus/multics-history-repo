@@ -8,6 +8,15 @@
    *********************************************************** */
 
 
+
+/****^  HISTORY COMMENTS:
+  1) change(2016-02-23,Swenson), approve(2016-02-23,MCR10008),
+     audit(2016-04-03,GDixon), install(2016-04-05,MR12.6e-0003):
+     Fix to not reference options variable before it is set. This prevents
+     incorrect argument processing that mis-constructs segment names and
+     incorrectly reports an error
+                                                   END HISTORY COMMENTS */
+
 map355:
      procedure ();
 
@@ -576,6 +585,22 @@ declare
 	     if err_code ^= ""b
 	     then goto print_err_code;
 
+	     macro_file_pathname = ">ldd>mcs>info>355_macros";
+
+	     options.only_check = "0"b;
+	     options.make_comdk = "0"b;
+	     options.from_comdk = "0"b;
+	     options.make_list = "0"b;
+	     options.make_gcos_list = "0"b;
+
+	     do indx = 2 by 1 to bv_num_args;
+		call cu_$arg_ptr_rel (indx, arg_ptr, arg_length, err_code, bv_arg_list_ptr);
+		if err_code ^= ""b
+		then goto unexpected_error;
+
+		call process_control_argument (arg_ptr -> based_argument);
+	     end;
+
 	     string_len = length (dirname) - verify (reverse (dirname), " ") + 1;
 	     source_dir = substr (dirname, 1, string_len);
 
@@ -596,22 +621,6 @@ declare
 	     if length (base_name) > 11 then
 		job_name = substr (base_name, 1, 11);
 	     else job_name = base_name;
-
-	     macro_file_pathname = ">ldd>mcs>info>355_macros";
-
-	     options.only_check = "0"b;
-	     options.make_comdk = "0"b;
-	     options.from_comdk = "0"b;
-	     options.make_list = "0"b;
-	     options.make_gcos_list = "0"b;
-
-	     do indx = 2 by 1 to bv_num_args;
-		call cu_$arg_ptr_rel (indx, arg_ptr, arg_length, err_code, bv_arg_list_ptr);
-		if err_code ^= ""b
-		then goto unexpected_error;
-
-		call process_control_argument (arg_ptr -> based_argument);
-	     end;
 
 	     return;
 
@@ -701,6 +710,3 @@ declare
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
      end map355;
-
-
-
