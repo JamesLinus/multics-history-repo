@@ -8,6 +8,13 @@
    *********************************************************** */
 
 
+
+/****^  HISTORY COMMENTS:
+  1) change(2016-02-24,Swenson), approve(2016-02-24,MCR10009),
+     audit(2016-04-10,GDixon), install(2016-04-10,MR12.6e-0005):
+     Fix references to (en de)code_clock_value_ to use 4-character time zone.
+                                                   END HISTORY COMMENTS */
+
 /* This procedure returns a string of the form HHMMSSFFFFFF
    where	HH	is hours
    MM	is minutes
@@ -20,7 +27,7 @@ pl1_time_:
      procedure returns (char (12));
 
 dcl decode_clock_value_$time
-         entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin (71), char (3), fixed bin (35));
+         entry (fixed bin (71), fixed bin, fixed bin, fixed bin, fixed bin (71), char (4), fixed bin (35));
 
 dcl (hour, minute, second) fixed bin;
 dcl microsecond fixed bin (71);
@@ -39,6 +46,3 @@ dcl (clock, string) builtin;
 	time_picture.microsecond = microsecond;
 	return (string (time_picture));
      end pl1_time_;
-
-
-

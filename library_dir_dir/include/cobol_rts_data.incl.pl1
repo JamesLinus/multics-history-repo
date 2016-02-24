@@ -1,3 +1,11 @@
+/* BEGIN INCLUDE FILE  cobol_rts_data.incl.pl1 */
+
+
+/****^  HISTORY COMMENTS:
+  1) change(2016-02-24,Swenson), approve(2016-02-24,MCR10009),
+     audit(2016-04-10,GDixon), install(2016-04-10,MR12.6e-0005):
+     Fix references to (en de)code_clock_value_ to use 4-character time zone.
+                                                   END HISTORY COMMENTS */
 
 /* EXTERNAL_NAMES */
 
@@ -66,7 +74,7 @@ dcl	cobol_control_$cancel	entry(char(*),fixed bin,fixed bin,fixed bin);
 dcl	clock_	entry returns(fixed bin(71)),
 	date_time_	entry(fixed bin(71),char(*)),
 	decode_clock_value_	entry(fixed bin(71),fixed bin,fixed bin,fixed bin,fixed bin(71),
-		fixed bin,char(3) aligned);
+		fixed bin,char(4) aligned);
 
 dcl	cobol_su_$tally	entry(ptr,fixed bin),
 	cobol_su_$replace	entry(ptr);
@@ -109,3 +117,5 @@ dcl	(substr,mod,binary,fixed,addr,addrel,rel,length,
 %include cobol_file_desc_1;
 %include rs_info;
 %include ak_info;
+
+/*  END INCLUDE FILE   cobol_rts_data.incl.pl1 */

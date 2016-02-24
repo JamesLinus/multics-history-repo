@@ -20,10 +20,13 @@ as_meters: proc;
 
 
 /****^  HISTORY COMMENTS:
-  1) change(87-07-21,Herbst), approve(87-07-21,MCR7694),
-     audit(87-07-21,GDixon), install(87-08-04,MR12.1-1055):
+  1) change(1987-07-21,Herbst), approve(1987-07-21,MCR7694),
+     audit(1987-07-21,GDixon), install(1987-08-04,MR12.1-1055):
       A) Update for AS_METER_NAMES array declared in
          as_meter_numbers.incl.pl1.
+  2) change(2016-02-24,Swenson), approve(2016-02-24,MCR10009),
+     audit(2016-04-10,GDixon), install(2016-04-10,MR12.6e-0005):
+     Fix references to (en de)code_clock_value_ to use 4-character time zone.
                                                    END HISTORY COMMENTS */
 
 
@@ -34,7 +37,7 @@ dcl  cu_$arg_ptr entry (fixed bin, ptr, fixed bin, fixed bin (35));
 dcl (ioa_, ioa_$rsnnl, com_err_) entry options (variable);
 dcl  date_time_ entry (fixed bin (71), char (*));
 dcl  decode_clock_value_$date_time entry (fixed bin (71), fixed bin, fixed bin, fixed bin,
-     fixed bin, fixed bin, fixed bin, fixed bin (71), fixed bin, char (3), fixed bin (35));
+     fixed bin, fixed bin, fixed bin, fixed bin (71), fixed bin, char (4), fixed bin (35));
 dcl  get_temp_segment_ entry (char (*), ptr, fixed bin (35));
 dcl  hcs_$initiate entry (char (*), char (*), char (*), fixed bin (1), fixed bin (2), ptr, fixed bin (35));
 dcl  hcs_$terminate_noname entry (ptr, fixed bin (35));
@@ -47,7 +50,7 @@ dcl  ignore_code fixed bin (35);			/* crossref will show where we ignore return 
 dcl  i fixed bin;
 dcl (month, day, year, hour, minute, second, dow) fixed bin;
 dcl  usec fixed bin (71);
-dcl  zone char (3) init ("");
+dcl  zone char (4) init ("");
 dcl (asmtp, asmtep) ptr init (null);
 dcl  argp ptr, argl fixed bin, arg char (argl) based (argp);
 dcl  totalsw bit (1) aligned init (""b);

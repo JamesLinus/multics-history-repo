@@ -9,21 +9,25 @@
 
 
 /****^  HISTORY COMMENTS:
-  1) change(85-12-19,Herbst), approve(86-03-25,MCR7367),
-     audit(86-04-28,Margolin), install(86-05-22,MR12.0-1059):
+  1) change(1985-12-19,Herbst), approve(1986-03-25,MCR7367),
+     audit(1986-04-28,Margolin), install(1986-05-22,MR12.0-1059):
      Changed $print_message_summary to include "S" column for seen messages.
-  2) change(89-03-16,Vu), approve(89-03-16,MCR8071), audit(89-03-31,Flegel),
-     install(89-04-24,MR12.3-1032):
+  2) change(1989-03-16,Vu), approve(1989-03-16,MCR8071),
+     audit(1989-03-31,Flegel), install(1989-04-24,MR12.3-1032):
      Changed $print_message_summary to display proper line counter for a
      piece of mail containing more than 9999 lines.
-  3) change(89-06-26,Lee), approve(89-07-11,MCR8119),
-     audit(89-08-03,LZimmerman), install(89-10-02,MR12.3-1079):
+  3) change(1989-06-26,Lee), approve(1989-07-11,MCR8119),
+     audit(1989-08-03,LZimmerman), install(1989-10-02,MR12.3-1079):
      phx19187 (Mail 458) - modified print_message_summary/
      print_message_summary_header to drop subject and lines fields if
      necessary to properly handle short lines; it fixes out_of_bounds
      condition for line_lengths less than 15.
-  4) change(99-12-31,Schroth), approve(99-12-31,MECR-Y2K):
+  4) change(1999-12-31,Schroth), approve(1999-12-31,MECR-Y2K),
+     install(2016-04-10,MR12.6e-0005):
      Correct size condition in year formating for message list.
+  5) change(2016-02-24,Swenson), approve(2016-02-24,MCR10009),
+     audit(2016-04-10,GDixon), install(2016-04-10,MR12.6e-0005):
+     Fix references to (en de)code_clock_value_ to use 4-character time zone.
                                                    END HISTORY COMMENTS */
 
 
@@ -255,7 +259,7 @@ dcl  cu_$grow_stack_frame entry (fixed binary (18), pointer, fixed binary (35));
 dcl  cu_$shrink_stack_frame entry (pointer, fixed binary (35));
 dcl  decode_clock_value_$date_time
 	entry (fixed binary (71), fixed binary, fixed binary, fixed binary, fixed binary, fixed binary, fixed binary,
-	fixed binary (71), fixed binary, character (3), fixed binary (35));
+	fixed binary (71), fixed binary, character (4), fixed binary (35));
 dcl  decode_descriptor_
 	entry (pointer, fixed binary, fixed binary, bit (1) aligned, fixed binary, fixed binary, fixed binary);
 dcl  find_condition_info_ entry (pointer, pointer, fixed binary (35));
@@ -664,7 +668,7 @@ print_message_summary:
 
 	if include_date then do;			/* won't include time unless the date is also */
 	     call decode_clock_value_$date_time (message.date_time_created, month, day_of_month, year, hour, minute,
-		(0), (0), (0), ((3)" "), (0));
+		(0), (0), (0), ((4)" "), (0));
 	     date_string =
 		convert (two_digits_picture, month) || "/" || convert (two_digits_picture, day_of_month) || "/"
 		|| convert (two_digits_picture, mod(year, 100));
@@ -2087,6 +2091,3 @@ dcl  WHITESPACE character (5) static options (constant) initial ("
  ");						/* HT NL VT FF SP */
 
      end mlsys_misc_utils_;
-
-
-
