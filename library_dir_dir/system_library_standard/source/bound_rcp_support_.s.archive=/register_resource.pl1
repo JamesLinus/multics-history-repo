@@ -13,10 +13,14 @@
 
 
 /****^  HISTORY COMMENTS:
-  1) change(87-06-19,Rauschelbach), approve(87-06-29,MCR7736),
-     audit(87-07-21,Farley), install(87-08-06,MR12.1-1064):
+  1) change(1987-06-19,Rauschelbach), approve(1987-06-29,MCR7736),
+     audit(1987-07-21,Farley), install(1987-08-06,MR12.1-1064):
      Error message duplication was removed, and a call to com_err_ with a more
      standard version.
+  2) change(2016-03-31,Swenson), approve(2016-03-31,MCR10010),
+     audit(2016-04-03,GDixon), install(2016-04-05,MR12.6e-0004):
+     Fix acquire_resource and register_resource to not incorrectly format error
+     message when no resource of the specified type is available.
                                                    END HISTORY COMMENTS */
 
 
@@ -422,7 +426,7 @@ crump_in_struc:
 	do i = 1 to resource_descriptions.n_items while (resource_descriptions.item (i).status_code = 0);
 	end;
 
-	if i <= resource_descriptions.n_items then
+	if i > resource_descriptions.n_items then
 	   call com_err_ (code, myname, reason);
 	else call com_err_ (resource_descriptions.item (i).status_code, myname, "for ^a ^a",
 		resource_descriptions.item (i).type, resource_descriptions.item (i).name);
