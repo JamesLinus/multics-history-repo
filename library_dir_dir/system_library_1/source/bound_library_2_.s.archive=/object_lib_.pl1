@@ -9,10 +9,14 @@
 
 
 /****^  HISTORY COMMENTS:
-  1) change(86-05-02,Elhard), approve(86-05-02,MCR7391),
-     audit(86-10-03,DGHowe), install(86-11-20,MR12.0-1222):
+  1) change(1986-05-02,Elhard), approve(1986-05-02,MCR7391),
+     audit(1986-10-03,DGHowe), install(1986-11-20,MR12.0-1222):
      Written to support object multisegment files, for initiation, definition
      searches, and info extraction.
+  2) change(2016-04-01,Swenson), approve(2016-04-01,MCR10011),
+     audit(2016-04-02,GDixon), install(2016-04-04,MR12.6e-10011):
+     Fix issue with object_lib_$initiate initiating a segment, but not
+     terminating it on error return.
                                                    END HISTORY COMMENTS */
 
 /* format: style1,insnl,ifthendo,indthenelse,^indnoniterdo,^inditerdo,indcom,^indthenbegin,^indprocbody,ind2,ll78,initcol0,dclind4,idind24,struclvlind1,comcol41 */
@@ -131,6 +135,7 @@ object_lib_:
   dcl targetp		ptr automatic;
   dcl term_sw		bit (1) automatic;
   dcl type		fixed bin automatic;
+  dcl terminate_on_exit       bit (1) automatic init("0"b);
 
   /* conditions */
 
@@ -266,6 +271,12 @@ INITIATE_JOIN:
       call hcs_$initiate_count (dname, ename, A_refname, bc, 0, targetp, ec);
     end;
 
+  /* remember we need to terminate this segment, if we initiated it,
+     and it wasn't already known to the process. */
+     
+  if targetp ^= null() & ec ^= error_table_$segknown
+    then terminate_on_exit = "1"b;
+
   /* if at this point we have a problem other than that the segment	*/
   /* is already known, we give up and return the code.		*/
 
@@ -291,6 +302,12 @@ INITIATE_JOIN:
       /* can legitimately return the pointer and bit count		*/
 
       A_targetp = targetp;
+
+      /* we have returned this pointer to the caller, so we should no longer
+         terminate the segment on exit */
+
+      terminate_on_exit = "0"b;
+
       A_count = bc;
 
       /* now we validate the status as a object MSF/segment */
@@ -330,7 +347,14 @@ INITIATE_JOIN:
       if n_comp > 0
         then A_msf_sw = true;
         else A_msf_sw = false;
+
       A_targetp = targetp;
+
+      /* we have returned this pointer to the caller, so we should no longer
+         terminate the segment on exit */
+
+      terminate_on_exit = "0"b;
+
       A_count = bc;
     end;
 
@@ -779,6 +803,9 @@ exit:
   end exit;
 
 EXIT:
+  if terminate_on_exit & targetp ^= null
+    then call hcs_$terminate_noname (targetp, (0));
+
   return;
 
 /****  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  */
@@ -796,6 +823,3 @@ EXIT:
 %include stack_header;
 
   end object_lib_;
-
-
-
